@@ -173,6 +173,11 @@ public class Engine {
 		handlersForEventType.add(handlerUri);
 	}
 
+	public void registerEventHandler(Class<? extends Event> cmdEventType, EventHandler cmdHandler, String handlerUri) {
+		registerEventHandlerInstance(handlerUri, cmdHandler);
+		registerEventHandler(cmdEventType, handlerUri);
+	}
+
 	Set<String> findHandlers(Class<? extends Event> eventType) {
 		Set<String> handlers = eventHandlers.get(eventType);
 		if (handlers == null)

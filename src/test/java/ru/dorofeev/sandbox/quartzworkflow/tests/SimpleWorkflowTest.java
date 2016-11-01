@@ -44,17 +44,11 @@ public class SimpleWorkflowTest {
 	public void sanityTest() {
 		Model model = new Model();
 
-		engine.registerEventHandlerInstance(handlerUri("addPersonCmd"), new AddPersonCmdHandler(model));
-		engine.registerEventHandlerInstance(handlerUri("assignBaseRolesOnPersonAddedEvent"), new AssignBaseRolesOnPersonAddedEventHandler());
-		engine.registerEventHandlerInstance(handlerUri("assignRoleCmd"), new AssignRoleCmdHandler(model));
-		engine.registerEventHandlerInstance(handlerUri("processRoleAssignmentOnRoleAssignedEvent"), new ProcessRoleAssignmentOnRoleAssignedEventHandler());
-		engine.registerEventHandlerInstance(handlerUri("assignAccountCmd"), new AssignAccountCmdHandler(model));
-
-		engine.registerEventHandler(AddPersonCmdEvent.class, handlerUri("addPersonCmd"));
-		engine.registerEventHandler(PersonAddedEvent.class, handlerUri("assignBaseRolesOnPersonAddedEvent"));
-		engine.registerEventHandler(AssignRoleCmdEvent.class, handlerUri("assignRoleCmd"));
-		engine.registerEventHandler(RoleAssignedEvent.class, handlerUri("processRoleAssignmentOnRoleAssignedEvent"));
-		engine.registerEventHandler(AssignAccountCmdEvent.class, handlerUri("assignAccountCmd"));
+		engine.registerEventHandler(AddPersonCmdEvent.class, new AddPersonCmdHandler(model), handlerUri("addPersonCmd"));
+		engine.registerEventHandler(AssignRoleCmdEvent.class, new AssignRoleCmdHandler(model), handlerUri("assignRoleCmd"));
+		engine.registerEventHandler(AssignAccountCmdEvent.class, new AssignAccountCmdHandler(model), handlerUri("assignAccountCmd"));
+		engine.registerEventHandler(PersonAddedEvent.class, new AssignBaseRolesOnPersonAddedEventHandler(), handlerUri("assignBaseRolesOnPersonAddedEvent"));
+		engine.registerEventHandler(RoleAssignedEvent.class, new ProcessRoleAssignmentOnRoleAssignedEventHandler(), handlerUri("processRoleAssignmentOnRoleAssignedEvent"));
 
 		engine.submitEvent(new AddPersonCmdEvent("john"));
 

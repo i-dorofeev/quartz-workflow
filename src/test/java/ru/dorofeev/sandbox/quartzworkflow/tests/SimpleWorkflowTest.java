@@ -3,7 +3,7 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 import org.junit.*;
 import ru.dorofeev.sandbox.quartzworkflow.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.Event;
-import ru.dorofeev.sandbox.quartzworkflow.EventHandler;
+import ru.dorofeev.sandbox.quartzworkflow.TypedEventHandler;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -72,7 +72,7 @@ public class SimpleWorkflowTest {
 		}
 	}
 
-	private static class AddPersonCmdHandler implements EventHandler {
+	private static class AddPersonCmdHandler extends TypedEventHandler<AddPersonCmdEvent> {
 		private final Model model;
 
 		AddPersonCmdHandler(Model model) {
@@ -80,10 +80,9 @@ public class SimpleWorkflowTest {
 		}
 
 		@Override
-		public void handleEvent(Engine engine, Event event) {
-			AddPersonCmdEvent addPersonCmdEvent = (AddPersonCmdEvent) event;
-			model.addPerson(addPersonCmdEvent.personName);
-			engine.submitEvent(new PersonAddedEvent(addPersonCmdEvent.personName));
+		protected void handle(Engine engine, AddPersonCmdEvent event) {
+			model.addPerson(event.personName);
+			engine.submitEvent(new PersonAddedEvent(event.personName));
 		}
 	}
 
@@ -96,12 +95,11 @@ public class SimpleWorkflowTest {
 		}
 	}
 
-	private static class AssignBaseRolesOnPersonAddedEventHandler implements EventHandler {
+	private static class AssignBaseRolesOnPersonAddedEventHandler extends TypedEventHandler<PersonAddedEvent> {
 
 		@Override
-		public void handleEvent(Engine engine, Event event) {
-			PersonAddedEvent personAddedEvent = (PersonAddedEvent)event;
-			engine.submitEvent(new AssignRoleCmdEvent(personAddedEvent.personName, "baseRole"));
+		protected void handle(Engine engine, PersonAddedEvent event) {
+			engine.submitEvent(new AssignRoleCmdEvent(event.personName, "baseRole"));
 		}
 	}
 
@@ -116,7 +114,7 @@ public class SimpleWorkflowTest {
 		}
 	}
 
-	private static class AssignRoleCmdHandler implements EventHandler {
+	private static class AssignRoleCmdHandler extends TypedEventHandler<AssignRoleCmdEvent> {
 		private final Model model;
 
 		AssignRoleCmdHandler(Model model) {
@@ -124,14 +122,13 @@ public class SimpleWorkflowTest {
 		}
 
 		@Override
-		public void handleEvent(Engine engine, Event event) {
-			AssignRoleCmdEvent assignRoleCmdEvent = (AssignRoleCmdEvent) event;
-			Optional<Person> person = model.findPerson(assignRoleCmdEvent.personName);
+		public void handle(Engine engine, AssignRoleCmdEvent event) {
+			Optional<Person> person = model.findPerson(event.personName);
 			if (!person.isPresent())
-				throw new RuntimeException("Person " + assignRoleCmdEvent.personName + " not found");
+				throw new RuntimeException("Person " + event.personName + " not found");
 
-			person.get().setRole(assignRoleCmdEvent.roleName);
-			engine.submitEvent(new RoleAssignedEvent(person.get().name, assignRoleCmdEvent.roleName));
+			person.get().setRole(event.roleName);
+			engine.submitEvent(new RoleAssignedEvent(person.get().name, event.roleName));
 		}
 	}
 
@@ -146,12 +143,11 @@ public class SimpleWorkflowTest {
 		}
 	}
 
-	private static class ProcessRoleAssignmentOnRoleAssignedEventHandler implements EventHandler {
+	private static class ProcessRoleAssignmentOnRoleAssignedEventHandler extends TypedEventHandler<RoleAssignedEvent> {
 
 		@Override
-		public void handleEvent(Engine engine, Event event) {
-			RoleAssignedEvent roleAssignedEvent = (RoleAssignedEvent) event;
-			engine.submitEvent(new AssignAccountCmdEvent(roleAssignedEvent.personName, roleAssignedEvent.roleName + "_account"));
+		protected void handle(Engine engine, RoleAssignedEvent event) {
+			engine.submitEvent(new AssignAccountCmdEvent(event.personName, event.roleName + "_account"));
 		}
 	}
 
@@ -166,7 +162,7 @@ public class SimpleWorkflowTest {
 		}
 	}
 
-	private static class AssignAccountCmdHandler implements EventHandler {
+	private static class AssignAccountCmdHandler extends TypedEventHandler<AssignAccountCmdEvent> {
 
 		private final Model model;
 
@@ -175,14 +171,12 @@ public class SimpleWorkflowTest {
 		}
 
 		@Override
-		public void handleEvent(Engine engine, Event event) {
-			AssignAccountCmdEvent assignAccountCmdEvent = (AssignAccountCmdEvent) event;
-
-			Optional<Person> person = model.findPerson(assignAccountCmdEvent.personName);
+		protected void handle(Engine engine, AssignAccountCmdEvent event) {
+			Optional<Person> person = model.findPerson(event.personName);
 			if (!person.isPresent())
-				throw new RuntimeException("Person " + assignAccountCmdEvent.personName + " not found");
+				throw new RuntimeException("Person " + event.personName + " not found");
 
-			person.get().setAccount(assignAccountCmdEvent.accountName);
+			person.get().setAccount(event.accountName);
 		}
 	}
 

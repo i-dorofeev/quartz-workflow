@@ -5,7 +5,10 @@ import ru.dorofeev.sandbox.quartzworkflow.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.Event;
 import ru.dorofeev.sandbox.quartzworkflow.EventHandler;
 
+import java.util.List;
+
 import static org.awaitility.Awaitility.await;
+import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
 
 public class EngineTests {
 
@@ -50,8 +53,9 @@ public class EngineTests {
 		private Event event;
 
 		@Override
-		public void handleEvent(Engine engine, Event event) {
+		public List<Event> handleEvent(Event event) {
 			this.event = event;
+			return noEvents();
 		}
 
 		Event getEvent() {

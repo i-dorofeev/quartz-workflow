@@ -1,6 +1,8 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
+import java.util.List;
+
 public interface EventHandler {
 
-	void handleEvent(Engine engine, Event event);
+	List<Event> handleEvent(Event event);
 }

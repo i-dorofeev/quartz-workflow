@@ -6,11 +6,14 @@ import ru.dorofeev.sandbox.quartzworkflow.Event;
 import ru.dorofeev.sandbox.quartzworkflow.TypedEventHandler;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.is;
+import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.events;
+import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
 
 public class SimpleWorkflowTest {
 
@@ -74,9 +77,9 @@ public class SimpleWorkflowTest {
 		}
 
 		@Override
-		protected void handle(Engine engine, AddPersonCmdEvent event) {
+		protected List<Event> handle(AddPersonCmdEvent event) {
 			model.addPerson(event.personName);
-			engine.submitEvent(new PersonAddedEvent(event.personName));
+			return events(new PersonAddedEvent(event.personName));
 		}
 	}
 
@@ -92,8 +95,8 @@ public class SimpleWorkflowTest {
 	private static class AssignBaseRolesOnPersonAddedEventHandler extends TypedEventHandler<PersonAddedEvent> {
 
 		@Override
-		protected void handle(Engine engine, PersonAddedEvent event) {
-			engine.submitEvent(new AssignRoleCmdEvent(event.personName, "baseRole"));
+		protected List<Event> handle(PersonAddedEvent event) {
+			return events(new AssignRoleCmdEvent(event.personName, "baseRole"));
 		}
 	}
 
@@ -116,13 +119,13 @@ public class SimpleWorkflowTest {
 		}
 
 		@Override
-		public void handle(Engine engine, AssignRoleCmdEvent event) {
+		public List<Event> handle(AssignRoleCmdEvent event) {
 			Optional<Person> person = model.findPerson(event.personName);
 			if (!person.isPresent())
 				throw new RuntimeException("Person " + event.personName + " not found");
 
 			person.get().setRole(event.roleName);
-			engine.submitEvent(new RoleAssignedEvent(person.get().name, event.roleName));
+			return events(new RoleAssignedEvent(person.get().name, event.roleName));
 		}
 	}
 
@@ -140,8 +143,8 @@ public class SimpleWorkflowTest {
 	private static class ProcessRoleAssignmentOnRoleAssignedEventHandler extends TypedEventHandler<RoleAssignedEvent> {
 
 		@Override
-		protected void handle(Engine engine, RoleAssignedEvent event) {
-			engine.submitEvent(new AssignAccountCmdEvent(event.personName, event.roleName + "_account"));
+		protected List<Event> handle(RoleAssignedEvent event) {
+			return events(new AssignAccountCmdEvent(event.personName, event.roleName + "_account"));
 		}
 	}
 
@@ -165,12 +168,13 @@ public class SimpleWorkflowTest {
 		}
 
 		@Override
-		protected void handle(Engine engine, AssignAccountCmdEvent event) {
+		protected List<Event> handle(AssignAccountCmdEvent event) {
 			Optional<Person> person = model.findPerson(event.personName);
 			if (!person.isPresent())
 				throw new RuntimeException("Person " + event.personName + " not found");
 
 			person.get().setAccount(event.accountName);
+			return noEvents();
 		}
 	}
 

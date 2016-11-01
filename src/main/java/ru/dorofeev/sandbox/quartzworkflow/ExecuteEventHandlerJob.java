@@ -39,7 +39,8 @@ class ExecuteEventHandlerJob implements Job {
 			Optional<EventHandler> handler = engine.findHandlerByUri(eventHandlerUri);
 			handler
 				.orElseThrow(() -> new JobExecutionException("No handler found for uri " + eventHandlerUri))
-				.handleEvent(engine, event);
+				.handleEvent(event)
+				.forEach(engine::submitEvent);
 		} catch (ClassNotFoundException e) {
 			throw new JobExecutionException(e);
 		}

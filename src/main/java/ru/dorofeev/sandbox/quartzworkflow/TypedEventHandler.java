@@ -1,13 +1,15 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
+import java.util.List;
+
 public abstract class TypedEventHandler<T extends Event> implements EventHandler {
 
 	@Override
-	public void handleEvent(Engine engine, Event event) {
+	public List<Event> handleEvent(Event event) {
 		//noinspection unchecked
 		T typedEvent = (T) event;
-		handle(engine, typedEvent);
+		return handle(typedEvent);
 	}
 
-	protected abstract void handle(Engine engine, T event);
+	protected abstract List<Event> handle(T event);
 }

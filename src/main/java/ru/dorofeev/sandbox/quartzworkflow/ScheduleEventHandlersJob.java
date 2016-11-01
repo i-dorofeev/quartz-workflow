@@ -1,15 +1,18 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
-import org.quartz.Job;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.SchedulerException;
+import org.quartz.*;
 
 import java.util.Set;
 
 class ScheduleEventHandlersJob implements Job {
 
-	static final String PARAM_EVENT = "event";
+	private static final String PARAM_EVENT = "event";
+
+	static JobDataMap params(Event event) {
+		JobDataMap jobDataMap = new JobDataMap();
+		jobDataMap.put(ScheduleEventHandlersJob.PARAM_EVENT, event);
+		return jobDataMap;
+	}
 
 	private final Engine engine;
 
@@ -21,14 +24,8 @@ class ScheduleEventHandlersJob implements Job {
 	public void execute(JobExecutionContext context) throws JobExecutionException {
 
 		Event event = (Event)context.getMergedJobDataMap().get(PARAM_EVENT);
-		Set<Class<? extends EventHandler>> handlers = engine.findHandlers(event.getClass());
+		Set<String> handlers = engine.findHandlers(event.getClass());
 
-		handlers.forEach(eh -> {
-			try {
-				engine.submitHandler(event, eh);
-			} catch (SchedulerException e) {
-				throw new RuntimeException(e);
-			}
-		});
+		handlers.forEach(eh -> engine.submitHandler(event, eh));
 	}
 }

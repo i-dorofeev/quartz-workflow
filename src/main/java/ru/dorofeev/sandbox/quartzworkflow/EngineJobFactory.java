@@ -13,9 +13,9 @@ import java.util.concurrent.Callable;
 
 class EngineJobFactory implements JobFactory {
 
-	private Map<Class<? extends Job>, Callable<Job>> factories = new HashMap<>();
+	private Map<Class<? extends Job>, Callable<? extends Job>> factories = new HashMap<>();
 
-	void registerFactory(Class<? extends Job> jobType, Callable<Job> jobFactory) {
+	void registerFactory(Class<? extends Job> jobType, Callable<? extends Job> jobFactory) {
 		factories.put(jobType, jobFactory);
 	}
 

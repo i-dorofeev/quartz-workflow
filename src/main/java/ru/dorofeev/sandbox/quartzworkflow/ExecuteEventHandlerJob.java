@@ -1,13 +1,23 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
 import org.quartz.Job;
+import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
+import java.util.Optional;
+
 class ExecuteEventHandlerJob implements Job {
 
-	static final String PARAM_EVENT_HANDLER_CLASS = "eventHandlerClass";
-	static final String PARAM_EVENT = "event";
+	private static final String PARAM_EVENT_HANDLER_URI = "eventHandlerUri";
+	private static final String PARAM_EVENT = "event";
+
+	static JobDataMap params(Event event, String eventHandlerUri) {
+		JobDataMap jobDataMap = new JobDataMap();
+		jobDataMap.put(ExecuteEventHandlerJob.PARAM_EVENT, event);
+		jobDataMap.put(ExecuteEventHandlerJob.PARAM_EVENT_HANDLER_URI, eventHandlerUri);
+		return jobDataMap;
+	}
 
 	private final Engine engine;
 
@@ -17,16 +27,12 @@ class ExecuteEventHandlerJob implements Job {
 
 	@Override
 	public void execute(JobExecutionContext context) throws JobExecutionException {
-		//noinspection unchecked
-		Class<? extends EventHandler> eventHandlerClass = (Class<? extends EventHandler>) context.getMergedJobDataMap().get(PARAM_EVENT_HANDLER_CLASS);
-
+		String eventHandlerUri = (String) context.getMergedJobDataMap().get(PARAM_EVENT_HANDLER_URI);
 		Event event = (Event) context.getMergedJobDataMap().get(PARAM_EVENT);
 
-		try {
-			EventHandler eventHandler = eventHandlerClass.newInstance();
-			eventHandler.handleEvent(engine, event);
-		} catch (InstantiationException | IllegalAccessException e) {
-			throw new JobExecutionException(e);
-		}
+		Optional<EventHandler> handler = engine.findHandlerByUri(eventHandlerUri);
+		handler
+			.orElseThrow(() -> new JobExecutionException("No handler found for uri " + eventHandlerUri))
+			.handleEvent(engine, event);
 	}
 }

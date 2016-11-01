@@ -22,6 +22,7 @@ public class Engine {
 	private final Scheduler scheduler;
 	private final EngineJobFactory jobFactory;
 	private final EngineSchedulerListener schedulerListener;
+	private final EngineJobListener jobListener;
 
 	private Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
 	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
@@ -42,6 +43,9 @@ public class Engine {
 			this.schedulerListener = new EngineSchedulerListener();
 			this.scheduler.getListenerManager().addSchedulerListener(schedulerListener);
 
+			this.jobListener = new EngineJobListener();
+			this.scheduler.getListenerManager().addJobListener(jobListener);
+
 			this.scheduleEventHandlersJob = createJob("scheduleEventHandlers",
 				ScheduleEventHandlersJob.class, () -> new ScheduleEventHandlersJob(this));
 
@@ -54,10 +58,16 @@ public class Engine {
 
 	public void resetErrors() {
 		schedulerListener.resetSchedulerErrors();
+		jobListener.resetFailedExecutions();
 	}
 
 	public void assertSuccess() {
 		schedulerListener.getSchedulerErrors().forEach(e -> { throw e; });
+		jobListener.getFailedExecutions().forEach(executionInfo -> { throw executionInfo.getException(); });
+	}
+
+	public List<ExecutionInfo> getFailedExecutions() {
+		return jobListener.getFailedExecutions();
 	}
 
 	private void prepareDatabase(String dataSourceUrl) {
@@ -140,6 +150,17 @@ public class Engine {
 			.build();
 
 		scheduleTrigger(trigger);
+	}
+
+	public void retryExecution(ExecutionInfo executionInfo) {
+		Trigger trigger = newTrigger()
+			.forJob(executionInfo.getJobKey())
+			.usingJobData(executionInfo.getJobData())
+			.startNow()
+			.build();
+
+		scheduleTrigger(trigger);
+		jobListener.removeFailedExecution(executionInfo);
 	}
 
 	void submitHandler(Event event, String handlerUri) {

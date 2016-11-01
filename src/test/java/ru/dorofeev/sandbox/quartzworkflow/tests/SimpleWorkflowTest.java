@@ -3,21 +3,36 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 import org.junit.*;
 import ru.dorofeev.sandbox.quartzworkflow.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.Event;
+import ru.dorofeev.sandbox.quartzworkflow.ExecutionInfo;
 import ru.dorofeev.sandbox.quartzworkflow.TypedEventHandler;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
+import static java.util.Collections.singletonList;
 import static org.awaitility.Awaitility.await;
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.events;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
 
 public class SimpleWorkflowTest {
 
 	private static Engine engine = new Engine(org.h2.Driver.class, "jdbc:h2:~/test");
+	private static Model model = new Model();
+
+	@SuppressWarnings("FieldCanBeLocal")
+	private static AddPersonCmdHandler addPersonCmdHandler;
+
+	private static AssignRoleCmdHandler assignRoleCmdHandler;
+
+	@SuppressWarnings("FieldCanBeLocal")
+	private static AssignAccountCmdHandler assignAccountCmdHandler;
+
+	@SuppressWarnings("FieldCanBeLocal")
+	private static AssignBaseRolesOnPersonAddedEventHandler assignBaseRolesOnPersonAddedEventHandler;
+
+	@SuppressWarnings("FieldCanBeLocal")
+	private static ProcessRoleAssignmentOnRoleAssignedEventHandler processRoleAssignmentOnRoleAssignedEventHandler;
 
 	private static String handlerUri(String localName) {
 		return "http://quartzworkflow.sandbox.dorofeev.ru/eventHandlers/" + localName;
@@ -25,7 +40,21 @@ public class SimpleWorkflowTest {
 
 	@BeforeClass
 	public static void beforeClass() throws Exception {
+		model = new Model();
+
+		addPersonCmdHandler = new AddPersonCmdHandler(model);
+		assignRoleCmdHandler = new AssignRoleCmdHandler(model);
+		assignAccountCmdHandler = new AssignAccountCmdHandler(model);
+		assignBaseRolesOnPersonAddedEventHandler = new AssignBaseRolesOnPersonAddedEventHandler();
+		processRoleAssignmentOnRoleAssignedEventHandler = new ProcessRoleAssignmentOnRoleAssignedEventHandler();
+
 		engine.start();
+
+		engine.registerEventHandler(AddPersonCmdEvent.class, addPersonCmdHandler, handlerUri("addPersonCmd"));
+		engine.registerEventHandler(AssignRoleCmdEvent.class, assignRoleCmdHandler, handlerUri("assignRoleCmd"));
+		engine.registerEventHandler(AssignAccountCmdEvent.class, assignAccountCmdHandler, handlerUri("assignAccountCmd"));
+		engine.registerEventHandler(PersonAddedEvent.class, assignBaseRolesOnPersonAddedEventHandler, handlerUri("assignBaseRolesOnPersonAddedEvent"));
+		engine.registerEventHandler(RoleAssignedEvent.class, processRoleAssignmentOnRoleAssignedEventHandler, handlerUri("processRoleAssignmentOnRoleAssignedEvent"));
 	}
 
 	@AfterClass
@@ -45,19 +74,32 @@ public class SimpleWorkflowTest {
 
 	@Test
 	public void sanityTest() {
-		Model model = new Model();
-
-		engine.registerEventHandler(AddPersonCmdEvent.class, new AddPersonCmdHandler(model), handlerUri("addPersonCmd"));
-		engine.registerEventHandler(AssignRoleCmdEvent.class, new AssignRoleCmdHandler(model), handlerUri("assignRoleCmd"));
-		engine.registerEventHandler(AssignAccountCmdEvent.class, new AssignAccountCmdHandler(model), handlerUri("assignAccountCmd"));
-		engine.registerEventHandler(PersonAddedEvent.class, new AssignBaseRolesOnPersonAddedEventHandler(), handlerUri("assignBaseRolesOnPersonAddedEvent"));
-		engine.registerEventHandler(RoleAssignedEvent.class, new ProcessRoleAssignmentOnRoleAssignedEventHandler(), handlerUri("processRoleAssignmentOnRoleAssignedEvent"));
-
 		engine.submitEvent(new AddPersonCmdEvent("john"));
 
 		await().until(() -> model.findPerson("john").isPresent(), is(true));
 		await().until(() -> model.findPerson("john").map(Person::getRole), is(Optional.of("baseRole")));
 		await().until(() -> model.findPerson("john").map(Person::getAccount), is(Optional.of("baseRole_account")));
+	}
+
+	@Test
+	public void faultToleranceTest() {
+		assignRoleCmdHandler.setFail(true);
+
+		engine.submitEvent(new AddPersonCmdEvent("james"));
+		await().until(() -> model.findPerson("james").isPresent(), is(true));
+		await().until(() -> engine.getFailedExecutions(), not(empty()));
+
+		List<ExecutionInfo> failedExecutions = engine.getFailedExecutions();
+		assertThat(failedExecutions, hasSize(1));
+
+		ExecutionInfo failedExecution = failedExecutions.get(0);
+		assertThat(failedExecution.getException().getMessage(), stringContainsInOrder(singletonList("AssignRoleCmdHandler failed")));
+
+		assignRoleCmdHandler.setFail(false);
+		engine.retryExecution(failedExecution);
+
+		await().until(() -> model.findPerson("james").map(Person::getRole), is(Optional.of("baseRole")));
+		await().until(() -> model.findPerson("james").map(Person::getAccount), is(Optional.of("baseRole_account")));
 	}
 
 	private static class AddPersonCmdEvent extends Event {
@@ -113,13 +155,21 @@ public class SimpleWorkflowTest {
 
 	private static class AssignRoleCmdHandler extends TypedEventHandler<AssignRoleCmdEvent> {
 		private final Model model;
+		private boolean fail;
 
 		AssignRoleCmdHandler(Model model) {
 			this.model = model;
 		}
 
+		void setFail(boolean fail) {
+			this.fail = fail;
+		}
+
 		@Override
 		public List<Event> handle(AssignRoleCmdEvent event) {
+			if (fail)
+				throw new RuntimeException("AssignRoleCmdHandler failed");
+
 			Optional<Person> person = model.findPerson(event.personName);
 			if (!person.isPresent())
 				throw new RuntimeException("Person " + event.personName + " not found");

@@ -37,7 +37,7 @@ class ScheduleEventHandlersJob implements Job {
 			Set<String> handlers = engine.findHandlers(event.getClass());
 
 			handlers.forEach(eh -> engine.submitHandler(event, eh));
-		} catch (ClassNotFoundException e) {
+		} catch (Exception e) {
 			throw new JobExecutionException(e);
 		}
 	}

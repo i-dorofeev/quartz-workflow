@@ -1,5 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
+@SuppressWarnings({"unused", "WeakerAccess"})
 public class EngineException extends RuntimeException {
 
 	public EngineException() {

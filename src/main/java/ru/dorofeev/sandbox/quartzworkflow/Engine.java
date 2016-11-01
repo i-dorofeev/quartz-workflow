@@ -1,8 +1,16 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
+import liquibase.Contexts;
+import liquibase.Liquibase;
+import liquibase.database.Database;
+import liquibase.database.DatabaseFactory;
+import liquibase.database.jvm.JdbcConnection;
+import liquibase.exception.LiquibaseException;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.Callable;
 
@@ -13,25 +21,78 @@ public class Engine {
 
 	private final Scheduler scheduler;
 	private final EngineJobFactory jobFactory;
+	private final EngineSchedulerListener schedulerListener;
 
 	private Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
 	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
 
-	private final JobKey launchEventHandlersJob;
+	private final JobKey scheduleEventHandlersJob;
 	private final JobKey executeEventHandlerJob;
 
-	public Engine() {
+	public Engine(Class<? extends java.sql.Driver> sqlDriver, String dataSourceUrl) {
 		try {
-			this.scheduler = StdSchedulerFactory.getDefaultScheduler();
-			this.jobFactory = new EngineJobFactory();
+			prepareDatabase(dataSourceUrl);
 
+			StdSchedulerFactory schedulerFactory = new StdSchedulerFactory(getSchedulerProperties(sqlDriver.getName(), dataSourceUrl));
+			this.scheduler = schedulerFactory.getScheduler();
+
+			this.jobFactory = new EngineJobFactory();
 			this.scheduler.setJobFactory(jobFactory);
 
-			this.launchEventHandlersJob = createJob(ScheduleEventHandlersJob.class, () -> new ScheduleEventHandlersJob(this));
-			this.executeEventHandlerJob = createJob(ExecuteEventHandlerJob.class, () -> new ExecuteEventHandlerJob(this));
+			this.schedulerListener = new EngineSchedulerListener();
+			this.scheduler.getListenerManager().addSchedulerListener(schedulerListener);
+
+			this.scheduleEventHandlersJob = createJob("scheduleEventHandlers",
+				ScheduleEventHandlersJob.class, () -> new ScheduleEventHandlersJob(this));
+
+			this.executeEventHandlerJob = createJob("executeEventHandlers",
+				ExecuteEventHandlerJob.class, () -> new ExecuteEventHandlerJob(this));
 		} catch (SchedulerException e) {
 			throw new EngineException(e);
 		}
+	}
+
+	public void resetErrors() {
+		schedulerListener.resetSchedulerErrors();
+	}
+
+	public void assertSuccess() {
+		schedulerListener.getSchedulerErrors().forEach(e -> { throw e; });
+	}
+
+	private void prepareDatabase(String dataSourceUrl) {
+		try {
+			JdbcConnection h2Connection = new JdbcConnection(DriverManager.getConnection(dataSourceUrl));
+			Database db = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(h2Connection);
+			Liquibase liquibase = new Liquibase("engine.db.changelog.xml", new CustomClassLoaderResourceAccessor(Engine.class.getClassLoader()), db);
+			liquibase.update(new Contexts());
+		} catch (SQLException | LiquibaseException e) {
+			throw new EngineException(e);
+		}
+	}
+
+	private Properties getSchedulerProperties(String sqlDriverName, String dataSourceUrl) {
+		Properties p = new Properties();
+
+		p.setProperty("org.quartz.scheduler.instanceName", "DefaultQuartzScheduler");
+		p.setProperty("org.quartz.scheduler.rmi.export", "false");
+		p.setProperty("org.quartz.scheduler.rmi.proxy", "false");
+		p.setProperty("org.quartz.scheduler.wrapJobExecutionInUserTransaction", "false");
+		p.setProperty("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
+		p.setProperty("org.quartz.threadPool.threadCount", "10");
+		p.setProperty("org.quartz.threadPool.threadPriority", "5");
+		p.setProperty("org.quartz.threadPool.threadsInheritContextClassLoaderOfInitializingThread", "true");
+		p.setProperty("org.quartz.jobStore.misfireThreshold", "6000");
+
+		p.setProperty("org.quartz.jobStore.class", "org.quartz.impl.jdbcjobstore.JobStoreTX");
+		p.setProperty("org.quartz.jobStore.dataSource", "ds");
+		p.setProperty("org.quartz.dataSource.ds.driver", sqlDriverName);
+		p.setProperty("org.quartz.dataSource.ds.URL", dataSourceUrl);
+
+
+		// p.setProperty("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore");
+
+		return p;
 	}
 
 	public void start() {
@@ -50,10 +111,14 @@ public class Engine {
 		}
 	}
 
-	private <T extends Job> JobKey createJob(Class<T> jobType, Callable<T> jobTypeFactory) throws SchedulerException {
+	private <T extends Job> JobKey createJob(String name, Class<T> jobType, Callable<T> jobTypeFactory) throws SchedulerException {
 		jobFactory.registerFactory(jobType, jobTypeFactory);
 
-		JobDetail jobDetail = newJob(jobType).storeDurably().build();
+		JobDetail jobDetail = newJob(jobType)
+			.withIdentity(name)
+			.storeDurably()
+			.build();
+
 		scheduler.addJob(jobDetail, /* replace */ true);
 
 		return jobDetail.getKey();
@@ -69,7 +134,7 @@ public class Engine {
 
 	public void submitEvent(Event event) {
 		Trigger trigger = newTrigger()
-			.forJob(launchEventHandlersJob)
+			.forJob(scheduleEventHandlersJob)
 			.usingJobData(ScheduleEventHandlersJob.params(event))
 			.startNow()
 			.build();

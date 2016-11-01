@@ -10,11 +10,13 @@ import java.util.Optional;
 class ExecuteEventHandlerJob implements Job {
 
 	private static final String PARAM_EVENT_HANDLER_URI = "eventHandlerUri";
-	private static final String PARAM_EVENT = "event";
+	private static final String PARAM_EVENT_CLASS = "eventClass";
+	private static final String PARAM_EVENT_JSON_DATA = "eventJsonData";
 
 	static JobDataMap params(Event event, String eventHandlerUri) {
 		JobDataMap jobDataMap = new JobDataMap();
-		jobDataMap.put(ExecuteEventHandlerJob.PARAM_EVENT, event);
+		jobDataMap.put(ExecuteEventHandlerJob.PARAM_EVENT_CLASS, event.getClass().getName());
+		jobDataMap.put(ExecuteEventHandlerJob.PARAM_EVENT_JSON_DATA, Event.toJson(event));
 		jobDataMap.put(ExecuteEventHandlerJob.PARAM_EVENT_HANDLER_URI, eventHandlerUri);
 		return jobDataMap;
 	}
@@ -27,12 +29,19 @@ class ExecuteEventHandlerJob implements Job {
 
 	@Override
 	public void execute(JobExecutionContext context) throws JobExecutionException {
-		String eventHandlerUri = (String) context.getMergedJobDataMap().get(PARAM_EVENT_HANDLER_URI);
-		Event event = (Event) context.getMergedJobDataMap().get(PARAM_EVENT);
+		try {
+			String eventHandlerUri = (String) context.getMergedJobDataMap().get(PARAM_EVENT_HANDLER_URI);
+			String eventClassName = (String) context.getMergedJobDataMap().get(PARAM_EVENT_CLASS);
+			String eventJson = (String) context.getMergedJobDataMap().get(PARAM_EVENT_JSON_DATA);
 
-		Optional<EventHandler> handler = engine.findHandlerByUri(eventHandlerUri);
-		handler
-			.orElseThrow(() -> new JobExecutionException("No handler found for uri " + eventHandlerUri))
-			.handleEvent(engine, event);
+			Event event = Event.toEvent(eventClassName, eventJson);
+
+			Optional<EventHandler> handler = engine.findHandlerByUri(eventHandlerUri);
+			handler
+				.orElseThrow(() -> new JobExecutionException("No handler found for uri " + eventHandlerUri))
+				.handleEvent(engine, event);
+		} catch (ClassNotFoundException e) {
+			throw new JobExecutionException(e);
+		}
 	}
 }

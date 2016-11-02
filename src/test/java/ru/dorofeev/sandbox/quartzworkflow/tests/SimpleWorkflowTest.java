@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -93,9 +92,9 @@ public class SimpleWorkflowTest {
 
 		ProcessData pd = engine.submitEvent(new AddPersonCmdEvent("james"));
 		await().until(() -> model.findPerson("james").isPresent(), is(true));
-		await().until(() -> engine.getProcessDataRepo().traverse(pd.getGlobalId(), FAILED), hasOnlyOneItem());
+		await().until(() -> engine.getProcessDataRepo().traverse(pd.getLocalId(), FAILED), hasOnlyOneItem());
 
-		List<ProcessData> failedTasks = engine.getProcessDataRepo().traverse(pd.getGlobalId(), FAILED).collect(toList());
+		List<ProcessData> failedTasks = engine.getProcessDataRepo().traverse(pd.getLocalId(), FAILED).toList().toBlocking().single();
 		assertThat(failedTasks, hasSize(1));
 
 		ProcessData failedTask = failedTasks.get(0);

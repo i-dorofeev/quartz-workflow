@@ -1,41 +1,54 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
 import org.quartz.JobDataMap;
+import org.quartz.JobKey;
+import rx.functions.Func1;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
+
+import static java.util.Optional.ofNullable;
 
 public class ProcessDataRepository {
 
-	private ProcessData root = new ProcessData(null, new JobDataMap());
+	private Map<LocalId, ProcessData> processDataMap = new HashMap<>();
 
-	ProcessData addProcessData(GlobalId parentId, Supplier<ProcessData> processDataFactory) {
-		if (parentId == null)
-			return root.addChild(processDataFactory);
-		else
-			return root.findByGlobalId(parentId)
-				.map(pd -> pd.addChild(processDataFactory))
-				.orElseThrow(() -> new EngineException("Couldn't find parentData[id=" + parentId + "]"));
+	synchronized ProcessData addProcessData(LocalId parentId, JobKey jobKey, JobDataMap jobDataMap) {
+		if (parentId != null && !processDataMap.containsKey(parentId))
+			throw new EngineException("ProcessData[id=" + parentId + "] not found");
+
+		LocalId localId = LocalId.createUniqueLocalId();
+		while (processDataMap.containsKey(localId)) {
+			localId = LocalId.createUniqueLocalId();
+		}
+
+		ProcessData pd = new ProcessData(localId, parentId, jobKey, jobDataMap);
+		processDataMap.put(localId, pd);
+		return pd;
 	}
 
-	Optional<ProcessData> findProcessData(GlobalId globalId) {
-		return root.findByGlobalId(globalId);
+	Optional<ProcessData> findProcessData(LocalId localId) {
+		return ofNullable(processDataMap.get(localId));
 	}
 
 	public Stream<ProcessData> traverse() {
-		return root.traverse();
+		return processDataMap.values().stream();
 	}
 
-	public Stream<ProcessData> traverse(GlobalId rootId, Predicate<? super ProcessData> predicate) {
-		return root.findByGlobalId(rootId)
-			.map(pd -> pd.traverse().filter(predicate))
-			.orElse(Stream.empty());
+	public rx.Observable<ProcessData> traverse(LocalId rootId, Func1<? super ProcessData, Boolean> predicate) {
+		return rx.Observable.<ProcessData>create(subscriber -> {
+			ProcessData pd = processDataMap.get(rootId);
+			while (pd != null){
+				subscriber.onNext(pd);
+				pd = processDataMap.get(pd.getParentId());
+			}
+		}).filter(predicate);
 	}
 
-	public Stream<ProcessData> traverse(GlobalId rootId, ProcessData.Result result) {
-		return traverse(rootId, pd -> pd.getResult().equals(result));
+	public rx.Observable<ProcessData> traverse(LocalId rootId, ProcessData.Result result) {
+		return traverse(rootId, processData -> processData.getResult().equals(result));
 	}
 
 	public Stream<ProcessData> traverseFailed() {

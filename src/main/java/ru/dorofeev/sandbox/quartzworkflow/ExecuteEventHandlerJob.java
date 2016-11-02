@@ -41,7 +41,7 @@ class ExecuteEventHandlerJob implements Job {
 			handler
 				.orElseThrow(() -> new JobExecutionException("No handler found for uri " + eventHandlerUri))
 				.handleEvent(event)
-				.forEach(e -> engine.submitEvent(GlobalId.fromString(processDataId), e));
+				.forEach(e -> engine.submitEvent(new LocalId(processDataId), e));
 		} catch (Exception e) {
 			throw new JobExecutionException(e);
 		}

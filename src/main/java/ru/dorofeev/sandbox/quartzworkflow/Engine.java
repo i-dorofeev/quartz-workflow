@@ -66,7 +66,7 @@ public class Engine {
 
 	public void assertSuccess() {
 		schedulerListener.getSchedulerErrors().forEach(e -> { throw e; });
-		processDataRepo.traverseFailed().forEach(pd -> { throw new EngineException("Process failed: " + pd.getRoot()); });
+		processDataRepo.traverseFailed().forEach(pd -> { throw new EngineException("Process failed: " + pd.getLocalId()); });
 	}
 
 	private void prepareDatabase(String dataSourceUrl) {
@@ -137,8 +137,8 @@ public class Engine {
 		return submitEvent(/* parentId */ null, event);
 	}
 
-	ProcessData submitEvent(GlobalId parentId, Event event) {
-		ProcessData pd = processDataRepo.addProcessData(parentId, () -> new ProcessData(scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event)));
+	ProcessData submitEvent(LocalId parentId, Event event) {
+		ProcessData pd = processDataRepo.addProcessData(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event));
 		pd.enqueue(scheduler);
 
 		return pd;
@@ -148,8 +148,8 @@ public class Engine {
 		processData.enqueue(scheduler);
 	}
 
-	void submitHandler(GlobalId parentId, Event event, String handlerUri) {
-		ProcessData pd = processDataRepo.addProcessData(parentId, () -> new ProcessData(executeEventHandlerJob, ExecuteEventHandlerJob.params(event, handlerUri)));
+	void submitHandler(LocalId parentId, Event event, String handlerUri) {
+		ProcessData pd = processDataRepo.addProcessData(parentId, executeEventHandlerJob, ExecuteEventHandlerJob.params(event, handlerUri));
 		pd.enqueue(scheduler);
 	}
 

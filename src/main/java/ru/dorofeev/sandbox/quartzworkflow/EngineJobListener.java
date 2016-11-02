@@ -35,7 +35,7 @@ class EngineJobListener extends JobListenerSupport {
 	}
 
 	private ProcessData getProcessData(JobExecutionContext jeCtx) {
-		GlobalId id = GlobalId.fromString(jeCtx.getTrigger().getKey().getName());
+		LocalId id = new LocalId(jeCtx.getTrigger().getKey().getName());
 		return this.processData.findProcessData(id).orElseThrow(() -> new EngineException("Couldn't find processData[id=" + id + "]"));
 	}
 }

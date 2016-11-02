@@ -3,17 +3,23 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 import org.junit.*;
 import ru.dorofeev.sandbox.quartzworkflow.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.Event;
-import ru.dorofeev.sandbox.quartzworkflow.ExecutionInfo;
+import ru.dorofeev.sandbox.quartzworkflow.ProcessData;
 import ru.dorofeev.sandbox.quartzworkflow.TypedEventHandler;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.events;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
+import static ru.dorofeev.sandbox.quartzworkflow.ProcessData.Result.FAILED;
+import static ru.dorofeev.sandbox.quartzworkflow.tests.Matchers.hasOnlyOneItem;
 
 public class SimpleWorkflowTest {
 
@@ -85,18 +91,18 @@ public class SimpleWorkflowTest {
 	public void faultToleranceTest() {
 		assignRoleCmdHandler.setFail(true);
 
-		engine.submitEvent(new AddPersonCmdEvent("james"));
+		ProcessData pd = engine.submitEvent(new AddPersonCmdEvent("james"));
 		await().until(() -> model.findPerson("james").isPresent(), is(true));
-		await().until(() -> engine.getFailedExecutions(), not(empty()));
+		await().until(() -> engine.getProcessDataRepo().traverse(pd.getGlobalId(), FAILED), hasOnlyOneItem());
 
-		List<ExecutionInfo> failedExecutions = engine.getFailedExecutions();
-		assertThat(failedExecutions, hasSize(1));
+		List<ProcessData> failedTasks = engine.getProcessDataRepo().traverse(pd.getGlobalId(), FAILED).collect(toList());
+		assertThat(failedTasks, hasSize(1));
 
-		ExecutionInfo failedExecution = failedExecutions.get(0);
-		assertThat(failedExecution.getException().getMessage(), stringContainsInOrder(singletonList("AssignRoleCmdHandler failed")));
-
+		ProcessData failedTask = failedTasks.get(0);
+		System.out.println(failedTask.prettyPrint());
+		assertThat(failedTask.getException().getMessage(), stringContainsInOrder(singletonList("AssignRoleCmdHandler failed")));
 		assignRoleCmdHandler.setFail(false);
-		engine.retryExecution(failedExecution);
+		engine.retryExecution(failedTask);
 
 		await().until(() -> model.findPerson("james").map(Person::getRole), is(Optional.of("baseRole")));
 		await().until(() -> model.findPerson("james").map(Person::getAccount), is(Optional.of("baseRole_account")));

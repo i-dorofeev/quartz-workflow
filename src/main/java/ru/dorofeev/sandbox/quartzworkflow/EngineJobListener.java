@@ -4,13 +4,13 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.listeners.JobListenerSupport;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-
 class EngineJobListener extends JobListenerSupport {
 
-	private List<ExecutionInfo> failedExecutions = new CopyOnWriteArrayList<>();
+	private final ProcessDataRepository processData;
+
+	EngineJobListener(ProcessDataRepository processData) {
+		this.processData = processData;
+	}
 
 	@Override
 	public String getName() {
@@ -18,21 +18,24 @@ class EngineJobListener extends JobListenerSupport {
 	}
 
 	@Override
+	public void jobToBeExecuted(JobExecutionContext context) {
+		ProcessData pd = getProcessData(context);
+		pd.recordRunning();
+	}
+
+	@Override
 	public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
-		if (jobException != null)
-			failedExecutions.add(
-				new ExecutionInfo(context.getMergedJobDataMap(), context.getJobDetail().getKey(), new EngineException(jobException)));
+
+		ProcessData pd = getProcessData(context);
+
+		if (jobException == null)
+			pd.recordSuccess();
+		else
+			pd.recordFailed(jobException);
 	}
 
-	List<ExecutionInfo> getFailedExecutions() {
-		return new ArrayList<>(failedExecutions);
-	}
-
-	void resetFailedExecutions() {
-		failedExecutions.clear();
-	}
-
-	void removeFailedExecution(ExecutionInfo executionInfo) {
-		failedExecutions.remove(executionInfo);
+	private ProcessData getProcessData(JobExecutionContext jeCtx) {
+		GlobalId id = GlobalId.fromString(jeCtx.getTrigger().getKey().getName());
+		return this.processData.findProcessData(id).orElseThrow(() -> new EngineException("Couldn't find processData[id=" + id + "]"));
 	}
 }

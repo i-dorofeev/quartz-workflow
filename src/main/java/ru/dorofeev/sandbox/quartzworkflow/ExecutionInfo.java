@@ -26,4 +26,14 @@ public class ExecutionInfo {
 	public EngineException getException() {
 		return exception;
 	}
+
+	@Override
+	public String toString() {
+		return "ExecutionInfo {" +
+			"jobData=" + jobData.getWrappedMap() +
+			", jobKey=" + jobKey +
+			", exception=" + exception +
+			'}';
+	}
+
 }

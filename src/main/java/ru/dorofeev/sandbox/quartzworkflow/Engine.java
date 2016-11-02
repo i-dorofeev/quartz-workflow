@@ -15,17 +15,17 @@ import java.util.*;
 import java.util.concurrent.Callable;
 
 import static org.quartz.JobBuilder.newJob;
-import static org.quartz.TriggerBuilder.newTrigger;
 
 public class Engine {
 
 	private final Scheduler scheduler;
 	private final EngineJobFactory jobFactory;
 	private final EngineSchedulerListener schedulerListener;
-	private final EngineJobListener jobListener;
 
 	private Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
 	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
+
+	private ProcessDataRepository processDataRepo = new ProcessDataRepository();
 
 	private final JobKey scheduleEventHandlersJob;
 	private final JobKey executeEventHandlerJob;
@@ -43,31 +43,30 @@ public class Engine {
 			this.schedulerListener = new EngineSchedulerListener();
 			this.scheduler.getListenerManager().addSchedulerListener(schedulerListener);
 
-			this.jobListener = new EngineJobListener();
+			EngineJobListener jobListener = new EngineJobListener(processDataRepo);
 			this.scheduler.getListenerManager().addJobListener(jobListener);
 
 			this.scheduleEventHandlersJob = createJob("scheduleEventHandlers",
 				ScheduleEventHandlersJob.class, () -> new ScheduleEventHandlersJob(this));
 
-			this.executeEventHandlerJob = createJob("executeEventHandlers",
+			this.executeEventHandlerJob = createJob("executeEventHandler",
 				ExecuteEventHandlerJob.class, () -> new ExecuteEventHandlerJob(this));
 		} catch (SchedulerException e) {
 			throw new EngineException(e);
 		}
 	}
 
+	public ProcessDataRepository getProcessDataRepo() {
+		return processDataRepo;
+	}
+
 	public void resetErrors() {
 		schedulerListener.resetSchedulerErrors();
-		jobListener.resetFailedExecutions();
 	}
 
 	public void assertSuccess() {
 		schedulerListener.getSchedulerErrors().forEach(e -> { throw e; });
-		jobListener.getFailedExecutions().forEach(executionInfo -> { throw executionInfo.getException(); });
-	}
-
-	public List<ExecutionInfo> getFailedExecutions() {
-		return jobListener.getFailedExecutions();
+		processDataRepo.traverseFailed().forEach(pd -> { throw new EngineException("Process failed: " + pd.getRoot()); });
 	}
 
 	private void prepareDatabase(String dataSourceUrl) {
@@ -134,43 +133,24 @@ public class Engine {
 		return jobDetail.getKey();
 	}
 
-	private void scheduleTrigger(Trigger trigger) {
-		try {
-			scheduler.scheduleJob(trigger);
-		} catch (SchedulerException e) {
-			throw new EngineException(e);
-		}
+	public ProcessData submitEvent(Event event) {
+		return submitEvent(/* parentId */ null, event);
 	}
 
-	public void submitEvent(Event event) {
-		Trigger trigger = newTrigger()
-			.forJob(scheduleEventHandlersJob)
-			.usingJobData(ScheduleEventHandlersJob.params(event))
-			.startNow()
-			.build();
+	ProcessData submitEvent(GlobalId parentId, Event event) {
+		ProcessData pd = processDataRepo.addProcessData(parentId, () -> new ProcessData(scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event)));
+		pd.enqueue(scheduler);
 
-		scheduleTrigger(trigger);
+		return pd;
 	}
 
-	public void retryExecution(ExecutionInfo executionInfo) {
-		Trigger trigger = newTrigger()
-			.forJob(executionInfo.getJobKey())
-			.usingJobData(executionInfo.getJobData())
-			.startNow()
-			.build();
-
-		scheduleTrigger(trigger);
-		jobListener.removeFailedExecution(executionInfo);
+	public void retryExecution(ProcessData processData) {
+		processData.enqueue(scheduler);
 	}
 
-	void submitHandler(Event event, String handlerUri) {
-		Trigger trigger = newTrigger()
-			.forJob(executeEventHandlerJob)
-			.usingJobData(ExecuteEventHandlerJob.params(event, handlerUri))
-			.startNow()
-			.build();
-
-		scheduleTrigger(trigger);
+	void submitHandler(GlobalId parentId, Event event, String handlerUri) {
+		ProcessData pd = processDataRepo.addProcessData(parentId, () -> new ProcessData(executeEventHandlerJob, ExecuteEventHandlerJob.params(event, handlerUri)));
+		pd.enqueue(scheduler);
 	}
 
 	Optional<EventHandler> findHandlerByUri(String handlerUri) {

@@ -33,22 +33,6 @@ public class ProcessData {
 		return localId;
 	}
 
-	void setLocalId(LocalId localId) {
-		this.localId = localId;
-	}
-
-	public JobDataMap getJobData() {
-		return new JobDataMap(jobData);
-	}
-
-	public JobKey getJobKey() {
-		return jobKey;
-	}
-
-	public LocalId getParentId() {
-		return parentId;
-	}
-
 	public Result getResult() {
 		return result;
 	}

@@ -7,13 +7,13 @@ import rx.functions.Func1;
 
 import java.util.List;
 
-public class Matchers {
+class Matchers {
 
-	public static <T> org.hamcrest.Matcher<Observable<T>> hasOnlyOneItem() {
+	static <T> org.hamcrest.Matcher<Observable<T>> hasOnlyOneItem() {
 		return hasOnlyOneItem(null, pd -> true);
 	}
 
-	public static <T> org.hamcrest.Matcher<Observable<T>> hasOnlyOneItem(String descr, Func1<? super T, Boolean> predicate) {
+	static <T> org.hamcrest.Matcher<Observable<T>> hasOnlyOneItem(String descr, Func1<? super T, Boolean> predicate) {
 		return new BaseMatcher<Observable<T>>() {
 			@Override
 			public boolean matches(Object item) {

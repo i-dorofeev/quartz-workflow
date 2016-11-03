@@ -6,10 +6,10 @@ import org.quartz.listeners.JobListenerSupport;
 
 class EngineJobListener extends JobListenerSupport {
 
-	private final ProcessDataRepository processData;
+	private final TaskDataRepository taskDataRepository;
 
-	EngineJobListener(ProcessDataRepository processData) {
-		this.processData = processData;
+	EngineJobListener(TaskDataRepository taskDataRepository) {
+		this.taskDataRepository = taskDataRepository;
 	}
 
 	@Override
@@ -19,14 +19,14 @@ class EngineJobListener extends JobListenerSupport {
 
 	@Override
 	public void jobToBeExecuted(JobExecutionContext context) {
-		ProcessData pd = getProcessData(context);
+		TaskData pd = getTaskData(context);
 		pd.recordRunning();
 	}
 
 	@Override
 	public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
 
-		ProcessData pd = getProcessData(context);
+		TaskData pd = getTaskData(context);
 
 		if (jobException == null)
 			pd.recordSuccess();
@@ -34,8 +34,8 @@ class EngineJobListener extends JobListenerSupport {
 			pd.recordFailed(jobException);
 	}
 
-	private ProcessData getProcessData(JobExecutionContext jeCtx) {
+	private TaskData getTaskData(JobExecutionContext jeCtx) {
 		LocalId id = new LocalId(jeCtx.getTrigger().getKey().getName());
-		return this.processData.findProcessData(id).orElseThrow(() -> new EngineException("Couldn't find processData[id=" + id + "]"));
+		return this.taskDataRepository.findTaskData(id).orElseThrow(() -> new EngineException("Couldn't find taskDataRepository[id=" + id + "]"));
 	}
 }

@@ -4,9 +4,9 @@ import org.quartz.*;
 
 import static org.quartz.TriggerBuilder.newTrigger;
 
-public class ProcessData {
+public class TaskData {
 
-	public static final String PROCESS_DATA_ID = "processDataId";
+	static final String TASK_DATA_ID = "taskDataId";
 
 
 	public enum Result {
@@ -14,26 +14,24 @@ public class ProcessData {
 	}
 
 	private LocalId localId;
-	private LocalId parentId;
 
 	private final JobKey jobKey;
 	private final JobDataMap jobData = new JobDataMap();
 	private Result result = Result.CREATED;
 	private Throwable exception;
 
-	ProcessData(LocalId localId, LocalId parentId, JobKey jobKey, JobDataMap jobData) {
+	TaskData(LocalId localId, JobKey jobKey, JobDataMap jobData) {
 		this.localId = localId;
-		this.parentId = parentId;
 		this.jobKey = jobKey;
 		this.jobData.putAll(jobData);
-		this.jobData.put(PROCESS_DATA_ID, localId.toString());
+		this.jobData.put(TASK_DATA_ID, localId.toString());
 	}
 
 	public LocalId getLocalId() {
 		return localId;
 	}
 
-	public Result getResult() {
+	Result getResult() {
 		return result;
 	}
 
@@ -41,15 +39,15 @@ public class ProcessData {
 		return exception;
 	}
 
-	public void recordRunning() {
+	void recordRunning() {
 		recordResult(Result.RUNNING, null);
 	}
 
-	public void recordSuccess() {
+	void recordSuccess() {
 		recordResult(Result.SUCCESS, null);
 	}
 
-	public void recordFailed(Throwable ex) {
+	void recordFailed(Throwable ex) {
 		recordResult(Result.FAILED, ex);
 	}
 
@@ -83,6 +81,6 @@ public class ProcessData {
 
 	@Override
 	public String toString() {
-		return "ProcessData{" + localId + "}";
+		return "TaskData{" + localId + "}";
 	}
 }

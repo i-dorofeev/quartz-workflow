@@ -25,7 +25,7 @@ public class Engine {
 	private Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
 	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
 
-	private ProcessDataRepository processDataRepo = new ProcessDataRepository();
+	private TaskDataRepository taskDataRepo = new TaskDataRepository();
 
 	private final JobKey scheduleEventHandlersJob;
 	private final JobKey executeEventHandlerJob;
@@ -43,7 +43,7 @@ public class Engine {
 			this.schedulerListener = new EngineSchedulerListener();
 			this.scheduler.getListenerManager().addSchedulerListener(schedulerListener);
 
-			EngineJobListener jobListener = new EngineJobListener(processDataRepo);
+			EngineJobListener jobListener = new EngineJobListener(taskDataRepo);
 			this.scheduler.getListenerManager().addJobListener(jobListener);
 
 			this.scheduleEventHandlersJob = createJob("scheduleEventHandlers",
@@ -56,8 +56,8 @@ public class Engine {
 		}
 	}
 
-	public ProcessDataRepository getProcessDataRepo() {
-		return processDataRepo;
+	public TaskDataRepository getTaskDataRepo() {
+		return taskDataRepo;
 	}
 
 	public void resetErrors() {
@@ -66,7 +66,7 @@ public class Engine {
 
 	public void assertSuccess() {
 		schedulerListener.getSchedulerErrors().forEach(e -> { throw e; });
-		processDataRepo.traverseFailed().forEach(pd -> { throw new EngineException("Process failed: " + pd.getLocalId()); });
+		taskDataRepo.traverseFailed().forEach(pd -> { throw new EngineException("Task failed: " + pd.getLocalId()); });
 	}
 
 	private void prepareDatabase(String dataSourceUrl) {
@@ -133,23 +133,23 @@ public class Engine {
 		return jobDetail.getKey();
 	}
 
-	public ProcessData submitEvent(Event event) {
+	public TaskData submitEvent(Event event) {
 		return submitEvent(/* parentId */ null, event);
 	}
 
-	ProcessData submitEvent(LocalId parentId, Event event) {
-		ProcessData pd = processDataRepo.addProcessData(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event));
+	TaskData submitEvent(LocalId parentId, Event event) {
+		TaskData pd = taskDataRepo.addTask(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event));
 		pd.enqueue(scheduler);
 
 		return pd;
 	}
 
-	public void retryExecution(ProcessData processData) {
-		processData.enqueue(scheduler);
+	public void retryExecution(TaskData taskData) {
+		taskData.enqueue(scheduler);
 	}
 
 	void submitHandler(LocalId parentId, Event event, String handlerUri) {
-		ProcessData pd = processDataRepo.addProcessData(parentId, executeEventHandlerJob, ExecuteEventHandlerJob.params(event, handlerUri));
+		TaskData pd = taskDataRepo.addTask(parentId, executeEventHandlerJob, ExecuteEventHandlerJob.params(event, handlerUri));
 		pd.enqueue(scheduler);
 	}
 

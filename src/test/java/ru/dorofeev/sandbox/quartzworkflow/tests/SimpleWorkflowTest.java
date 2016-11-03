@@ -3,7 +3,7 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 import org.junit.*;
 import ru.dorofeev.sandbox.quartzworkflow.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.Event;
-import ru.dorofeev.sandbox.quartzworkflow.ProcessData;
+import ru.dorofeev.sandbox.quartzworkflow.TaskData;
 import ru.dorofeev.sandbox.quartzworkflow.TypedEventHandler;
 
 import java.util.HashMap;
@@ -17,7 +17,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.events;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
-import static ru.dorofeev.sandbox.quartzworkflow.ProcessData.Result.FAILED;
+import static ru.dorofeev.sandbox.quartzworkflow.TaskData.Result.FAILED;
 import static ru.dorofeev.sandbox.quartzworkflow.tests.Matchers.hasOnlyOneItem;
 
 public class SimpleWorkflowTest {
@@ -90,14 +90,14 @@ public class SimpleWorkflowTest {
 	public void faultToleranceTest() {
 		assignRoleCmdHandler.setFail(true);
 
-		ProcessData pd = engine.submitEvent(new AddPersonCmdEvent("james"));
+		TaskData pd = engine.submitEvent(new AddPersonCmdEvent("james"));
 		await().until(() -> model.findPerson("james").isPresent(), is(true));
-		await().until(() -> engine.getProcessDataRepo().traverse(pd.getLocalId(), FAILED), hasOnlyOneItem());
+		await().until(() -> engine.getTaskDataRepo().traverse(pd.getLocalId(), FAILED), hasOnlyOneItem());
 
-		List<ProcessData> failedTasks = engine.getProcessDataRepo().traverse(pd.getLocalId(), FAILED).toList().toBlocking().single();
+		List<TaskData> failedTasks = engine.getTaskDataRepo().traverse(pd.getLocalId(), FAILED).toList().toBlocking().single();
 		assertThat(failedTasks, hasSize(1));
 
-		ProcessData failedTask = failedTasks.get(0);
+		TaskData failedTask = failedTasks.get(0);
 		System.out.println(failedTask.prettyPrint());
 		assertThat(failedTask.getException().getMessage(), stringContainsInOrder(singletonList("AssignRoleCmdHandler failed")));
 		assignRoleCmdHandler.setFail(false);

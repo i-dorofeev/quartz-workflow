@@ -66,7 +66,7 @@ public class Engine {
 
 	public void assertSuccess() {
 		schedulerListener.getSchedulerErrors().forEach(e -> { throw e; });
-		taskDataRepo.traverseFailed().forEach(pd -> { throw new EngineException("Task failed: " + pd.getTaskId()); });
+		taskDataRepo.traverseFailed().forEach(td -> { throw new EngineException("Task failed: " + td.getTaskId()); });
 	}
 
 	private void prepareDatabase(String dataSourceUrl) {
@@ -138,10 +138,10 @@ public class Engine {
 	}
 
 	TaskData submitEvent(TaskId parentId, Event event) {
-		TaskData pd = taskDataRepo.addTask(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event));
-		pd.enqueue(scheduler);
+		TaskData td = taskDataRepo.addTask(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event));
+		td.enqueue(scheduler);
 
-		return pd;
+		return td;
 	}
 
 	public void retryExecution(TaskData taskData) {
@@ -149,8 +149,8 @@ public class Engine {
 	}
 
 	void submitHandler(TaskId parentId, Event event, String handlerUri) {
-		TaskData pd = taskDataRepo.addTask(parentId, executeEventHandlerJob, ExecuteEventHandlerJob.params(event, handlerUri));
-		pd.enqueue(scheduler);
+		TaskData td = taskDataRepo.addTask(parentId, executeEventHandlerJob, ExecuteEventHandlerJob.params(event, handlerUri));
+		td.enqueue(scheduler);
 	}
 
 	Optional<EventHandler> findHandlerByUri(String handlerUri) {

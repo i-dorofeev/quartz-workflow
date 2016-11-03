@@ -90,11 +90,11 @@ public class SimpleWorkflowTest {
 	public void faultToleranceTest() {
 		assignRoleCmdHandler.setFail(true);
 
-		TaskData pd = engine.submitEvent(new AddPersonCmdEvent("james"));
+		TaskData td = engine.submitEvent(new AddPersonCmdEvent("james"));
 		await().until(() -> model.findPerson("james").isPresent(), is(true));
-		await().until(() -> engine.getTaskDataRepo().traverse(pd.getTaskId(), FAILED), hasOnlyOneItem());
+		await().until(() -> engine.getTaskDataRepo().traverse(td.getTaskId(), FAILED), hasOnlyOneItem());
 
-		List<TaskData> failedTasks = engine.getTaskDataRepo().traverse(pd.getTaskId(), FAILED).toList().toBlocking().single();
+		List<TaskData> failedTasks = engine.getTaskDataRepo().traverse(td.getTaskId(), FAILED).toList().toBlocking().single();
 		assertThat(failedTasks, hasSize(1));
 
 		TaskData failedTask = failedTasks.get(0);

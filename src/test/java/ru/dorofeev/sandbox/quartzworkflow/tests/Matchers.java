@@ -10,7 +10,7 @@ import java.util.List;
 class Matchers {
 
 	static <T> org.hamcrest.Matcher<Observable<T>> hasOnlyOneItem() {
-		return hasOnlyOneItem(null, pd -> true);
+		return hasOnlyOneItem(null, item -> true);
 	}
 
 	static <T> org.hamcrest.Matcher<Observable<T>> hasOnlyOneItem(String descr, Func1<? super T, Boolean> predicate) {

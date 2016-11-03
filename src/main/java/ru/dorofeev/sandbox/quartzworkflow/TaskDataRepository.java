@@ -34,13 +34,13 @@ public class TaskDataRepository {
 			taskId = TaskId.createUniqueTaskId();
 		}
 
-		TaskData pd = new TaskData(taskId, jobKey, jobDataMap);
-		taskDataMap.put(taskId, pd);
+		TaskData td = new TaskData(taskId, jobKey, jobDataMap);
+		taskDataMap.put(taskId, td);
 
 		if (parentId != null)
-			indexChild(parentId, pd.getTaskId());
+			indexChild(parentId, td.getTaskId());
 
-		return pd;
+		return td;
 	}
 
 	Optional<TaskData> findTaskData(TaskId taskId) {
@@ -61,12 +61,12 @@ public class TaskDataRepository {
 	}
 
 	private void traverse(TaskId rootId, Subscriber<? super TaskData> subscriber) {
-		TaskData pd = taskDataMap.get(rootId);
-		if (pd == null)
+		TaskData td = taskDataMap.get(rootId);
+		if (td == null)
 			subscriber.onError(new EngineException("Couldn't find taskData[id=" + rootId + "]"));
 		else {
-			subscriber.onNext(pd);
-			ofNullable(childrenIndex.get(pd.getTaskId()))
+			subscriber.onNext(td);
+			ofNullable(childrenIndex.get(td.getTaskId()))
 				.ifPresent(children -> children.forEach(id -> traverse(id, subscriber)));
 		}
 	}
@@ -78,7 +78,7 @@ public class TaskDataRepository {
 	@SuppressWarnings("WeakerAccess")
 	public Stream<TaskData> traverseFailed() {
 		return traverse()
-			.filter(pd -> pd.getResult().equals(TaskData.Result.FAILED));
+			.filter(td -> td.getResult().equals(TaskData.Result.FAILED));
 	}
 
 

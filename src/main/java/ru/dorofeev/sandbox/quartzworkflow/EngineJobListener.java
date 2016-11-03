@@ -19,19 +19,19 @@ class EngineJobListener extends JobListenerSupport {
 
 	@Override
 	public void jobToBeExecuted(JobExecutionContext context) {
-		TaskData pd = getTaskData(context);
-		pd.recordRunning();
+		TaskData td = getTaskData(context);
+		td.recordRunning();
 	}
 
 	@Override
 	public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
 
-		TaskData pd = getTaskData(context);
+		TaskData td = getTaskData(context);
 
 		if (jobException == null)
-			pd.recordSuccess();
+			td.recordSuccess();
 		else
-			pd.recordFailed(jobException);
+			td.recordFailed(jobException);
 	}
 
 	private TaskData getTaskData(JobExecutionContext jeCtx) {

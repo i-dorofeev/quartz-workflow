@@ -13,22 +13,22 @@ public class TaskData {
 		CREATED, RUNNING, SUCCESS, FAILED
 	}
 
-	private LocalId localId;
+	private TaskId taskId;
 
 	private final JobKey jobKey;
 	private final JobDataMap jobData = new JobDataMap();
 	private Result result = Result.CREATED;
 	private Throwable exception;
 
-	TaskData(LocalId localId, JobKey jobKey, JobDataMap jobData) {
-		this.localId = localId;
+	TaskData(TaskId taskId, JobKey jobKey, JobDataMap jobData) {
+		this.taskId = taskId;
 		this.jobKey = jobKey;
 		this.jobData.putAll(jobData);
-		this.jobData.put(TASK_DATA_ID, localId.toString());
+		this.jobData.put(TASK_DATA_ID, taskId.toString());
 	}
 
-	public LocalId getLocalId() {
-		return localId;
+	public TaskId getTaskId() {
+		return taskId;
 	}
 
 	Result getResult() {
@@ -59,7 +59,7 @@ public class TaskData {
 	void enqueue(Scheduler scheduler) {
 		Trigger trigger = newTrigger()
 			.forJob(jobKey)
-			.withIdentity(localId.toString())
+			.withIdentity(taskId.toString())
 			.usingJobData(new JobDataMap(jobData))
 			.startNow()
 			.build();
@@ -81,6 +81,6 @@ public class TaskData {
 
 	@Override
 	public String toString() {
-		return "TaskData{" + localId + "}";
+		return "TaskData{" + taskId + "}";
 	}
 }

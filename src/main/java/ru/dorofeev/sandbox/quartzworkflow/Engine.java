@@ -66,7 +66,7 @@ public class Engine {
 
 	public void assertSuccess() {
 		schedulerListener.getSchedulerErrors().forEach(e -> { throw e; });
-		taskDataRepo.traverseFailed().forEach(pd -> { throw new EngineException("Task failed: " + pd.getLocalId()); });
+		taskDataRepo.traverseFailed().forEach(pd -> { throw new EngineException("Task failed: " + pd.getTaskId()); });
 	}
 
 	private void prepareDatabase(String dataSourceUrl) {
@@ -137,7 +137,7 @@ public class Engine {
 		return submitEvent(/* parentId */ null, event);
 	}
 
-	TaskData submitEvent(LocalId parentId, Event event) {
+	TaskData submitEvent(TaskId parentId, Event event) {
 		TaskData pd = taskDataRepo.addTask(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event));
 		pd.enqueue(scheduler);
 
@@ -148,7 +148,7 @@ public class Engine {
 		taskData.enqueue(scheduler);
 	}
 
-	void submitHandler(LocalId parentId, Event event, String handlerUri) {
+	void submitHandler(TaskId parentId, Event event, String handlerUri) {
 		TaskData pd = taskDataRepo.addTask(parentId, executeEventHandlerJob, ExecuteEventHandlerJob.params(event, handlerUri));
 		pd.enqueue(scheduler);
 	}

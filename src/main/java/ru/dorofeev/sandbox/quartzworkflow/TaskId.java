@@ -2,15 +2,15 @@ package ru.dorofeev.sandbox.quartzworkflow;
 
 import org.quartz.utils.Key;
 
-public class LocalId {
+class TaskId {
 
-	public static LocalId createUniqueLocalId() {
-		return new LocalId(Key.createUniqueName(LocalId.class.getName()));
+	static TaskId createUniqueTaskId() {
+		return new TaskId(Key.createUniqueName(TaskId.class.getName()));
 	}
 
 	private final String value;
 
-	public LocalId(String value) {
+	TaskId(String value) {
 		this.value = value;
 	}
 
@@ -24,9 +24,9 @@ public class LocalId {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		LocalId localId = (LocalId) o;
+		TaskId taskId = (TaskId) o;
 
-		return value != null ? value.equals(localId.value) : localId.value == null;
+		return value != null ? value.equals(taskId.value) : taskId.value == null;
 
 	}
 

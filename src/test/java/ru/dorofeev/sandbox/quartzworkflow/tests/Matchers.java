@@ -17,17 +17,28 @@ public class Matchers {
 		return new BaseMatcher<Observable<T>>() {
 			@Override
 			public boolean matches(Object item) {
-				//noinspection unchecked
-				Observable<T> observable = (Observable<T>) item;
-				List<T> list = observable.filter(predicate).toList().toBlocking().single();
+				List<T> list = getList(item);
+				System.out.println(list);
 				return list.size() == 1;
 			}
 
 			@Override
 			public void describeTo(Description description) {
-				description.appendText("hasOnlyOne");
+				description.appendText("only one item");
 				if (descr != null)
 					description.appendText(" ").appendText(descr);
+			}
+
+			@Override
+			public void describeMismatch(Object item, Description description) {
+				List<T> list = getList(item);
+				description.appendText(list.toString());
+			}
+
+			private List<T> getList(Object item) {
+				//noinspection unchecked
+				Observable<T> observable = (Observable<T>) item;
+				return observable.filter(predicate).toList().toBlocking().single();
 			}
 		};
 	}

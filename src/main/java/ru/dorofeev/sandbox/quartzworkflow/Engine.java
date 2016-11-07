@@ -15,6 +15,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 
 import static org.quartz.JobBuilder.newJob;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 public class Engine {
 
@@ -25,7 +26,7 @@ public class Engine {
 	private Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
 	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
 
-	private TaskDataRepository taskDataRepo = new TaskDataRepository();
+	private final TaskDataRepository taskDataRepo = new TaskDataRepository();
 
 	private final JobKey scheduleEventHandlersJob;
 	private final JobKey executeEventHandlerJob;
@@ -51,6 +52,8 @@ public class Engine {
 
 			this.executeEventHandlerJob = createJob("executeEventHandler",
 				ExecuteEventHandlerJob.class, () -> new ExecuteEventHandlerJob(this));
+
+			this.taskDataRepo.executionTaskFlow().subscribe(this::enqueue);
 		} catch (SchedulerException e) {
 			throw new EngineException(e);
 		}
@@ -138,19 +141,34 @@ public class Engine {
 	}
 
 	TaskData submitEvent(TaskId parentId, Event event) {
-		TaskData td = taskDataRepo.addTask(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event));
-		td.enqueue(scheduler);
-
-		return td;
+		return taskDataRepo.addTask(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event));
 	}
 
 	public void retryExecution(TaskData taskData) {
-		taskData.enqueue(scheduler);
+		enqueue(taskData);
 	}
 
 	void submitHandler(TaskId parentId, Event event, String handlerUri) {
-		TaskData td = taskDataRepo.addTask(parentId, executeEventHandlerJob, ExecuteEventHandlerJob.params(event, handlerUri));
-		td.enqueue(scheduler);
+		taskDataRepo.addTask(parentId, executeEventHandlerJob, ExecuteEventHandlerJob.params(event, handlerUri));
+	}
+
+	private void enqueue(TaskData td) {
+		Trigger trigger = newTrigger()
+			.forJob(td.getJobKey())
+			.withIdentity(td.getTaskId().toString())
+			.usingJobData(new JobDataMap(td.getJobData()))
+			.startNow()
+			.build();
+
+		scheduleTrigger(scheduler, trigger);
+	}
+
+	private void scheduleTrigger(Scheduler scheduler, Trigger trigger) {
+		try {
+			scheduler.scheduleJob(trigger);
+		} catch (SchedulerException e) {
+			throw new EngineException(e);
+		}
 	}
 
 	Optional<EventHandler> findHandlerByUri(String handlerUri) {

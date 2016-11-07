@@ -2,7 +2,8 @@ package ru.dorofeev.sandbox.quartzworkflow;
 
 import org.quartz.JobDataMap;
 import org.quartz.JobKey;
-import rx.Subscriber;
+import rx.*;
+import rx.Observable;
 import rx.functions.Func1;
 
 import java.util.*;
@@ -14,6 +15,7 @@ public class TaskDataRepository {
 
 	private Map<TaskId, TaskData> taskDataMap = new HashMap<>();
 	private Map<TaskId, Set<TaskId>> childrenIndex = new HashMap<>();
+	private ArrayList<Subscriber<? super TaskData>> executionTaskFlowSubscribers = new ArrayList<>();
 
 	private void indexChild(TaskId parent, TaskId child) {
 		Set<TaskId> children = childrenIndex.get(parent);
@@ -23,6 +25,10 @@ public class TaskDataRepository {
 		}
 
 		children.add(child);
+	}
+
+	rx.Observable<TaskData> executionTaskFlow() {
+		return Observable.create(subscriber -> executionTaskFlowSubscribers.add(subscriber));
 	}
 
 	synchronized TaskData addTask(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap) {
@@ -40,6 +46,7 @@ public class TaskDataRepository {
 		if (parentId != null)
 			indexChild(parentId, td.getTaskId());
 
+		executionTaskFlowSubscribers.forEach(s -> s.onNext(td));
 		return td;
 	}
 

@@ -1,8 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
-import org.quartz.*;
-
-import static org.quartz.TriggerBuilder.newTrigger;
+import org.quartz.JobDataMap;
+import org.quartz.JobKey;
 
 public class TaskData {
 
@@ -39,6 +38,14 @@ public class TaskData {
 		return exception;
 	}
 
+	JobKey getJobKey() {
+		return jobKey;
+	}
+
+	JobDataMap getJobData() {
+		return jobData;
+	}
+
 	void recordRunning() {
 		recordResult(Result.RUNNING, null);
 	}
@@ -54,25 +61,6 @@ public class TaskData {
 	private void recordResult(Result res, Throwable ex) {
 		result = res;
 		exception = ex;
-	}
-
-	void enqueue(Scheduler scheduler) {
-		Trigger trigger = newTrigger()
-			.forJob(jobKey)
-			.withIdentity(taskId.toString())
-			.usingJobData(new JobDataMap(jobData))
-			.startNow()
-			.build();
-
-		scheduleTrigger(scheduler, trigger);
-	}
-
-	private void scheduleTrigger(Scheduler scheduler, Trigger trigger) {
-		try {
-			scheduler.scheduleJob(trigger);
-		} catch (SchedulerException e) {
-			throw new EngineException(e);
-		}
 	}
 
 	public String prettyPrint() {

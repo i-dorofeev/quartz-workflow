@@ -2,8 +2,8 @@ package ru.dorofeev.sandbox.quartzworkflow;
 
 import org.quartz.JobDataMap;
 import org.quartz.JobKey;
-import rx.*;
 import rx.Observable;
+import rx.Subscriber;
 import rx.functions.Func1;
 
 import java.util.*;
@@ -57,6 +57,13 @@ public class TaskDataRepository {
 	@SuppressWarnings("WeakerAccess")
 	public Stream<TaskData> traverse() {
 		return taskDataMap.values().stream();
+	}
+
+	public rx.Observable<TaskData> traverse(TaskData.Result result) {
+		return rx.Observable.<TaskData>create(s -> {
+			taskDataMap.values().forEach(s::onNext);
+			s.onCompleted();
+		}).filter(td -> td.getResult() == result);
 	}
 
 	@SuppressWarnings("WeakerAccess")

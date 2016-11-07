@@ -30,7 +30,7 @@ public class TaskData {
 		return taskId;
 	}
 
-	Result getResult() {
+	public Result getResult() {
 		return result;
 	}
 

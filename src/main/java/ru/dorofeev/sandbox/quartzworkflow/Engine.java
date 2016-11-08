@@ -53,7 +53,11 @@ public class Engine {
 			this.executeEventHandlerJob = createJob("executeEventHandler",
 				ExecuteEventHandlerJob.class, () -> new ExecuteEventHandlerJob(this));
 
-			this.taskRepository.executionTaskFlow().subscribe(this::enqueue);
+			QueueManager queueManager = new QueueManager();
+			this.taskRepository.events()
+				.compose(queueManager::bindEvents)
+				.subscribe(this::enqueue);
+
 		} catch (SchedulerException e) {
 			throw new EngineException(e);
 		}

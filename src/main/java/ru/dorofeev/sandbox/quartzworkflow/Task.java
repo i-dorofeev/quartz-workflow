@@ -14,15 +14,17 @@ public class Task {
 
 	private final TaskId taskId;
 	private final String queueName;
+	private final QueueingOption.ExecutionType executionType;
 
 	private final JobKey jobKey;
 	private final JobDataMap jobData = new JobDataMap();
 	private Result result = Result.CREATED;
 	private Throwable exception;
 
-	Task(TaskId taskId, String queueName, JobKey jobKey, JobDataMap jobData) {
+	Task(TaskId taskId, String queueName, QueueingOption.ExecutionType executionType, JobKey jobKey, JobDataMap jobData) {
 		this.taskId = taskId;
 		this.queueName = queueName;
+		this.executionType = executionType;
 		this.jobKey = jobKey;
 		this.jobData.putAll(jobData);
 		this.jobData.put(TASK_ID, taskId.toString());
@@ -38,6 +40,10 @@ public class Task {
 
 	String getQueueName() {
 		return queueName;
+	}
+
+	public QueueingOption.ExecutionType getExecutionType() {
+		return executionType;
 	}
 
 	public Throwable getException() {

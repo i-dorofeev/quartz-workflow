@@ -6,19 +6,39 @@ import rx.Subscriber;
 import rx.functions.Func1;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import static java.util.Optional.ofNullable;
 import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.PARALLEL;
+import static ru.dorofeev.sandbox.quartzworkflow.TaskRepository.EventType.ADD;
+import static ru.dorofeev.sandbox.quartzworkflow.TaskRepository.EventType.COMPLETE;
 
 public class TaskRepository {
 
+	public static class Event {
+
+		private final EventType eventType;
+		private final Task task;
+
+		private Event(EventType eventType, Task task) {
+			this.eventType = eventType;
+			this.task = task;
+		}
+
+		public EventType getEventType() {
+			return eventType;
+		}
+
+		public Task getTask() {
+			return task;
+		}
+	}
+
+	public enum EventType { ADD, COMPLETE }
+
 	private final Map<TaskId, Task> taskTable = new HashMap<>();
 	private final Map<TaskId, Set<TaskId>> childrenIndex = new HashMap<>();
-	private final ObservableHolder<TaskId> executionFlowObservableHolder = new ObservableHolder<>();
-
-	private final Map<String, TaskQueue> queues = new ConcurrentHashMap<>();
+	private final ObservableHolder<Event> eventsHolder = new ObservableHolder<>();
 
 	private void indexChild(TaskId parent, TaskId child) {
 		Set<TaskId> children = childrenIndex.get(parent);
@@ -30,8 +50,8 @@ public class TaskRepository {
 		children.add(child);
 	}
 
-	rx.Observable<TaskId> executionTaskFlow() {
-		return executionFlowObservableHolder.getObservable();
+	rx.Observable<Event> events() {
+		return eventsHolder.getObservable();
 	}
 
 	private TaskId nextTaskId() {
@@ -48,30 +68,16 @@ public class TaskRepository {
 
 		TaskId taskId = nextTaskId();
 		String queueName = queueingOption != null ? queueingOption.getQueueName() : "default";
+		QueueingOption.ExecutionType executionType = queueingOption != null ? queueingOption.getExecutionType() : PARALLEL;
 
-		Task t = new Task(taskId, queueName, jobKey, jobDataMap);
+		Task t = new Task(taskId, queueName, executionType, jobKey, jobDataMap);
 		taskTable.put(taskId, t);
 
 		if (parentId != null)
 			indexChild(parentId, t.getId());
 
-		QueueingOption.ExecutionType executionType = queueingOption != null ? queueingOption.getExecutionType() : PARALLEL;
-
-		getQueue(queueName).enqueue(taskId, executionType);
+		eventsHolder.onNext(new Event(ADD, t));
 		return t;
-	}
-
-	private TaskQueue getQueue(String name) {
-		synchronized (queues) {
-			TaskQueue taskQueue = queues.get(name);
-			if (taskQueue != null)
-				return taskQueue;
-
-			taskQueue = new TaskQueue();
-			queues.put(name, taskQueue);
-			taskQueue.queue().subscribe(executionFlowObservableHolder);
-			return taskQueue;
-		}
 	}
 
 	void recordRunning(TaskId taskId) {
@@ -86,7 +92,7 @@ public class TaskRepository {
 			.orElseThrow(() -> new EngineException("Couldn't find task[id=" + taskId + "]"));
 
 		task.recordResult(Task.Result.SUCCESS, null);
-		getQueue(task.getQueueName()).complete(task.getId());
+		eventsHolder.onNext(new Event(COMPLETE, task));
 	}
 
 	void recordFailed(TaskId taskId, Throwable ex) {
@@ -94,7 +100,7 @@ public class TaskRepository {
 			.orElseThrow(() -> new EngineException("Couldn't find task[id=" + taskId + "]"));
 
 		task.recordResult(Task.Result.FAILED, ex);
-		getQueue(task.getQueueName()).complete(task.getId());
+		eventsHolder.onNext(new Event(COMPLETE, task));
 	}
 
 	Optional<Task> findTask(TaskId taskId) {
@@ -141,6 +147,4 @@ public class TaskRepository {
 		return traverse()
 			.filter(t -> t.getResult().equals(Task.Result.FAILED));
 	}
-
-
 }

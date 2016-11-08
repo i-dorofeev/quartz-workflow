@@ -4,6 +4,7 @@ import org.junit.*;
 import ru.dorofeev.sandbox.quartzworkflow.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.Event;
 import ru.dorofeev.sandbox.quartzworkflow.EventHandler;
+import ru.dorofeev.sandbox.quartzworkflow.QueueingOption;
 
 import java.util.List;
 
@@ -56,6 +57,11 @@ public class EngineTests {
 		public List<Event> handleEvent(Event event) {
 			this.event = event;
 			return noEvents();
+		}
+
+		@Override
+		public QueueingOption getQueueingOption(Event event) {
+			return null;
 		}
 
 		Event getEvent() {

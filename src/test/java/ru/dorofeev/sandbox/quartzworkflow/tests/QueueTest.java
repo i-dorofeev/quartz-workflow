@@ -3,6 +3,7 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 import org.junit.*;
 import ru.dorofeev.sandbox.quartzworkflow.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.Event;
+import ru.dorofeev.sandbox.quartzworkflow.QueueingOption;
 import ru.dorofeev.sandbox.quartzworkflow.TypedEventHandler;
 
 import java.util.List;
@@ -64,12 +65,12 @@ public class QueueTest {
 	@Test
 	public void sanityTest() {
 		Random random = new Random();
-		IntStream.range(0, 1000)
+		IntStream.range(0, 50)
 			.mapToObj(i -> (random.nextInt(3) == 0) ? new IncrementCmdEvent() : new VerifyCmdEvent())
 			.forEach(e -> engine.submitEvent(e));
 
-		await().until(() -> engine.getTaskDataRepo().traverse(CREATED).isEmpty().toBlocking().single(), is(equalTo(true)));
-		await().until(() -> engine.getTaskDataRepo().traverse(RUNNING).isEmpty().toBlocking().single(), is(equalTo(true)));
+		await("starting").until(() -> engine.getTaskDataRepo().traverse(CREATED).count().toBlocking().single(), is(equalTo(0)));
+		await("completing").until(() -> engine.getTaskDataRepo().traverse(RUNNING).count().toBlocking().single(), is(equalTo(0)));
 	}
 
 	private static class IncrementCmdEvent extends Event { }
@@ -98,6 +99,11 @@ public class QueueTest {
 				return noEvents();
 			}
 		}
+
+		@Override
+		public QueueingOption getQueueingOption(Event event) {
+			return new QueueingOption("qqq", QueueingOption.ExecutionType.EXCLUSIVE);
+		}
 	}
 
 	private static class VerifyCmdHandler extends TypedEventHandler<VerifyCmdEvent> {
@@ -124,6 +130,11 @@ public class QueueTest {
 			} catch (InterruptedException e) {
 				return noEvents();
 			}
+		}
+
+		@Override
+		public QueueingOption getQueueingOption(Event event) {
+			return new QueueingOption("qqq", QueueingOption.ExecutionType.PARALLEL);
 		}
 	}
 

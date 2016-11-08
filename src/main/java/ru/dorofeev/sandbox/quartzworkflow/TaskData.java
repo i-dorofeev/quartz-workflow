@@ -12,26 +12,32 @@ public class TaskData {
 		CREATED, RUNNING, SUCCESS, FAILED
 	}
 
-	private TaskId taskId;
+	private final TaskId taskId;
+	private final String queueName;
 
 	private final JobKey jobKey;
 	private final JobDataMap jobData = new JobDataMap();
 	private Result result = Result.CREATED;
 	private Throwable exception;
 
-	TaskData(TaskId taskId, JobKey jobKey, JobDataMap jobData) {
+	TaskData(TaskId taskId, String queueName, JobKey jobKey, JobDataMap jobData) {
 		this.taskId = taskId;
+		this.queueName = queueName;
 		this.jobKey = jobKey;
 		this.jobData.putAll(jobData);
 		this.jobData.put(TASK_DATA_ID, taskId.toString());
 	}
 
-	public TaskId getTaskId() {
+	public TaskId getId() {
 		return taskId;
 	}
 
-	public Result getResult() {
+	Result getResult() {
 		return result;
+	}
+
+	public String getQueueName() {
+		return queueName;
 	}
 
 	public Throwable getException() {
@@ -46,19 +52,7 @@ public class TaskData {
 		return jobData;
 	}
 
-	void recordRunning() {
-		recordResult(Result.RUNNING, null);
-	}
-
-	void recordSuccess() {
-		recordResult(Result.SUCCESS, null);
-	}
-
-	void recordFailed(Throwable ex) {
-		recordResult(Result.FAILED, ex);
-	}
-
-	private void recordResult(Result res, Throwable ex) {
+	void recordResult(TaskData.Result res, Throwable ex) {
 		result = res;
 		exception = ex;
 	}

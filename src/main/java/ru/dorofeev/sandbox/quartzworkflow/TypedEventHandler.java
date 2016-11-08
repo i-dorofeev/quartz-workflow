@@ -12,4 +12,9 @@ public abstract class TypedEventHandler<T extends Event> implements EventHandler
 	}
 
 	protected abstract List<Event> handle(T event);
+
+	@Override
+	public QueueingOption getQueueingOption(Event event) {
+		return null;
+	}
 }

@@ -69,7 +69,7 @@ public class Engine {
 
 	public void assertSuccess() {
 		schedulerListener.getSchedulerErrors().forEach(e -> { throw e; });
-		taskDataRepo.traverseFailed().forEach(td -> { throw new EngineException("Task failed: " + td.getTaskId()); });
+		taskDataRepo.traverseFailed().forEach(td -> { throw new EngineException("Task failed: " + td.getId()); });
 	}
 
 	private void prepareDatabase(String dataSourceUrl) {
@@ -141,21 +141,29 @@ public class Engine {
 	}
 
 	TaskData submitEvent(TaskId parentId, Event event) {
-		return taskDataRepo.addTask(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event));
+		return taskDataRepo.addTask(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event), /* queueingOption */ null);
 	}
 
-	public void retryExecution(TaskData taskData) {
-		enqueue(taskData);
+	public void retryExecution(TaskId taskId) {
+		enqueue(taskId);
 	}
 
 	void submitHandler(TaskId parentId, Event event, String handlerUri) {
-		taskDataRepo.addTask(parentId, executeEventHandlerJob, ExecuteEventHandlerJob.params(event, handlerUri));
+		Optional<EventHandler> handlerByUriOpt = findHandlerByUri(handlerUri);
+		EventHandler eventHandler = handlerByUriOpt.orElseThrow(() -> new EngineException("Handler instance for URI " + handlerUri + " not found"));
+
+		taskDataRepo.addTask(parentId, executeEventHandlerJob,
+			ExecuteEventHandlerJob.params(event, handlerUri),
+			eventHandler.getQueueingOption(event));
 	}
 
-	private void enqueue(TaskData td) {
+	private void enqueue(TaskId taskId) {
+		Optional<TaskData> taskDataOpt = taskDataRepo.findTaskData(taskId);
+		TaskData td = taskDataOpt.orElseThrow(() -> new EngineException("Task " + taskId + " not found."));
+
 		Trigger trigger = newTrigger()
 			.forJob(td.getJobKey())
-			.withIdentity(td.getTaskId().toString())
+			.withIdentity(td.getId().toString())
 			.usingJobData(new JobDataMap(td.getJobData()))
 			.startNow()
 			.build();

@@ -92,16 +92,16 @@ public class SimpleWorkflowTest {
 
 		TaskData td = engine.submitEvent(new AddPersonCmdEvent("james"));
 		await().until(() -> model.findPerson("james").isPresent(), is(true));
-		await().until(() -> engine.getTaskDataRepo().traverse(td.getTaskId(), FAILED), hasOnlyOneItem());
+		await().until(() -> engine.getTaskDataRepo().traverse(td.getId(), FAILED), hasOnlyOneItem());
 
-		List<TaskData> failedTasks = engine.getTaskDataRepo().traverse(td.getTaskId(), FAILED).toList().toBlocking().single();
+		List<TaskData> failedTasks = engine.getTaskDataRepo().traverse(td.getId(), FAILED).toList().toBlocking().single();
 		assertThat(failedTasks, hasSize(1));
 
 		TaskData failedTask = failedTasks.get(0);
 		System.out.println(failedTask.prettyPrint());
 		assertThat(failedTask.getException().getMessage(), stringContainsInOrder(singletonList("AssignRoleCmdHandler failed")));
 		assignRoleCmdHandler.setFail(false);
-		engine.retryExecution(failedTask);
+		engine.retryExecution(failedTask.getId());
 
 		await().until(() -> model.findPerson("james").map(Person::getRole), is(Optional.of("baseRole")));
 		await().until(() -> model.findPerson("james").map(Person::getAccount), is(Optional.of("baseRole_account")));

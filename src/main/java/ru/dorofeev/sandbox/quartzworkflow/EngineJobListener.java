@@ -19,23 +19,25 @@ class EngineJobListener extends JobListenerSupport {
 
 	@Override
 	public void jobToBeExecuted(JobExecutionContext context) {
-		TaskData td = getTaskData(context);
-		td.recordRunning();
+		TaskId id = new TaskId(context.getTrigger().getKey().getName());
+		taskDataRepository.recordRunning(id);
 	}
 
 	@Override
 	public void jobWasExecuted(JobExecutionContext context, JobExecutionException jobException) {
 
-		TaskData td = getTaskData(context);
+		TaskId id = new TaskId(context.getTrigger().getKey().getName());
 
 		if (jobException == null)
-			td.recordSuccess();
+			taskDataRepository.recordSuccess(id);
 		else
-			td.recordFailed(jobException);
+			taskDataRepository.recordFailed(id, jobException);
 	}
 
 	private TaskData getTaskData(JobExecutionContext jeCtx) {
 		TaskId id = new TaskId(jeCtx.getTrigger().getKey().getName());
 		return this.taskDataRepository.findTaskData(id).orElseThrow(() -> new EngineException("Couldn't find taskDataRepository[id=" + id + "]"));
 	}
+
+
 }

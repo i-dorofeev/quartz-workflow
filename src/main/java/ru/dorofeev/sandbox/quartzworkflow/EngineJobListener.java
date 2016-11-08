@@ -6,10 +6,10 @@ import org.quartz.listeners.JobListenerSupport;
 
 class EngineJobListener extends JobListenerSupport {
 
-	private final TaskManager taskManager;
+	private final TaskRepository taskRepository;
 
-	EngineJobListener(TaskManager taskManager) {
-		this.taskManager = taskManager;
+	EngineJobListener(TaskRepository taskRepository) {
+		this.taskRepository = taskRepository;
 	}
 
 	@Override
@@ -20,7 +20,7 @@ class EngineJobListener extends JobListenerSupport {
 	@Override
 	public void jobToBeExecuted(JobExecutionContext context) {
 		TaskId id = new TaskId(context.getTrigger().getKey().getName());
-		taskManager.recordRunning(id);
+		taskRepository.recordRunning(id);
 	}
 
 	@Override
@@ -29,8 +29,8 @@ class EngineJobListener extends JobListenerSupport {
 		TaskId id = new TaskId(context.getTrigger().getKey().getName());
 
 		if (jobException == null)
-			taskManager.recordSuccess(id);
+			taskRepository.recordSuccess(id);
 		else
-			taskManager.recordFailed(id, jobException);
+			taskRepository.recordFailed(id, jobException);
 	}
 }

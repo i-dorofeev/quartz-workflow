@@ -6,10 +6,10 @@ import org.quartz.listeners.JobListenerSupport;
 
 class EngineJobListener extends JobListenerSupport {
 
-	private final TaskDataRepository taskDataRepository;
+	private final TaskManager taskManager;
 
-	EngineJobListener(TaskDataRepository taskDataRepository) {
-		this.taskDataRepository = taskDataRepository;
+	EngineJobListener(TaskManager taskManager) {
+		this.taskManager = taskManager;
 	}
 
 	@Override
@@ -20,7 +20,7 @@ class EngineJobListener extends JobListenerSupport {
 	@Override
 	public void jobToBeExecuted(JobExecutionContext context) {
 		TaskId id = new TaskId(context.getTrigger().getKey().getName());
-		taskDataRepository.recordRunning(id);
+		taskManager.recordRunning(id);
 	}
 
 	@Override
@@ -29,14 +29,14 @@ class EngineJobListener extends JobListenerSupport {
 		TaskId id = new TaskId(context.getTrigger().getKey().getName());
 
 		if (jobException == null)
-			taskDataRepository.recordSuccess(id);
+			taskManager.recordSuccess(id);
 		else
-			taskDataRepository.recordFailed(id, jobException);
+			taskManager.recordFailed(id, jobException);
 	}
 
 	private Task getTaskData(JobExecutionContext jeCtx) {
 		TaskId id = new TaskId(jeCtx.getTrigger().getKey().getName());
-		return this.taskDataRepository.findTaskData(id).orElseThrow(() -> new EngineException("Couldn't find taskDataRepository[id=" + id + "]"));
+		return this.taskManager.findTaskData(id).orElseThrow(() -> new EngineException("Couldn't find taskManager[id=" + id + "]"));
 	}
 
 

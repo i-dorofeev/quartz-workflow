@@ -26,7 +26,7 @@ public class Engine {
 	private Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
 	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
 
-	private final TaskDataRepository taskDataRepo = new TaskDataRepository();
+	private final TaskManager taskDataRepo = new TaskManager();
 
 	private final JobKey scheduleEventHandlersJob;
 	private final JobKey executeEventHandlerJob;
@@ -59,7 +59,7 @@ public class Engine {
 		}
 	}
 
-	public TaskDataRepository getTaskDataRepo() {
+	public TaskManager getTaskDataRepo() {
 		return taskDataRepo;
 	}
 

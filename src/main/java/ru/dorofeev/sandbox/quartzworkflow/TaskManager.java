@@ -12,7 +12,7 @@ import java.util.stream.Stream;
 import static java.util.Optional.ofNullable;
 import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.PARALLEL;
 
-public class TaskDataRepository {
+public class TaskManager {
 
 	private final Map<TaskId, Task> taskDataMap = new HashMap<>();
 	private final Map<TaskId, Set<TaskId>> childrenIndex = new HashMap<>();

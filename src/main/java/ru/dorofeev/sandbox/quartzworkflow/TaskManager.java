@@ -14,7 +14,7 @@ import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.PA
 
 public class TaskManager {
 
-	private final Map<TaskId, Task> taskDataMap = new HashMap<>();
+	private final Map<TaskId, Task> taskTable = new HashMap<>();
 	private final Map<TaskId, Set<TaskId>> childrenIndex = new HashMap<>();
 	private final ObservableHolder<TaskId> executionFlowObservableHolder = new ObservableHolder<>();
 
@@ -36,29 +36,29 @@ public class TaskManager {
 
 	private TaskId nextTaskId() {
 		TaskId taskId = TaskId.createUniqueTaskId();
-		while (taskDataMap.containsKey(taskId)) {
+		while (taskTable.containsKey(taskId)) {
 			taskId = TaskId.createUniqueTaskId();
 		}
 		return taskId;
 	}
 
 	synchronized Task addTask(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption) {
-		if (parentId != null && !taskDataMap.containsKey(parentId))
+		if (parentId != null && !taskTable.containsKey(parentId))
 			throw new EngineException("Task[id=" + parentId + "] not found");
 
 		TaskId taskId = nextTaskId();
 		String queueName = queueingOption != null ? queueingOption.getQueueName() : "default";
 
-		Task td = new Task(taskId, queueName, jobKey, jobDataMap);
-		taskDataMap.put(taskId, td);
+		Task t = new Task(taskId, queueName, jobKey, jobDataMap);
+		taskTable.put(taskId, t);
 
 		if (parentId != null)
-			indexChild(parentId, td.getId());
+			indexChild(parentId, t.getId());
 
 		QueueingOption.ExecutionType executionType = queueingOption != null ? queueingOption.getExecutionType() : PARALLEL;
 
 		getQueue(queueName).enqueue(taskId, executionType);
-		return td;
+		return t;
 	}
 
 	private TaskQueue getQueue(String name) {
@@ -75,42 +75,42 @@ public class TaskManager {
 	}
 
 	void recordRunning(TaskId taskId) {
-		Task task = ofNullable(taskDataMap.get(taskId))
-			.orElseThrow(() -> new EngineException("Couldn't find taskDataRepository[id=" + taskId + "]"));
+		Task task = ofNullable(taskTable.get(taskId))
+			.orElseThrow(() -> new EngineException("Couldn't find task[id=" + taskId + "]"));
 
 		task.recordResult(Task.Result.RUNNING, null);
 	}
 
 	void recordSuccess(TaskId taskId) {
-		Task task = ofNullable(taskDataMap.get(taskId))
-			.orElseThrow(() -> new EngineException("Couldn't find taskDataRepository[id=" + taskId + "]"));
+		Task task = ofNullable(taskTable.get(taskId))
+			.orElseThrow(() -> new EngineException("Couldn't find task[id=" + taskId + "]"));
 
 		task.recordResult(Task.Result.SUCCESS, null);
 		getQueue(task.getQueueName()).complete(task.getId());
 	}
 
 	void recordFailed(TaskId taskId, Throwable ex) {
-		Task task = ofNullable(taskDataMap.get(taskId))
-			.orElseThrow(() -> new EngineException("Couldn't find taskDataRepository[id=" + taskId + "]"));
+		Task task = ofNullable(taskTable.get(taskId))
+			.orElseThrow(() -> new EngineException("Couldn't find task[id=" + taskId + "]"));
 
 		task.recordResult(Task.Result.FAILED, ex);
 		getQueue(task.getQueueName()).complete(task.getId());
 	}
 
-	Optional<Task> findTaskData(TaskId taskId) {
-		return ofNullable(taskDataMap.get(taskId));
+	Optional<Task> findTask(TaskId taskId) {
+		return ofNullable(taskTable.get(taskId));
 	}
 
 	@SuppressWarnings("WeakerAccess")
 	public Stream<Task> traverse() {
-		return taskDataMap.values().stream();
+		return taskTable.values().stream();
 	}
 
 	public rx.Observable<Task> traverse(Task.Result result) {
 		return rx.Observable.<Task>create(s -> {
-			taskDataMap.values().forEach(s::onNext);
+			taskTable.values().forEach(s::onNext);
 			s.onCompleted();
-		}).filter(td -> td.getResult() == result);
+		}).filter(t -> t.getResult() == result);
 	}
 
 	@SuppressWarnings("WeakerAccess")
@@ -122,24 +122,24 @@ public class TaskManager {
 	}
 
 	private void traverse(TaskId rootId, Subscriber<? super Task> subscriber) {
-		Task td = taskDataMap.get(rootId);
-		if (td == null)
-			subscriber.onError(new EngineException("Couldn't find taskData[id=" + rootId + "]"));
+		Task t = taskTable.get(rootId);
+		if (t == null)
+			subscriber.onError(new EngineException("Couldn't find task[id=" + rootId + "]"));
 		else {
-			subscriber.onNext(td);
-			ofNullable(childrenIndex.get(td.getId()))
+			subscriber.onNext(t);
+			ofNullable(childrenIndex.get(t.getId()))
 				.ifPresent(children -> children.forEach(id -> traverse(id, subscriber)));
 		}
 	}
 
 	public rx.Observable<Task> traverse(TaskId rootId, Task.Result result) {
-		return traverse(rootId, taskData -> taskData.getResult().equals(result));
+		return traverse(rootId, task -> task.getResult().equals(result));
 	}
 
 	@SuppressWarnings("WeakerAccess")
 	public Stream<Task> traverseFailed() {
 		return traverse()
-			.filter(td -> td.getResult().equals(Task.Result.FAILED));
+			.filter(t -> t.getResult().equals(Task.Result.FAILED));
 	}
 
 

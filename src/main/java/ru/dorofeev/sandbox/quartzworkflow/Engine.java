@@ -26,7 +26,7 @@ public class Engine {
 	private Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
 	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
 
-	private final TaskManager taskDataRepo = new TaskManager();
+	private final TaskManager taskManager = new TaskManager();
 
 	private final JobKey scheduleEventHandlersJob;
 	private final JobKey executeEventHandlerJob;
@@ -44,7 +44,7 @@ public class Engine {
 			this.schedulerListener = new EngineSchedulerListener();
 			this.scheduler.getListenerManager().addSchedulerListener(schedulerListener);
 
-			EngineJobListener jobListener = new EngineJobListener(taskDataRepo);
+			EngineJobListener jobListener = new EngineJobListener(taskManager);
 			this.scheduler.getListenerManager().addJobListener(jobListener);
 
 			this.scheduleEventHandlersJob = createJob("scheduleEventHandlers",
@@ -53,14 +53,14 @@ public class Engine {
 			this.executeEventHandlerJob = createJob("executeEventHandler",
 				ExecuteEventHandlerJob.class, () -> new ExecuteEventHandlerJob(this));
 
-			this.taskDataRepo.executionTaskFlow().subscribe(this::enqueue);
+			this.taskManager.executionTaskFlow().subscribe(this::enqueue);
 		} catch (SchedulerException e) {
 			throw new EngineException(e);
 		}
 	}
 
-	public TaskManager getTaskDataRepo() {
-		return taskDataRepo;
+	public TaskManager getTaskManager() {
+		return taskManager;
 	}
 
 	public void resetErrors() {
@@ -69,7 +69,7 @@ public class Engine {
 
 	public void assertSuccess() {
 		schedulerListener.getSchedulerErrors().forEach(e -> { throw e; });
-		taskDataRepo.traverseFailed().forEach(td -> { throw new EngineException("Task failed: " + td.getId()); });
+		taskManager.traverseFailed().forEach(t -> { throw new EngineException("Task failed: " + t.getId()); });
 	}
 
 	private void prepareDatabase(String dataSourceUrl) {
@@ -141,7 +141,7 @@ public class Engine {
 	}
 
 	Task submitEvent(TaskId parentId, Event event) {
-		return taskDataRepo.addTask(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event), /* queueingOption */ null);
+		return taskManager.addTask(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event), /* queueingOption */ null);
 	}
 
 	public void retryExecution(TaskId taskId) {
@@ -152,19 +152,19 @@ public class Engine {
 		Optional<EventHandler> handlerByUriOpt = findHandlerByUri(handlerUri);
 		EventHandler eventHandler = handlerByUriOpt.orElseThrow(() -> new EngineException("Handler instance for URI " + handlerUri + " not found"));
 
-		taskDataRepo.addTask(parentId, executeEventHandlerJob,
+		taskManager.addTask(parentId, executeEventHandlerJob,
 			ExecuteEventHandlerJob.params(event, handlerUri),
 			eventHandler.getQueueingOption(event));
 	}
 
 	private void enqueue(TaskId taskId) {
-		Optional<Task> taskDataOpt = taskDataRepo.findTaskData(taskId);
-		Task td = taskDataOpt.orElseThrow(() -> new EngineException("Task " + taskId + " not found."));
+		Optional<Task> taskOpt = taskManager.findTask(taskId);
+		Task t = taskOpt.orElseThrow(() -> new EngineException("Task " + taskId + " not found."));
 
 		Trigger trigger = newTrigger()
-			.forJob(td.getJobKey())
-			.withIdentity(td.getId().toString())
-			.usingJobData(new JobDataMap(td.getJobData()))
+			.forJob(t.getJobKey())
+			.withIdentity(t.getId().toString())
+			.usingJobData(new JobDataMap(t.getJobData()))
 			.startNow()
 			.build();
 

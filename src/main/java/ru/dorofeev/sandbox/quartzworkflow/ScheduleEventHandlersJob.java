@@ -31,13 +31,13 @@ class ScheduleEventHandlersJob implements Job {
 		try {
 			String eventClassName = (String) context.getMergedJobDataMap().get(PARAM_EVENT_CLASS);
 			String eventJson = (String) context.getMergedJobDataMap().get(PARAM_EVENT_JSON_DATA);
-			String taskDataId = (String)context.getMergedJobDataMap().get(Task.TASK_ID);
+			String taskId = (String)context.getMergedJobDataMap().get(Task.TASK_ID);
 
 			Event event = JsonUtils.toObject(eventClassName, eventJson);
 
 			Set<String> handlers = engine.findHandlers(event.getClass());
 
-			handlers.forEach(eh -> engine.submitHandler(new TaskId(taskDataId), event, eh));
+			handlers.forEach(eh -> engine.submitHandler(new TaskId(taskId), event, eh));
 		} catch (Exception e) {
 			throw new JobExecutionException(e);
 		}

@@ -33,7 +33,7 @@ class ExecuteEventHandlerJob implements Job {
 			String eventHandlerUri = (String) context.getMergedJobDataMap().get(PARAM_EVENT_HANDLER_URI);
 			String eventClassName = (String) context.getMergedJobDataMap().get(PARAM_EVENT_CLASS);
 			String eventJson = (String) context.getMergedJobDataMap().get(PARAM_EVENT_JSON_DATA);
-			String taskDataId = (String)context.getMergedJobDataMap().get(Task.TASK_ID);
+			String taskId = (String)context.getMergedJobDataMap().get(Task.TASK_ID);
 
 			Event event = JsonUtils.toObject(eventClassName, eventJson);
 
@@ -41,7 +41,7 @@ class ExecuteEventHandlerJob implements Job {
 			handler
 				.orElseThrow(() -> new JobExecutionException("No handler found for uri " + eventHandlerUri))
 				.handleEvent(event)
-				.forEach(e -> engine.submitEvent(new TaskId(taskDataId), e));
+				.forEach(e -> engine.submitEvent(new TaskId(taskId), e));
 		} catch (Exception e) {
 			throw new JobExecutionException(e);
 		}

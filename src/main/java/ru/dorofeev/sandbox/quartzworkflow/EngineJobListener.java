@@ -33,11 +33,4 @@ class EngineJobListener extends JobListenerSupport {
 		else
 			taskManager.recordFailed(id, jobException);
 	}
-
-	private Task getTaskData(JobExecutionContext jeCtx) {
-		TaskId id = new TaskId(jeCtx.getTrigger().getKey().getName());
-		return this.taskManager.findTaskData(id).orElseThrow(() -> new EngineException("Couldn't find taskManager[id=" + id + "]"));
-	}
-
-
 }

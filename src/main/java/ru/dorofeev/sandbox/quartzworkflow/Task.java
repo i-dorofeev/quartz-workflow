@@ -5,7 +5,7 @@ import org.quartz.JobKey;
 
 public class Task {
 
-	static final String TASK_DATA_ID = "taskDataId";
+	static final String TASK_ID = "taskId";
 
 
 	public enum Result {
@@ -25,7 +25,7 @@ public class Task {
 		this.queueName = queueName;
 		this.jobKey = jobKey;
 		this.jobData.putAll(jobData);
-		this.jobData.put(TASK_DATA_ID, taskId.toString());
+		this.jobData.put(TASK_ID, taskId.toString());
 	}
 
 	public TaskId getId() {

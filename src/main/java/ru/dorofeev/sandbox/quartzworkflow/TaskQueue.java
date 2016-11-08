@@ -22,15 +22,18 @@ class TaskQueue {
 	}
 
 	private final ObservableHolder<TaskId> observableHolder = new ObservableHolder<>();
+	private final Object sync = new Object();
+
+	// persistence
 	private final Queue<QueueItem> queue = new ConcurrentLinkedQueue<>();
 	private final List<TaskId> runningParallel = new CopyOnWriteArrayList<>();
 	private final List<TaskId> runningExclusive = new CopyOnWriteArrayList<>();
-	private final Object sync = new Object();
+
 
 	void enqueue(TaskId taskId, QueueingOption.ExecutionType executionType) {
 		synchronized (sync) {
 			queue.offer(new QueueItem(taskId, executionType));
-			tryYieldNext();
+			tryPushNext();
 		}
 	}
 
@@ -38,11 +41,11 @@ class TaskQueue {
 		synchronized (sync) {
 			runningParallel.remove(taskId);
 			runningExclusive.remove(taskId);
-			tryYieldNext();
+			tryPushNext();
 		}
 	}
 
-	private void tryYieldNext() {
+	private void tryPushNext() {
 		QueueItem nextItem = queue.peek();
 		if (nextItem == null)
 			return;
@@ -51,7 +54,7 @@ class TaskQueue {
 			runningParallel.add(nextItem.taskId);
 			observableHolder.onNext(nextItem.taskId);
 			queue.poll();
-			tryYieldNext();
+			tryPushNext();
 		} else if (nextItem.executionType == EXCLUSIVE && runningParallel.isEmpty() && runningExclusive.isEmpty()) {
 			runningExclusive.add(nextItem.taskId);
 			observableHolder.onNext(nextItem.taskId);

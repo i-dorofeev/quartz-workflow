@@ -136,11 +136,11 @@ public class Engine {
 		return jobDetail.getKey();
 	}
 
-	public TaskData submitEvent(Event event) {
+	public Task submitEvent(Event event) {
 		return submitEvent(/* parentId */ null, event);
 	}
 
-	TaskData submitEvent(TaskId parentId, Event event) {
+	Task submitEvent(TaskId parentId, Event event) {
 		return taskDataRepo.addTask(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event), /* queueingOption */ null);
 	}
 
@@ -158,8 +158,8 @@ public class Engine {
 	}
 
 	private void enqueue(TaskId taskId) {
-		Optional<TaskData> taskDataOpt = taskDataRepo.findTaskData(taskId);
-		TaskData td = taskDataOpt.orElseThrow(() -> new EngineException("Task " + taskId + " not found."));
+		Optional<Task> taskDataOpt = taskDataRepo.findTaskData(taskId);
+		Task td = taskDataOpt.orElseThrow(() -> new EngineException("Task " + taskId + " not found."));
 
 		Trigger trigger = newTrigger()
 			.forJob(td.getJobKey())

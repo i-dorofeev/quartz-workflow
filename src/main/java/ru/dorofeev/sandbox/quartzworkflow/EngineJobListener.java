@@ -34,7 +34,7 @@ class EngineJobListener extends JobListenerSupport {
 			taskDataRepository.recordFailed(id, jobException);
 	}
 
-	private TaskData getTaskData(JobExecutionContext jeCtx) {
+	private Task getTaskData(JobExecutionContext jeCtx) {
 		TaskId id = new TaskId(jeCtx.getTrigger().getKey().getName());
 		return this.taskDataRepository.findTaskData(id).orElseThrow(() -> new EngineException("Couldn't find taskDataRepository[id=" + id + "]"));
 	}

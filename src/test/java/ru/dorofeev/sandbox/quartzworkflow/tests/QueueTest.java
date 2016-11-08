@@ -14,8 +14,8 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
-import static ru.dorofeev.sandbox.quartzworkflow.TaskData.Result.CREATED;
-import static ru.dorofeev.sandbox.quartzworkflow.TaskData.Result.RUNNING;
+import static ru.dorofeev.sandbox.quartzworkflow.Task.Result.CREATED;
+import static ru.dorofeev.sandbox.quartzworkflow.Task.Result.RUNNING;
 
 public class QueueTest {
 

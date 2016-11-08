@@ -3,7 +3,7 @@ package ru.dorofeev.sandbox.quartzworkflow;
 import org.quartz.JobDataMap;
 import org.quartz.JobKey;
 
-public class TaskData {
+public class Task {
 
 	static final String TASK_DATA_ID = "taskDataId";
 
@@ -20,7 +20,7 @@ public class TaskData {
 	private Result result = Result.CREATED;
 	private Throwable exception;
 
-	TaskData(TaskId taskId, String queueName, JobKey jobKey, JobDataMap jobData) {
+	Task(TaskId taskId, String queueName, JobKey jobKey, JobDataMap jobData) {
 		this.taskId = taskId;
 		this.queueName = queueName;
 		this.jobKey = jobKey;
@@ -36,7 +36,7 @@ public class TaskData {
 		return result;
 	}
 
-	public String getQueueName() {
+	String getQueueName() {
 		return queueName;
 	}
 
@@ -52,7 +52,7 @@ public class TaskData {
 		return jobData;
 	}
 
-	void recordResult(TaskData.Result res, Throwable ex) {
+	void recordResult(Task.Result res, Throwable ex) {
 		result = res;
 		exception = ex;
 	}
@@ -63,6 +63,6 @@ public class TaskData {
 
 	@Override
 	public String toString() {
-		return "TaskData{" + taskId + "}";
+		return "Task{" + taskId + "}";
 	}
 }

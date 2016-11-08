@@ -31,7 +31,7 @@ class ScheduleEventHandlersJob implements Job {
 		try {
 			String eventClassName = (String) context.getMergedJobDataMap().get(PARAM_EVENT_CLASS);
 			String eventJson = (String) context.getMergedJobDataMap().get(PARAM_EVENT_JSON_DATA);
-			String taskDataId = (String)context.getMergedJobDataMap().get(TaskData.TASK_DATA_ID);
+			String taskDataId = (String)context.getMergedJobDataMap().get(Task.TASK_DATA_ID);
 
 			Event event = JsonUtils.toObject(eventClassName, eventJson);
 

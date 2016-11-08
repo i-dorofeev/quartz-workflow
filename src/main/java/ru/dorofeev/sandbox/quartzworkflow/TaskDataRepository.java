@@ -14,7 +14,7 @@ import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.PA
 
 public class TaskDataRepository {
 
-	private final Map<TaskId, TaskData> taskDataMap = new HashMap<>();
+	private final Map<TaskId, Task> taskDataMap = new HashMap<>();
 	private final Map<TaskId, Set<TaskId>> childrenIndex = new HashMap<>();
 	private final ObservableHolder<TaskId> executionFlowObservableHolder = new ObservableHolder<>();
 
@@ -42,14 +42,14 @@ public class TaskDataRepository {
 		return taskId;
 	}
 
-	synchronized TaskData addTask(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption) {
+	synchronized Task addTask(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption) {
 		if (parentId != null && !taskDataMap.containsKey(parentId))
-			throw new EngineException("TaskData[id=" + parentId + "] not found");
+			throw new EngineException("Task[id=" + parentId + "] not found");
 
 		TaskId taskId = nextTaskId();
 		String queueName = queueingOption != null ? queueingOption.getQueueName() : "default";
 
-		TaskData td = new TaskData(taskId, queueName, jobKey, jobDataMap);
+		Task td = new Task(taskId, queueName, jobKey, jobDataMap);
 		taskDataMap.put(taskId, td);
 
 		if (parentId != null)
@@ -75,54 +75,54 @@ public class TaskDataRepository {
 	}
 
 	void recordRunning(TaskId taskId) {
-		TaskData taskData = ofNullable(taskDataMap.get(taskId))
+		Task task = ofNullable(taskDataMap.get(taskId))
 			.orElseThrow(() -> new EngineException("Couldn't find taskDataRepository[id=" + taskId + "]"));
 
-		taskData.recordResult(TaskData.Result.RUNNING, null);
+		task.recordResult(Task.Result.RUNNING, null);
 	}
 
 	void recordSuccess(TaskId taskId) {
-		TaskData taskData = ofNullable(taskDataMap.get(taskId))
+		Task task = ofNullable(taskDataMap.get(taskId))
 			.orElseThrow(() -> new EngineException("Couldn't find taskDataRepository[id=" + taskId + "]"));
 
-		taskData.recordResult(TaskData.Result.SUCCESS, null);
-		getQueue(taskData.getQueueName()).complete(taskData.getId());
+		task.recordResult(Task.Result.SUCCESS, null);
+		getQueue(task.getQueueName()).complete(task.getId());
 	}
 
 	void recordFailed(TaskId taskId, Throwable ex) {
-		TaskData taskData = ofNullable(taskDataMap.get(taskId))
+		Task task = ofNullable(taskDataMap.get(taskId))
 			.orElseThrow(() -> new EngineException("Couldn't find taskDataRepository[id=" + taskId + "]"));
 
-		taskData.recordResult(TaskData.Result.FAILED, ex);
-		getQueue(taskData.getQueueName()).complete(taskData.getId());
+		task.recordResult(Task.Result.FAILED, ex);
+		getQueue(task.getQueueName()).complete(task.getId());
 	}
 
-	Optional<TaskData> findTaskData(TaskId taskId) {
+	Optional<Task> findTaskData(TaskId taskId) {
 		return ofNullable(taskDataMap.get(taskId));
 	}
 
 	@SuppressWarnings("WeakerAccess")
-	public Stream<TaskData> traverse() {
+	public Stream<Task> traverse() {
 		return taskDataMap.values().stream();
 	}
 
-	public rx.Observable<TaskData> traverse(TaskData.Result result) {
-		return rx.Observable.<TaskData>create(s -> {
+	public rx.Observable<Task> traverse(Task.Result result) {
+		return rx.Observable.<Task>create(s -> {
 			taskDataMap.values().forEach(s::onNext);
 			s.onCompleted();
 		}).filter(td -> td.getResult() == result);
 	}
 
 	@SuppressWarnings("WeakerAccess")
-	public rx.Observable<TaskData> traverse(TaskId rootId, Func1<? super TaskData, Boolean> predicate) {
-		return rx.Observable.<TaskData>create(subscriber -> {
+	public rx.Observable<Task> traverse(TaskId rootId, Func1<? super Task, Boolean> predicate) {
+		return rx.Observable.<Task>create(subscriber -> {
 				traverse(rootId, subscriber);
 				subscriber.onCompleted();
 		}).filter(predicate);
 	}
 
-	private void traverse(TaskId rootId, Subscriber<? super TaskData> subscriber) {
-		TaskData td = taskDataMap.get(rootId);
+	private void traverse(TaskId rootId, Subscriber<? super Task> subscriber) {
+		Task td = taskDataMap.get(rootId);
 		if (td == null)
 			subscriber.onError(new EngineException("Couldn't find taskData[id=" + rootId + "]"));
 		else {
@@ -132,14 +132,14 @@ public class TaskDataRepository {
 		}
 	}
 
-	public rx.Observable<TaskData> traverse(TaskId rootId, TaskData.Result result) {
+	public rx.Observable<Task> traverse(TaskId rootId, Task.Result result) {
 		return traverse(rootId, taskData -> taskData.getResult().equals(result));
 	}
 
 	@SuppressWarnings("WeakerAccess")
-	public Stream<TaskData> traverseFailed() {
+	public Stream<Task> traverseFailed() {
 		return traverse()
-			.filter(td -> td.getResult().equals(TaskData.Result.FAILED));
+			.filter(td -> td.getResult().equals(Task.Result.FAILED));
 	}
 
 

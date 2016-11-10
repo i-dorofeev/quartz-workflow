@@ -6,5 +6,5 @@ public interface QueueStore {
 
 	void insertQueueItem(TaskId taskId, String queueName, QueueingOption.ExecutionType executionType) throws QueueStoreException;
 	Optional<TaskId> getNextPendingQueueItem(String queueName);
-	void removeQueueItem(TaskId taskId);
+	Optional<String> removeQueueItem(TaskId taskId);
 }

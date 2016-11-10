@@ -3,6 +3,7 @@ package ru.dorofeev.sandbox.quartzworkflow;
 import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
@@ -32,7 +33,7 @@ public class QueueInMemoryStore implements QueueStore {
 	private enum QueueItemStatus { PENDING, POPPED }
 
 	private final Object sync = new Object();
-	private final SortedSet<QueueItem> queue = new TreeSet<>((o1, o2) -> Long.compare(o2.ordinal, o1.ordinal));
+	private final SortedSet<QueueItem> queue = new TreeSet<>((o1, o2) -> Long.compare(o1.ordinal, o2.ordinal));
 
 	private long ordinalSeq = 0;
 
@@ -58,14 +59,14 @@ public class QueueInMemoryStore implements QueueStore {
 			.count() != 0;
 	}
 
-	private Optional<QueueItem> getNextPending(String queueName) {
-		return queue.stream().filter(qi -> qi.queueName.equals(queueName) && qi.status == QueueItemStatus.PENDING).findFirst();
+	private Optional<QueueItem> getNextPending(Predicate<String> queueNamePredicate) {
+		return queue.stream().filter(qi -> queueNamePredicate.test(qi.queueName) && qi.status == QueueItemStatus.PENDING).findFirst();
 	}
 
 	@Override
 	public Optional<TaskId> getNextPendingQueueItem(String queueName) {
 		synchronized (sync) {
-			Optional<QueueItem> nextItemOpt = getNextPending(queueName);
+			Optional<QueueItem> nextItemOpt = getNextPending(queueName != null ? qn -> qn.equals(queueName) : qn -> true);
 
 			return nextItemOpt.flatMap(nextItem -> {
 				if (nextItem.executionType == PARALLEL && !anyExclusivePopped(queueName)) {
@@ -84,9 +85,15 @@ public class QueueInMemoryStore implements QueueStore {
 	}
 
 	@Override
-	public void removeQueueItem(TaskId taskId) {
+	public Optional<String> removeQueueItem(TaskId taskId) {
 		synchronized (sync) {
-			queue.removeIf(queueItem -> queueItem.taskId.equals(taskId));
+			Optional<QueueItem> queueItem = queue.stream().filter(qi -> qi.taskId.equals(taskId)).findFirst();
+			if (queueItem.isPresent()) {
+				queue.remove(queueItem.get());
+				return of(queueItem.get().queueName);
+			} else {
+				return empty();
+			}
 		}
 	}
 }

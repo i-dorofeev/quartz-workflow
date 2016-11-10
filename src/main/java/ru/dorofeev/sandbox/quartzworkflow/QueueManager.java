@@ -3,8 +3,7 @@ package ru.dorofeev.sandbox.quartzworkflow;
 import ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType;
 import rx.Observable;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Optional;
 
 import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.PARALLEL;
 
@@ -24,8 +23,8 @@ public class QueueManager {
 		return new EnqueueCmd(DEFAULT_QUEUE_NAME, executionType, taskId);
 	}
 
-	public static NotifyCompletedCmd notifyCompletedCmd(String queueName, TaskId taskId) {
-		return new NotifyCompletedCmd(queueName, taskId);
+	public static NotifyCompletedCmd notifyCompletedCmd(TaskId taskId) {
+		return new NotifyCompletedCmd(taskId);
 	}
 
 	public static TaskPoppedEvent taskPoppedEvent(TaskId taskId) {
@@ -67,16 +66,10 @@ public class QueueManager {
 
 	static class NotifyCompletedCmd implements Cmd {
 
-		private final String queueName;
 		private final TaskId taskId;
 
-		NotifyCompletedCmd(String queueName, TaskId taskId) {
-			this.queueName = queueName;
+		NotifyCompletedCmd(TaskId taskId) {
 			this.taskId = taskId;
-		}
-
-		String getQueueName() {
-			return queueName;
 		}
 
 		TaskId getTaskId() {
@@ -99,7 +92,7 @@ public class QueueManager {
 			this.taskId = taskId;
 		}
 
-		TaskId getTaskId() {
+		public TaskId getTaskId() {
 			return taskId;
 		}
 
@@ -129,10 +122,12 @@ public class QueueManager {
 
 	private final ObservableHolder<Event> outputHolder = new ObservableHolder<>();
 	private final ObservableHolder<Exception> errorOutputHolder = new ObservableHolder<>();
-	private final Map<String, TaskQueue> queues = new ConcurrentHashMap<>();
+
+	private final String name;
 	private final QueueStore queueStore;
 
-	public QueueManager(QueueStore queueStore) {
+	public QueueManager(String name, QueueStore queueStore) {
+		this.name = name;
 		this.queueStore = queueStore;
 	}
 
@@ -160,33 +155,37 @@ public class QueueManager {
 	}
 
 	private void requestNewTasks() {
-		queues.values().forEach(TaskQueue::tryPushNext);
+		tryPushNext(null);
 	}
 
 	private void notifyCompleted(NotifyCompletedCmd cmd) {
-		getQueue(cmd.getQueueName()).complete(cmd.getTaskId());
+		Optional<String> queueName = queueStore.removeQueueItem(cmd.getTaskId());
+		queueName.ifPresent(this::tryPushNext);
 	}
 
 	private void enqueue(EnqueueCmd cmd) {
 		try {
-			getQueue(cmd.getQueueName()).enqueue(cmd.getTaskId(), cmd.getExecutionType());
+			queueStore.insertQueueItem(cmd.getTaskId(), cmd.getQueueName(), cmd.getExecutionType());
+			tryPushNext(cmd.getQueueName());
 		} catch (QueueStoreException e) {
 			errorOutputHolder.onNext(new EngineException(e.getMessage(), e));
 		}
 	}
 
-	private TaskQueue getQueue(String name) {
-		synchronized (queues) {
-			TaskQueue taskQueue = queues.get(name);
-			if (taskQueue != null)
-				return taskQueue;
+	private void tryPushNext(String queueName) {
+		Optional<TaskId> nextOpt = queueStore.getNextPendingQueueItem(queueName);
+		nextOpt
+			.map(TaskPoppedEvent::new)
+			.ifPresent(tpe -> {
+				outputHolder.onNext(tpe);
+				tryPushNext(queueName);
+			});
+	}
 
-			taskQueue = new TaskQueue(queueStore, name);
-			queues.put(name, taskQueue);
-			taskQueue.queue()
-				.map(TaskPoppedEvent::new)
-				.subscribe(outputHolder);
-			return taskQueue;
-		}
+	@Override
+	public String toString() {
+		return "QueueManager{" +
+			"name='" + name + '\'' +
+			'}';
 	}
 }

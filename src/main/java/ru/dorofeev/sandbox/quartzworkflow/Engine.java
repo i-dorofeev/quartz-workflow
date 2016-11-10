@@ -53,7 +53,7 @@ public class Engine {
 			this.executeEventHandlerJob = createJob("executeEventHandler",
 				ExecuteEventHandlerJob.class, () -> new ExecuteEventHandlerJob(this));
 
-			QueueManager queueManager = new QueueManager(new QueueInMemoryStore());
+			QueueManager queueManager = new QueueManager("EngineQueueManager", new QueueInMemoryStore());
 			this.taskRepository.events()
 				.map(this::toQueueManagerCmd).compose(queueManager::bindEvents)
 				.map(this::toTaskId).subscribe(this::enqueue);
@@ -74,7 +74,7 @@ public class Engine {
 		if (event.getEventType() == TaskRepository.EventType.ADD)
 			return new QueueManager.EnqueueCmd(event.getTask().getQueueName(), event.getTask().getExecutionType(), event.getTask().getId());
 		else if (event.getEventType() == TaskRepository.EventType.COMPLETE)
-			return new QueueManager.NotifyCompletedCmd(event.getTask().getQueueName(), event.getTask().getId());
+			return new QueueManager.NotifyCompletedCmd(event.getTask().getId());
 		else
 			throw new EngineException("Unrecognized task repository event " + event);
 	}

@@ -4,15 +4,10 @@ import org.junit.Before;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.ObservableHolder;
 import ru.dorofeev.sandbox.quartzworkflow.QueueManager;
-import ru.dorofeev.sandbox.quartzworkflow.QueueManager.Cmd;
-import ru.dorofeev.sandbox.quartzworkflow.QueueManager.Event;
+import ru.dorofeev.sandbox.quartzworkflow.QueueManager.*;
 import rx.observers.TestSubscriber;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.enqueueCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.notifyCompletedCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.taskPoppedEvent;
+import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.*;
 import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.PARALLEL;
 import static ru.dorofeev.sandbox.quartzworkflow.TaskId.taskId;
@@ -36,7 +31,7 @@ public class QueueManagerTests {
 
 		cmdFlow.onNext(enqueueCmd(taskId("task")));
 
-		testSubscriber.assertReceivedOnNext(singletonList(taskPoppedEvent(taskId("task"))));
+		testSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task")));
 	}
 
 	@Test
@@ -45,7 +40,7 @@ public class QueueManagerTests {
 		cmdFlow.onNext(enqueueCmd(PARALLEL, taskId("task1")));
 		cmdFlow.onNext(enqueueCmd(PARALLEL, taskId("task2")));
 
-		testSubscriber.assertReceivedOnNext(asList(taskPoppedEvent(taskId("task1")), taskPoppedEvent(taskId("task2"))));
+		testSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task1")), taskPoppedEvent(taskId("task2")));
 	}
 
 	@Test

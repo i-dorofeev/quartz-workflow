@@ -1,29 +1,53 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
+import ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-class QueueManager {
+import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.PARALLEL;
 
-	interface Cmd { }
+public class QueueManager {
 
-	static class EnqueueCmd implements Cmd {
+	@SuppressWarnings("WeakerAccess")
+	public static final String DEFAULT_QUEUE_NAME = "default";
+
+	@SuppressWarnings("WeakerAccess")
+	public static final ExecutionType DEFAULT_EXECUTION_TYPE = PARALLEL;
+
+	public static EnqueueCmd enqueueCmd(TaskId taskId) {
+		return new EnqueueCmd(DEFAULT_QUEUE_NAME, DEFAULT_EXECUTION_TYPE, taskId);
+	}
+
+	public static EnqueueCmd enqueueCmd(ExecutionType executionType, TaskId taskId) {
+		return new EnqueueCmd(DEFAULT_QUEUE_NAME, executionType, taskId);
+	}
+
+	public static TaskPoppedEvent taskPoppedEvent(TaskId taskId) {
+		return new TaskPoppedEvent(taskId);
+	}
+
+	public interface Cmd { }
+
+	@SuppressWarnings("WeakerAccess")
+	public static class EnqueueCmd implements Cmd {
 
 		private final String queueName;
-		private final QueueingOption.ExecutionType executionType;
+		private final ExecutionType executionType;
 		private final TaskId taskId;
 
-		EnqueueCmd(String queueName, QueueingOption.ExecutionType executionType, TaskId taskId) {
+		public EnqueueCmd(String queueName, ExecutionType executionType, TaskId taskId) {
 			this.queueName = queueName;
 			this.executionType = executionType;
 			this.taskId = taskId;
 		}
 
+
 		String getQueueName() {
 			return queueName;
 		}
 
-		QueueingOption.ExecutionType getExecutionType() {
+		ExecutionType getExecutionType() {
 			return executionType;
 		}
 
@@ -51,27 +75,44 @@ class QueueManager {
 		}
 	}
 
-	interface Event {
+	public interface Event {
 
 	}
 
-	static class TaskPoppedEvent implements Event {
+	@SuppressWarnings("WeakerAccess")
+	public static class TaskPoppedEvent implements Event {
 
 		private final TaskId taskId;
 
-		TaskPoppedEvent(TaskId taskId) {
+		public TaskPoppedEvent(TaskId taskId) {
 			this.taskId = taskId;
 		}
 
 		TaskId getTaskId() {
 			return taskId;
 		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			TaskPoppedEvent that = (TaskPoppedEvent) o;
+
+			return taskId.equals(that.taskId);
+
+		}
+
+		@Override
+		public int hashCode() {
+			return taskId.hashCode();
+		}
 	}
 
 	private final ObservableHolder<Event> outputHolder = new ObservableHolder<>();
 	private final Map<String, TaskQueue> queues = new ConcurrentHashMap<>();
 
-	rx.Observable<Event> bindEvents(rx.Observable<Cmd> input) {
+	public rx.Observable<Event> bindEvents(rx.Observable<Cmd> input) {
 		input.subscribe(cmd -> {
 
 			if (cmd instanceof EnqueueCmd)

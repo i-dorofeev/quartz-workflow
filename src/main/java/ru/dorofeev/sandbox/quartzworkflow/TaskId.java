@@ -2,7 +2,11 @@ package ru.dorofeev.sandbox.quartzworkflow;
 
 import org.quartz.utils.Key;
 
-class TaskId {
+public class TaskId {
+
+	public static TaskId taskId(String id) {
+		return new TaskId(id);
+	}
 
 	static TaskId createUniqueTaskId() {
 		return new TaskId(Key.createUniqueName(TaskId.class.getName()));
@@ -10,7 +14,7 @@ class TaskId {
 
 	private final String value;
 
-	TaskId(String value) {
+	public TaskId(String value) {
 		this.value = value;
 	}
 

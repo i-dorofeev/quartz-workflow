@@ -21,7 +21,7 @@ public class Task {
 	private Result result = Result.CREATED;
 	private Throwable exception;
 
-	Task(TaskId taskId, String queueName, QueueingOption.ExecutionType executionType, JobKey jobKey, JobDataMap jobData) {
+	public Task(TaskId taskId, String queueName, QueueingOption.ExecutionType executionType, JobKey jobKey, JobDataMap jobData) {
 		this.taskId = taskId;
 		this.queueName = queueName;
 		this.executionType = executionType;

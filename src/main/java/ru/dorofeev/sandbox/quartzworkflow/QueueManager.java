@@ -77,7 +77,7 @@ public class QueueManager {
 		}
 	}
 
-	static class RequestNewTasksCmd implements Cmd { }
+	private static class RequestNewTasksCmd implements Cmd { }
 
 	public interface Event {
 

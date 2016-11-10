@@ -168,7 +168,11 @@ public class QueueManager {
 	}
 
 	private void enqueue(EnqueueCmd cmd) {
-		getQueue(cmd.getQueueName()).enqueue(cmd.getTaskId(), cmd.getExecutionType());
+		try {
+			getQueue(cmd.getQueueName()).enqueue(cmd.getTaskId(), cmd.getExecutionType());
+		} catch (QueueStoreException e) {
+			errorOutputHolder.onNext(new EngineException(e.getMessage(), e));
+		}
 	}
 
 	private TaskQueue getQueue(String name) {

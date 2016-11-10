@@ -37,8 +37,11 @@ public class QueueInMemoryStore implements QueueStore {
 	private long ordinalSeq = 0;
 
 	@Override
-	public void insertQueueItem(TaskId taskId, String queueName, QueueingOption.ExecutionType executionType) {
+	public void insertQueueItem(TaskId taskId, String queueName, QueueingOption.ExecutionType executionType) throws QueueStoreException {
 		synchronized (sync) {
+			if (queue.stream().filter(qi -> qi.taskId.equals(taskId)).count() > 0)
+				throw new QueueStoreException(taskId + " is already enqueued");
+
 			queue.add(new QueueItem(ordinalSeq++, taskId, queueName, executionType));
 		}
 	}

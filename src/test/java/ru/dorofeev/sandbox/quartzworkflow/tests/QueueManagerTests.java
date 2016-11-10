@@ -2,7 +2,6 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 
 import org.junit.Before;
 import org.junit.Test;
-import ru.dorofeev.sandbox.quartzworkflow.EngineException;
 import ru.dorofeev.sandbox.quartzworkflow.ObservableHolder;
 import ru.dorofeev.sandbox.quartzworkflow.QueueInMemoryStore;
 import ru.dorofeev.sandbox.quartzworkflow.QueueManager;
@@ -18,7 +17,7 @@ public class QueueManagerTests {
 
 	private ObservableHolder<Cmd> cmdFlow;
 	private TestSubscriber<Event> eventSubscriber;
-	private TestSubscriber<Exception> errorSubscriber;
+	private TestSubscriber<String> errorSubscriber;
 
 	@Before
 	public void beforeTest() {
@@ -28,7 +27,7 @@ public class QueueManagerTests {
 
 		QueueManager queueManager = new QueueManager(new QueueInMemoryStore());
 		queueManager.bindEvents(cmdFlow.getObservable()).subscribe(eventSubscriber);
-		queueManager.errors().subscribe(errorSubscriber);
+		queueManager.errors().map(Throwable::getMessage).subscribe(errorSubscriber);
 	}
 
 	@Test
@@ -75,8 +74,6 @@ public class QueueManagerTests {
 		cmdFlow.onNext(enqueueCmd(PARALLEL, taskId("task1")));
 
 		eventSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task1")));
-		errorSubscriber.assertValuesAndClear(new EngineException("task1 is already enqueued"));
+		errorSubscriber.assertValuesAndClear("task1 is already enqueued");
 	}
-
-
 }

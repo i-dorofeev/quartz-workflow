@@ -4,7 +4,7 @@ import java.util.Optional;
 
 public interface QueueStore {
 
-	void insertQueueItem(TaskId taskId, String queueName, QueueingOption.ExecutionType executionType);
+	void insertQueueItem(TaskId taskId, String queueName, QueueingOption.ExecutionType executionType) throws QueueStoreException;
 	Optional<TaskId> getNextPendingQueueItem(String queueName);
 	void removeQueueItem(TaskId taskId);
 }

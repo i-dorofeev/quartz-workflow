@@ -14,7 +14,7 @@ class TaskQueue {
 		this.queueName = queueName;
 	}
 
-	void enqueue(TaskId taskId, QueueingOption.ExecutionType executionType) {
+	void enqueue(TaskId taskId, QueueingOption.ExecutionType executionType) throws QueueStoreException {
 		queueStore.insertQueueItem(taskId, queueName, executionType);
 		tryPushNext();
 	}

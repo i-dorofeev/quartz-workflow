@@ -23,6 +23,10 @@ public class QueueManager {
 		return new EnqueueCmd(DEFAULT_QUEUE_NAME, executionType, taskId);
 	}
 
+	public static NotifyCompletedCmd notifyCompletedCmd(String queueName, TaskId taskId) {
+		return new NotifyCompletedCmd(queueName, taskId);
+	}
+
 	public static TaskPoppedEvent taskPoppedEvent(TaskId taskId) {
 		return new TaskPoppedEvent(taskId);
 	}

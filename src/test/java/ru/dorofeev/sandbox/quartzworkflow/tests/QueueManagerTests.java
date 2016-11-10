@@ -11,7 +11,9 @@ import rx.observers.TestSubscriber;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.enqueueCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.notifyCompletedCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.taskPoppedEvent;
+import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.PARALLEL;
 import static ru.dorofeev.sandbox.quartzworkflow.TaskId.taskId;
 
@@ -46,7 +48,18 @@ public class QueueManagerTests {
 		testSubscriber.assertReceivedOnNext(asList(taskPoppedEvent(taskId("task1")), taskPoppedEvent(taskId("task2"))));
 	}
 
+	@Test
+	public void simpleSequentialQueueingTest() {
 
+		cmdFlow.onNext(enqueueCmd(EXCLUSIVE, taskId("task1")));
+		cmdFlow.onNext(enqueueCmd(EXCLUSIVE, taskId("task2")));
+
+		testSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task1")));
+
+		cmdFlow.onNext(notifyCompletedCmd(QueueManager.DEFAULT_QUEUE_NAME, taskId("task1")));
+
+		testSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task2")));
+	}
 
 
 }

@@ -13,10 +13,14 @@ import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
 
 public class EngineTests {
 
-	private static Engine engine = new Engine(org.h2.Driver.class, "jdbc:h2:~/test");
+	private static Engine engine;
 
 	@BeforeClass
 	public static void beforeClass() throws Exception {
+		H2Db h2Db = new H2Db("./build/test");
+		h2Db.deleteDb();
+
+		engine = new Engine(org.h2.Driver.class, h2Db.jdbcUrl());
 		engine.start();
 	}
 

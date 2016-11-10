@@ -1,65 +1,32 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
-import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CopyOnWriteArrayList;
-
-import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.EXCLUSIVE;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.PARALLEL;
+import java.util.Optional;
 
 class TaskQueue {
 
-	private static class QueueItem {
-
-		final TaskId taskId;
-		final QueueingOption.ExecutionType executionType;
-
-		private QueueItem(TaskId taskId, QueueingOption.ExecutionType executionType) {
-			this.taskId = taskId;
-			this.executionType = executionType;
-		}
-	}
+	private final String queueName;
 
 	private final ObservableHolder<TaskId> observableHolder = new ObservableHolder<>();
-	private final Object sync = new Object();
+	private final QueueStore queueStore;
 
-	// persistence
-	private final Queue<QueueItem> queue = new ConcurrentLinkedQueue<>();
-	private final List<TaskId> runningParallel = new CopyOnWriteArrayList<>();
-	private final List<TaskId> runningExclusive = new CopyOnWriteArrayList<>();
-
+	TaskQueue(QueueStore queueStore, String queueName) {
+		this.queueStore = queueStore;
+		this.queueName = queueName;
+	}
 
 	void enqueue(TaskId taskId, QueueingOption.ExecutionType executionType) {
-		synchronized (sync) {
-			queue.offer(new QueueItem(taskId, executionType));
-			tryPushNext();
-		}
+		queueStore.insertQueueItem(taskId, queueName, executionType);
+		tryPushNext();
 	}
 
 	void complete(TaskId taskId) {
-		synchronized (sync) {
-			runningParallel.remove(taskId);
-			runningExclusive.remove(taskId);
-			tryPushNext();
-		}
+		queueStore.removeQueueItem(taskId);
+		tryPushNext();
 	}
 
-	private void tryPushNext() {
-		QueueItem nextItem = queue.peek();
-		if (nextItem == null)
-			return;
-
-		if (nextItem.executionType == PARALLEL && runningExclusive.isEmpty()) {
-			runningParallel.add(nextItem.taskId);
-			observableHolder.onNext(nextItem.taskId);
-			queue.poll();
-			tryPushNext();
-		} else if (nextItem.executionType == EXCLUSIVE && runningParallel.isEmpty() && runningExclusive.isEmpty()) {
-			runningExclusive.add(nextItem.taskId);
-			observableHolder.onNext(nextItem.taskId);
-			queue.poll();
-		}
+	void tryPushNext() {
+		Optional<TaskId> nextOpt = queueStore.getNextPendingQueueItem(queueName);
+		nextOpt.ifPresent(observableHolder::onNext);
 	}
 
 	rx.Observable<TaskId> queue() {

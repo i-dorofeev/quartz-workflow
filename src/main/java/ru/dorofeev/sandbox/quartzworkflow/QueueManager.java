@@ -1,6 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
 import ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType;
+import rx.Observable;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,6 +30,10 @@ public class QueueManager {
 
 	public static TaskPoppedEvent taskPoppedEvent(TaskId taskId) {
 		return new TaskPoppedEvent(taskId);
+	}
+
+	public static RequestNewTasksCmd requestNewTasksCmd() {
+		return new RequestNewTasksCmd();
 	}
 
 	public interface Cmd { }
@@ -79,6 +84,8 @@ public class QueueManager {
 		}
 	}
 
+	static class RequestNewTasksCmd implements Cmd { }
+
 	public interface Event {
 
 	}
@@ -111,10 +118,27 @@ public class QueueManager {
 		public int hashCode() {
 			return taskId.hashCode();
 		}
+
+		@Override
+		public String toString() {
+			return "TaskPoppedEvent{" +
+				"taskId=" + taskId +
+				'}';
+		}
 	}
 
 	private final ObservableHolder<Event> outputHolder = new ObservableHolder<>();
+	private final ObservableHolder<Exception> errorOutputHolder = new ObservableHolder<>();
 	private final Map<String, TaskQueue> queues = new ConcurrentHashMap<>();
+	private final QueueStore queueStore;
+
+	public QueueManager(QueueStore queueStore) {
+		this.queueStore = queueStore;
+	}
+
+	public Observable<Exception> errors() {
+		return errorOutputHolder.getObservable();
+	}
 
 	public rx.Observable<Event> bindEvents(rx.Observable<Cmd> input) {
 		input.subscribe(cmd -> {
@@ -125,11 +149,18 @@ public class QueueManager {
 			else if (cmd instanceof NotifyCompletedCmd)
 				notifyCompleted((NotifyCompletedCmd) cmd);
 
+			else if (cmd instanceof RequestNewTasksCmd)
+				requestNewTasks();
+
 			else
-				throw new EngineException("Unrecognized cmd " + cmd);
+				errorOutputHolder.onNext(new EngineException("Unrecognized cmd " + cmd));
 		});
 
 		return outputHolder.getObservable();
+	}
+
+	private void requestNewTasks() {
+		queues.values().forEach(TaskQueue::tryPushNext);
 	}
 
 	private void notifyCompleted(NotifyCompletedCmd cmd) {
@@ -146,7 +177,7 @@ public class QueueManager {
 			if (taskQueue != null)
 				return taskQueue;
 
-			taskQueue = new TaskQueue();
+			taskQueue = new TaskQueue(queueStore, name);
 			queues.put(name, taskQueue);
 			taskQueue.queue()
 				.map(TaskPoppedEvent::new)

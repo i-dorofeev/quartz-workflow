@@ -2,7 +2,9 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 
 import org.junit.Before;
 import org.junit.Test;
+import ru.dorofeev.sandbox.quartzworkflow.EngineException;
 import ru.dorofeev.sandbox.quartzworkflow.ObservableHolder;
+import ru.dorofeev.sandbox.quartzworkflow.QueueInMemoryStore;
 import ru.dorofeev.sandbox.quartzworkflow.QueueManager;
 import ru.dorofeev.sandbox.quartzworkflow.QueueManager.*;
 import rx.observers.TestSubscriber;
@@ -15,23 +17,30 @@ import static ru.dorofeev.sandbox.quartzworkflow.TaskId.taskId;
 public class QueueManagerTests {
 
 	private ObservableHolder<Cmd> cmdFlow;
-	private TestSubscriber<Event> testSubscriber;
+	private TestSubscriber<Event> eventSubscriber;
+	private TestSubscriber<Exception> errorSubscriber;
 
 	@Before
 	public void beforeTest() {
 		cmdFlow = new ObservableHolder<>();
-		testSubscriber = new TestSubscriber<>();
+		eventSubscriber = new TestSubscriber<>();
+		errorSubscriber = new TestSubscriber<>();
 
-		QueueManager queueManager = new QueueManager();
-		queueManager.bindEvents(cmdFlow.getObservable()).subscribe(testSubscriber);
+		QueueManager queueManager = new QueueManager(new QueueInMemoryStore());
+		queueManager.bindEvents(cmdFlow.getObservable()).subscribe(eventSubscriber);
+		queueManager.errors().subscribe(errorSubscriber);
 	}
 
 	@Test
 	public void sanityTest() {
 
 		cmdFlow.onNext(enqueueCmd(taskId("task")));
+		eventSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task")));
+		errorSubscriber.assertNoValues();
 
-		testSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task")));
+		cmdFlow.onNext(requestNewTasksCmd());
+		eventSubscriber.assertNoValues();
+		errorSubscriber.assertNoValues();
 	}
 
 	@Test
@@ -40,7 +49,8 @@ public class QueueManagerTests {
 		cmdFlow.onNext(enqueueCmd(PARALLEL, taskId("task1")));
 		cmdFlow.onNext(enqueueCmd(PARALLEL, taskId("task2")));
 
-		testSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task1")), taskPoppedEvent(taskId("task2")));
+		eventSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task1")), taskPoppedEvent(taskId("task2")));
+		errorSubscriber.assertNoValues();
 	}
 
 	@Test
@@ -49,11 +59,23 @@ public class QueueManagerTests {
 		cmdFlow.onNext(enqueueCmd(EXCLUSIVE, taskId("task1")));
 		cmdFlow.onNext(enqueueCmd(EXCLUSIVE, taskId("task2")));
 
-		testSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task1")));
+		eventSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task1")));
 
 		cmdFlow.onNext(notifyCompletedCmd(QueueManager.DEFAULT_QUEUE_NAME, taskId("task1")));
 
-		testSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task2")));
+		eventSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task2")));
+
+		errorSubscriber.assertNoValues();
+	}
+
+	@Test
+	public void cannotEnqueueSameTaskTwice() {
+
+		cmdFlow.onNext(enqueueCmd(PARALLEL, taskId("task1")));
+		cmdFlow.onNext(enqueueCmd(PARALLEL, taskId("task1")));
+
+		eventSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task1")));
+		errorSubscriber.assertValuesAndClear(new EngineException("task1 is already enqueued"));
 	}
 
 

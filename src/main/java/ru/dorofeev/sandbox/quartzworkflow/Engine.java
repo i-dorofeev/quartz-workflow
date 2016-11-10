@@ -53,7 +53,7 @@ public class Engine {
 			this.executeEventHandlerJob = createJob("executeEventHandler",
 				ExecuteEventHandlerJob.class, () -> new ExecuteEventHandlerJob(this));
 
-			QueueManager queueManager = new QueueManager();
+			QueueManager queueManager = new QueueManager(new QueueInMemoryStore());
 			this.taskRepository.events()
 				.map(this::toQueueManagerCmd).compose(queueManager::bindEvents)
 				.map(this::toTaskId).subscribe(this::enqueue);

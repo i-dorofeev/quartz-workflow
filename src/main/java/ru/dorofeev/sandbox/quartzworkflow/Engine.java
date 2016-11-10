@@ -55,12 +55,28 @@ public class Engine {
 
 			QueueManager queueManager = new QueueManager();
 			this.taskRepository.events()
-				.compose(queueManager::bindEvents)
-				.subscribe(this::enqueue);
+				.map(this::toQueueManagerCmd).compose(queueManager::bindEvents)
+				.map(this::toTaskId).subscribe(this::enqueue);
 
 		} catch (SchedulerException e) {
 			throw new EngineException(e);
 		}
+	}
+
+	private TaskId toTaskId(QueueManager.Event event) {
+		if (event instanceof QueueManager.TaskPoppedEvent)
+			return ((QueueManager.TaskPoppedEvent)event).getTaskId();
+		else
+			throw new EngineException("Unrecognized queue manager event " + event);
+	}
+
+	private QueueManager.Cmd toQueueManagerCmd(TaskRepository.Event event) {
+		if (event.getEventType() == TaskRepository.EventType.ADD)
+			return new QueueManager.EnqueueCmd(event.getTask().getQueueName(), event.getTask().getExecutionType(), event.getTask().getId());
+		else if (event.getEventType() == TaskRepository.EventType.COMPLETE)
+			return new QueueManager.NotifyCompletedCmd(event.getTask().getQueueName(), event.getTask().getId());
+		else
+			throw new EngineException("Unrecognized task repository event " + event);
 	}
 
 	public TaskRepository getTaskRepository() {

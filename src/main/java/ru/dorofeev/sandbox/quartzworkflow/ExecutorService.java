@@ -1,13 +1,18 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
+import rx.Subscription;
 import rx.schedulers.Schedulers;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static rx.Observable.interval;
 
 public class ExecutorService {
 
-	public static ScheduleTaskCmd scheduleTaskCmd(TaskId task, Runnable runnable) {
+	public static ScheduleTaskCmd scheduleTaskCmd(TaskId task, Executable runnable) {
 		return new ScheduleTaskCmd(task, runnable);
 	}
 
@@ -15,24 +20,28 @@ public class ExecutorService {
 		return new TaskCompletedEvent(taskId, null);
 	}
 
+	public static TaskCompletedEvent taskFailedEvent(TaskId taskId, Throwable e) {
+		return new TaskCompletedEvent(taskId, e);
+	}
+
 	public interface Cmd { }
 
 	public static class ScheduleTaskCmd implements Cmd {
 
 		private final TaskId taskId;
-		private final Runnable runnable;
+		private final Executable executable;
 
-		public ScheduleTaskCmd(TaskId taskId, Runnable runnable) {
+		public ScheduleTaskCmd(TaskId taskId, Executable executable) {
 			this.taskId = taskId;
-			this.runnable = runnable;
+			this.executable = executable;
 		}
 
 		public TaskId getTaskId() {
 			return taskId;
 		}
 
-		public Runnable getRunnable() {
-			return runnable;
+		public Executable getExecutable() {
+			return executable;
 		}
 	}
 
@@ -41,9 +50,9 @@ public class ExecutorService {
 	public static class TaskCompletedEvent implements Event {
 
 		private final TaskId taskId;
-		private final Exception exception;
+		private final Throwable exception;
 
-		public TaskCompletedEvent(TaskId taskId, Exception exception) {
+		public TaskCompletedEvent(TaskId taskId, Throwable exception) {
 			this.taskId = taskId;
 			this.exception = exception;
 		}
@@ -52,7 +61,7 @@ public class ExecutorService {
 			return taskId;
 		}
 
-		public Exception getException() {
+		public Throwable getException() {
 			return exception;
 		}
 
@@ -74,28 +83,74 @@ public class ExecutorService {
 		}
 	}
 
-	private final ObservableHolder<Event> events = new ObservableHolder<>();
-	//private final ObservableHolder<Exception> errors = new ObservableHolder<>();
+	public static class IdleEvent implements Event {
 
+	}
+
+	private final ObservableHolder<Event> events = new ObservableHolder<>();
 	private final Executor executor;
+	private final IdleMonitor idleMonitor;
 
 	public ExecutorService(int nThreads) {
 		this.executor = Executors.newFixedThreadPool(nThreads);
+
+		this.idleMonitor = new IdleMonitor(nThreads);
+		this.idleMonitor.idleEvents().getObservable().subscribe(events);
 	}
 
 	public rx.Observable<Event> bind(rx.Observable<Cmd> input) {
 
 		input.ofType(ScheduleTaskCmd.class)
+			.doOnNext(cmd -> idleMonitor.threadAcquired())
 			.observeOn(Schedulers.from(executor))
-			.subscribe(scheduleTaskCmd -> {
-				try {
-					scheduleTaskCmd.getRunnable().run();
-					events.onNext(new TaskCompletedEvent(scheduleTaskCmd.getTaskId(), null));
-				} catch (RuntimeException e) {
-					events.onNext(new TaskCompletedEvent(scheduleTaskCmd.getTaskId(), e));
-				}
-			});
+			.map(cmd -> {
+					try {
+						cmd.getExecutable().execute();
+						return new TaskCompletedEvent(cmd.getTaskId(), null);
+					} catch (Throwable e) {
+						return new TaskCompletedEvent(cmd.getTaskId(), e);
+					}
+				})
+			.doOnNext(event -> idleMonitor.threadReleased())
+			.subscribe(events);
 
 		return events.getObservable();
+	}
+
+	private static class IdleMonitor {
+
+		private final AtomicInteger executingTasks = new AtomicInteger(0);
+		private final ObservableHolder<IdleEvent> idleEvents = new ObservableHolder<>();
+		private Subscription tickSubscription;
+
+		private final int nThreads;
+
+		private IdleMonitor(int nThreads) {
+			this.nThreads = nThreads;
+
+			int load = executingTasks.intValue();
+			adjustIdleTicks(load);
+		}
+
+		ObservableHolder<IdleEvent> idleEvents() {
+			return idleEvents;
+		}
+
+		private void adjustIdleTicks(int currentLoad) {
+			if (currentLoad < nThreads)
+				tickSubscription = interval(0, 1, SECONDS).subscribe(v -> idleEvents.onNext(new IdleEvent()));
+			else if (!tickSubscription.isUnsubscribed())
+				tickSubscription.unsubscribe();
+		}
+
+		void threadAcquired() {
+			int load = executingTasks.incrementAndGet();
+			adjustIdleTicks(load);
+		}
+
+		void threadReleased() {
+			int load = executingTasks.decrementAndGet();
+			adjustIdleTicks(load);
+		}
 	}
 }

@@ -1,48 +1,56 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests;
 
-import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.ExecutorService;
-import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.Cmd;
+import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.*;
 import ru.dorofeev.sandbox.quartzworkflow.ObservableHolder;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestExecutable;
 import rx.observers.TestSubscriber;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static ru.dorofeev.sandbox.quartzworkflow.ExecutorService.scheduleTaskCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.ExecutorService.taskSuccessfullyCompletedEvent;
+import static ru.dorofeev.sandbox.quartzworkflow.ExecutorService.*;
 import static ru.dorofeev.sandbox.quartzworkflow.TaskId.taskId;
 
 public class ExecutorServiceTests {
 
+	private ObservableHolder<Cmd> cmdFlow;
+	private TestSubscriber<Event> eventTestSubscriber;
+
+	@Before
+	public void beforeTest() {
+		ExecutorService executorService = new ExecutorService(5);
+
+		cmdFlow = new ObservableHolder<>();
+		eventTestSubscriber = new TestSubscriber<>();
+
+		executorService.bind(cmdFlow.getObservable())
+			.filter(e -> !(e instanceof IdleEvent))
+			.subscribe(eventTestSubscriber);
+	}
+
 	@Test
 	public void sanityTest() {
 
-		ExecutorService executorService = new ExecutorService(5);
+		TestExecutable testExecutable = new TestExecutable();
 
-		ObservableHolder<Cmd> cmdFlow = new ObservableHolder<>();
-		TestSubscriber<ExecutorService.Event> eventTestSubscriber = new TestSubscriber<>();
-
-		executorService.bind(cmdFlow.getObservable()).subscribe(eventTestSubscriber);
-
-		TestRunnable testRunnable = new TestRunnable();
-		cmdFlow.onNext(scheduleTaskCmd(taskId("task0"), testRunnable));
+		cmdFlow.onNext(scheduleTaskCmd(taskId("task0"), testExecutable));
 
 		eventTestSubscriber.awaitValueCount(1, 500, MILLISECONDS);
 		eventTestSubscriber.assertValuesAndClear(taskSuccessfullyCompletedEvent(taskId("task0")));
-		testRunnable.assertInvoked();
+		testExecutable.assertInvoked();
 	}
 
-	private static class TestRunnable implements Runnable {
+	@Test
+	public void reportingErrorTest() {
 
-		private boolean invoked;
+		RuntimeException exception = new RuntimeException("Error!");
+		TestExecutable testRunnable = new TestExecutable().throwsException(exception);
 
-		@Override
-		public void run() {
-			invoked = true;
-		}
+		cmdFlow.onNext(scheduleTaskCmd(taskId("task0"), testRunnable));
 
-		public void assertInvoked() {
-			Assert.assertTrue("runnable wasn't invoked", invoked);
-		}
+		eventTestSubscriber.awaitValueCount(1, 500, MILLISECONDS);
+		eventTestSubscriber.assertValuesAndClear(taskFailedEvent(taskId("task0"), exception));
+		testRunnable.assertInvoked();
 	}
 }

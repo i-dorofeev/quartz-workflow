@@ -7,7 +7,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static rx.Observable.interval;
 
 public class ExecutorService {
@@ -31,7 +31,7 @@ public class ExecutorService {
 		private final TaskId taskId;
 		private final Executable executable;
 
-		public ScheduleTaskCmd(TaskId taskId, Executable executable) {
+		ScheduleTaskCmd(TaskId taskId, Executable executable) {
 			this.taskId = taskId;
 			this.executable = executable;
 		}
@@ -40,7 +40,7 @@ public class ExecutorService {
 			return taskId;
 		}
 
-		public Executable getExecutable() {
+		Executable getExecutable() {
 			return executable;
 		}
 	}
@@ -52,7 +52,7 @@ public class ExecutorService {
 		private final TaskId taskId;
 		private final Throwable exception;
 
-		public TaskCompletedEvent(TaskId taskId, Throwable exception) {
+		TaskCompletedEvent(TaskId taskId, Throwable exception) {
 			this.taskId = taskId;
 			this.exception = exception;
 		}
@@ -81,21 +81,45 @@ public class ExecutorService {
 			result = 31 * result + (exception != null ? exception.hashCode() : 0);
 			return result;
 		}
+
+		@Override
+		public String toString() {
+			return "TaskCompletedEvent{" +
+				"taskId=" + taskId +
+				", exception=" + exception +
+				'}';
+		}
 	}
 
 	public static class IdleEvent implements Event {
 
+		private final int freeThreadsCount;
+
+		IdleEvent(int freeThreadsCount) {
+			this.freeThreadsCount = freeThreadsCount;
+		}
+
+		public int getFreeThreadsCount() {
+			return freeThreadsCount;
+		}
+
+		@Override
+		public String toString() {
+			return "IdleEvent{" +
+				"freeThreadsCount=" + freeThreadsCount +
+				'}';
+		}
 	}
 
 	private final ObservableHolder<Event> events = new ObservableHolder<>();
 	private final Executor executor;
 	private final IdleMonitor idleMonitor;
 
-	public ExecutorService(int nThreads) {
+	public ExecutorService(int nThreads, long idleInterval) {
 		this.executor = Executors.newFixedThreadPool(nThreads);
 
-		this.idleMonitor = new IdleMonitor(nThreads);
-		this.idleMonitor.idleEvents().getObservable().subscribe(events);
+		this.idleMonitor = new IdleMonitor(nThreads, idleInterval);
+		this.idleMonitor.idleEvents().getObservable().subscribe(events.nextObserver());
 	}
 
 	public rx.Observable<Event> bind(rx.Observable<Cmd> input) {
@@ -112,7 +136,7 @@ public class ExecutorService {
 					}
 				})
 			.doOnNext(event -> idleMonitor.threadReleased())
-			.subscribe(events);
+			.subscribe(events.nextObserver());
 
 		return events.getObservable();
 	}
@@ -124,9 +148,11 @@ public class ExecutorService {
 		private Subscription tickSubscription;
 
 		private final int nThreads;
+		private final long idleInterval;
 
-		private IdleMonitor(int nThreads) {
+		private IdleMonitor(int nThreads, long idleInterval) {
 			this.nThreads = nThreads;
+			this.idleInterval = idleInterval;
 
 			int load = executingTasks.intValue();
 			adjustIdleTicks(load);
@@ -136,11 +162,17 @@ public class ExecutorService {
 			return idleEvents;
 		}
 
-		private void adjustIdleTicks(int currentLoad) {
-			if (currentLoad < nThreads)
-				tickSubscription = interval(0, 1, SECONDS).subscribe(v -> idleEvents.onNext(new IdleEvent()));
-			else if (!tickSubscription.isUnsubscribed())
+		private synchronized void adjustIdleTicks(int currentLoad) {
+			if (currentLoad < nThreads && tickSubscription == null)
+				tickSubscription = interval(0, idleInterval, MILLISECONDS).subscribe(v -> {
+					int freeThreadsCount = nThreads - executingTasks.intValue();
+					if (freeThreadsCount > 0)
+						idleEvents.onNext(new IdleEvent(freeThreadsCount));
+				});
+			else if (currentLoad >= nThreads && tickSubscription != null) {
 				tickSubscription.unsubscribe();
+				tickSubscription = null;
+			}
 		}
 
 		void threadAcquired() {

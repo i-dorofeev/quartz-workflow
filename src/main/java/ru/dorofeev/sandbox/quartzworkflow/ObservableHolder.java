@@ -7,7 +7,7 @@ import rx.Subscriber;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ObservableHolder<T> implements Observer<T> {
+public class ObservableHolder<T> {
 
 	private final Observable<T> observable;
 	private final List<Subscriber<? super T>> subscriberList;
@@ -21,18 +21,29 @@ public class ObservableHolder<T> implements Observer<T> {
 		return observable;
 	}
 
-	@Override
 	public void onNext(T item) {
 		subscriberList.forEach(s -> s.onNext(item));
 	}
 
-	@Override
+	@SuppressWarnings("unused")
 	public void onCompleted() {
 		subscriberList.forEach(Observer::onCompleted);
 	}
 
-	@Override
+	@SuppressWarnings("unused")
 	public void onError(Throwable e) {
 		subscriberList.forEach(s -> s.onError(e));
+	}
+
+	public Observer<T> nextObserver() {
+		return new Observer<T>() {
+			@Override public void onCompleted() { }
+			@Override public void onError(Throwable e) { }
+
+			@Override
+			public void onNext(T t) {
+				ObservableHolder.this.onNext(t);
+			}
+		};
 	}
 }

@@ -19,7 +19,7 @@ public class ExecutorServiceTests {
 
 	@Before
 	public void beforeTest() {
-		ExecutorService executorService = new ExecutorService(5);
+		ExecutorService executorService = new ExecutorService(5, 50);
 
 		cmdFlow = new ObservableHolder<>();
 		eventTestSubscriber = new TestSubscriber<>();

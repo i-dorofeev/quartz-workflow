@@ -1,7 +1,9 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
+import rx.Observable;
 import rx.Subscription;
 import rx.schedulers.Schedulers;
+import rx.subjects.PublishSubject;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -112,7 +114,7 @@ public class ExecutorService {
 		}
 	}
 
-	private final ObservableHolder<Event> events = new ObservableHolder<>();
+	private final PublishSubject<Event> events = PublishSubject.create();
 	private final Executor executor;
 	private final IdleMonitor idleMonitor;
 
@@ -120,7 +122,7 @@ public class ExecutorService {
 		this.executor = Executors.newFixedThreadPool(nThreads);
 
 		this.idleMonitor = new IdleMonitor(nThreads, idleInterval);
-		this.idleMonitor.idleEvents().getObservable().subscribe(events.nextObserver());
+		this.idleMonitor.idleEvents().subscribe(events);
 	}
 
 	public rx.Observable<Event> bind(rx.Observable<Cmd> input) {
@@ -137,15 +139,15 @@ public class ExecutorService {
 					}
 				})
 			.doOnNext(event -> idleMonitor.threadReleased())
-			.subscribe(events.nextObserver());
+			.subscribe(events);
 
-		return events.getObservable();
+		return events;
 	}
 
 	private static class IdleMonitor {
 
 		private final AtomicInteger executingTasks = new AtomicInteger(0);
-		private final ObservableHolder<IdleEvent> idleEvents = new ObservableHolder<>();
+		private final PublishSubject<IdleEvent> idleEvents = PublishSubject.create();
 		private Subscription tickSubscription;
 
 		private final int nThreads;
@@ -159,7 +161,7 @@ public class ExecutorService {
 			adjustIdleTicks(load);
 		}
 
-		ObservableHolder<IdleEvent> idleEvents() {
+		Observable<IdleEvent> idleEvents() {
 			return idleEvents;
 		}
 

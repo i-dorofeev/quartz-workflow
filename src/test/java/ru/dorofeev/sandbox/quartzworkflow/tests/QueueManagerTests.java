@@ -2,11 +2,11 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 
 import org.junit.Before;
 import org.junit.Test;
-import ru.dorofeev.sandbox.quartzworkflow.ObservableHolder;
 import ru.dorofeev.sandbox.quartzworkflow.QueueInMemoryStore;
 import ru.dorofeev.sandbox.quartzworkflow.QueueManager;
 import ru.dorofeev.sandbox.quartzworkflow.QueueManager.*;
 import rx.observers.TestSubscriber;
+import rx.subjects.PublishSubject;
 
 import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.*;
 import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.EXCLUSIVE;
@@ -15,18 +15,18 @@ import static ru.dorofeev.sandbox.quartzworkflow.TaskId.taskId;
 
 public class QueueManagerTests {
 
-	private ObservableHolder<Cmd> cmdFlow;
+	private PublishSubject<Cmd> cmdFlow;
 	private TestSubscriber<Event> eventSubscriber;
 	private TestSubscriber<String> errorSubscriber;
 
 	@Before
 	public void beforeTest() {
-		cmdFlow = new ObservableHolder<>();
+		cmdFlow = PublishSubject.create();
 		eventSubscriber = new TestSubscriber<>();
 		errorSubscriber = new TestSubscriber<>();
 
 		QueueManager queueManager = new QueueManager("QueueManagerTests", new QueueInMemoryStore());
-		queueManager.bindEvents(cmdFlow.getObservable()).subscribe(eventSubscriber);
+		queueManager.bindEvents(cmdFlow).subscribe(eventSubscriber);
 		queueManager.errors().map(Throwable::getMessage).subscribe(errorSubscriber);
 	}
 

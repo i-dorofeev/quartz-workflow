@@ -4,9 +4,9 @@ import org.junit.Before;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.ExecutorService;
 import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.*;
-import ru.dorofeev.sandbox.quartzworkflow.ObservableHolder;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestExecutable;
 import rx.observers.TestSubscriber;
+import rx.subjects.PublishSubject;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static ru.dorofeev.sandbox.quartzworkflow.ExecutorService.*;
@@ -14,17 +14,17 @@ import static ru.dorofeev.sandbox.quartzworkflow.TaskId.taskId;
 
 public class ExecutorServiceTests {
 
-	private ObservableHolder<Cmd> cmdFlow;
+	private PublishSubject<Cmd> cmdFlow;
 	private TestSubscriber<Event> eventTestSubscriber;
 
 	@Before
 	public void beforeTest() {
 		ExecutorService executorService = new ExecutorService(5, 50);
 
-		cmdFlow = new ObservableHolder<>();
+		cmdFlow = PublishSubject.create();
 		eventTestSubscriber = new TestSubscriber<>();
 
-		executorService.bind(cmdFlow.getObservable())
+		executorService.bind(cmdFlow)
 			.filter(e -> !(e instanceof IdleEvent))
 			.subscribe(eventTestSubscriber);
 	}

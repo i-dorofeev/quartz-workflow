@@ -4,6 +4,7 @@ import org.quartz.JobDataMap;
 import org.quartz.JobKey;
 import rx.Subscriber;
 import rx.functions.Func1;
+import rx.subjects.PublishSubject;
 
 import java.util.*;
 import java.util.stream.Stream;
@@ -38,7 +39,7 @@ public class TaskRepository {
 
 	private final Map<TaskId, Task> taskTable = new HashMap<>();
 	private final Map<TaskId, Set<TaskId>> childrenIndex = new HashMap<>();
-	private final ObservableHolder<Event> eventsHolder = new ObservableHolder<>();
+	private final PublishSubject<Event> eventsHolder = PublishSubject.create();
 
 	private void indexChild(TaskId parent, TaskId child) {
 		Set<TaskId> children = childrenIndex.get(parent);
@@ -51,7 +52,7 @@ public class TaskRepository {
 	}
 
 	rx.Observable<Event> events() {
-		return eventsHolder.getObservable();
+		return eventsHolder;
 	}
 
 	private TaskId nextTaskId() {

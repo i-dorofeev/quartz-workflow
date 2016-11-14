@@ -2,6 +2,7 @@ package ru.dorofeev.sandbox.quartzworkflow;
 
 import ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType;
 import rx.Observable;
+import rx.subjects.PublishSubject;
 
 import java.util.Optional;
 
@@ -120,8 +121,8 @@ public class QueueManager {
 		}
 	}
 
-	private final ObservableHolder<Event> outputHolder = new ObservableHolder<>();
-	private final ObservableHolder<Exception> errorOutputHolder = new ObservableHolder<>();
+	private final PublishSubject<Event> outputHolder = PublishSubject.create();
+	private final PublishSubject<Exception> errorOutputHolder = PublishSubject.create();
 
 	private final String name;
 	private final QueueStore queueStore;
@@ -132,7 +133,7 @@ public class QueueManager {
 	}
 
 	public Observable<Exception> errors() {
-		return errorOutputHolder.getObservable();
+		return errorOutputHolder;
 	}
 
 	public rx.Observable<Event> bindEvents(rx.Observable<Cmd> input) {
@@ -151,7 +152,7 @@ public class QueueManager {
 				errorOutputHolder.onNext(new EngineException("Unrecognized cmd " + cmd));
 		});
 
-		return outputHolder.getObservable();
+		return outputHolder;
 	}
 
 	private void requestNewTasks() {

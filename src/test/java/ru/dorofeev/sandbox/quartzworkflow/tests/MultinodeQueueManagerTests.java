@@ -2,12 +2,12 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 
 import org.junit.Before;
 import org.junit.Test;
-import ru.dorofeev.sandbox.quartzworkflow.ObservableHolder;
 import ru.dorofeev.sandbox.quartzworkflow.QueueInMemoryStore;
 import ru.dorofeev.sandbox.quartzworkflow.QueueManager;
 import ru.dorofeev.sandbox.quartzworkflow.QueueManager.*;
 import rx.Observable;
 import rx.observers.TestSubscriber;
+import rx.subjects.PublishSubject;
 
 import java.util.List;
 import java.util.stream.IntStream;
@@ -21,16 +21,16 @@ import static rx.schedulers.Schedulers.computation;
 
 public class MultinodeQueueManagerTests {
 
-	private ObservableHolder<QueueManager.Cmd> cmdFlow1;
-	private ObservableHolder<QueueManager.Cmd> cmdFlow2;
+	private PublishSubject<Cmd> cmdFlow1;
+	private PublishSubject<Cmd> cmdFlow2;
 	private TestSubscriber<QueueManager.Event> eventSubscriber;
 	private TestSubscriber<String> errorSubscriber;
 	private QueueInMemoryStore store;
 
 	@Before
 	public void beforeTest() {
-		cmdFlow1 = new ObservableHolder<>();
-		cmdFlow2 = new ObservableHolder<>();
+		cmdFlow1 = PublishSubject.create();
+		cmdFlow2 = PublishSubject.create();
 		eventSubscriber = new TestSubscriber<>();
 		errorSubscriber = new TestSubscriber<>();
 
@@ -41,11 +41,11 @@ public class MultinodeQueueManagerTests {
 	public void sanityTest() {
 
 		QueueManager queueManager1 = new QueueManager("qm1", store);
-		Observable<QueueManager.Event> qm1Events = queueManager1.bindEvents(cmdFlow1.getObservable());
+		Observable<QueueManager.Event> qm1Events = queueManager1.bindEvents(cmdFlow1);
 		Observable<String> qm1Errors = queueManager1.errors().map(Throwable::getMessage);
 
 		QueueManager queueManager2 = new QueueManager("qm2", store);
-		Observable<QueueManager.Event> qm2Events = queueManager2.bindEvents(cmdFlow2.getObservable());
+		Observable<QueueManager.Event> qm2Events = queueManager2.bindEvents(cmdFlow2);
 		Observable<String> qm2Errors = queueManager2.errors().map(Throwable::getMessage);
 
 		qm1Errors.mergeWith(qm2Errors).subscribe(errorSubscriber);

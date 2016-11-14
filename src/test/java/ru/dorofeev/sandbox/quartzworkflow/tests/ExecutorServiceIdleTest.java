@@ -7,11 +7,11 @@ import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.Cmd;
 import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.Event;
 import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.IdleEvent;
 import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.TaskCompletedEvent;
-import ru.dorofeev.sandbox.quartzworkflow.ObservableHolder;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestExecutable;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestStorage;
 import rx.Observable;
 import rx.observers.TestSubscriber;
+import rx.subjects.PublishSubject;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static ru.dorofeev.sandbox.quartzworkflow.ExecutorService.scheduleTaskCmd;
@@ -21,14 +21,14 @@ import static rx.schedulers.Schedulers.io;
 
 public class ExecutorServiceIdleTest {
 
-	private ObservableHolder<Cmd> cmdFlow;
+	private PublishSubject<Cmd> cmdFlow;
 	private TestSubscriber<Event> eventTestSubscriber;
 	private TestExecutable testExecutable;
 	private TestStorage<Event> eventStorage;
 
 	@Before
 	public void beforeTest() {
-		cmdFlow = new ObservableHolder<>();
+		cmdFlow = PublishSubject.create();
 		eventTestSubscriber = new TestSubscriber<>();
 
 		testExecutable = new TestExecutable().withExecutionDuration(5, 3);
@@ -40,10 +40,12 @@ public class ExecutorServiceIdleTest {
 
 		ExecutorService executorService = new ExecutorService(10, 10);
 
-		Observable<Event> executorEvents = executorService.bind(cmdFlow.getObservable())
+		Observable<Event> executorEvents = executorService.bind(cmdFlow)
 			.subscribeOn(io());
 
-		executorEvents.subscribe(eventStorage::add);
+		executorEvents
+//			.doOnNext(System.out::println)
+			.subscribe(eventStorage::add);
 
 		Observable<IdleEvent> idleEvents = executorEvents.ofType(IdleEvent.class);
 		Observable<TaskCompletedEvent> taskCompletedEvents = executorEvents.ofType(TaskCompletedEvent.class);
@@ -56,7 +58,7 @@ public class ExecutorServiceIdleTest {
 			.flatMap(idleEvent -> range(0, idleEvent.getFreeThreadsCount()))
 			.map(i -> scheduleTaskCmd(taskId("task"), testExecutable))
 			.take(50)
-			.subscribe(cmdFlow.nextObserver());
+			.subscribe(cmdFlow::onNext);	// we shouldn't complete the stream here, so propagating only onNext events
 
 		taskCompletedEvents
 			.subscribe(eventTestSubscriber);

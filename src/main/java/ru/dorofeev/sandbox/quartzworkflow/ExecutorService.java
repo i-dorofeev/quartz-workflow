@@ -26,6 +26,7 @@ public class ExecutorService {
 
 	public interface Cmd { }
 
+	@SuppressWarnings("WeakerAccess")	// must be public since it is exposed by public static method
 	public static class ScheduleTaskCmd implements Cmd {
 
 		private final TaskId taskId;
@@ -163,16 +164,20 @@ public class ExecutorService {
 		}
 
 		private synchronized void adjustIdleTicks(int currentLoad) {
-			if (currentLoad < nThreads && tickSubscription == null)
-				tickSubscription = interval(0, idleInterval, MILLISECONDS).subscribe(v -> {
-					int freeThreadsCount = nThreads - executingTasks.intValue();
-					if (freeThreadsCount > 0)
-						idleEvents.onNext(new IdleEvent(freeThreadsCount));
-				});
-			else if (currentLoad >= nThreads && tickSubscription != null) {
+			if (currentLoad < nThreads && tickSubscription == null) {
+				tickSubscription = interval(0, idleInterval, MILLISECONDS)
+					.subscribe(v -> emitIdleEvent());
+
+			} else if (currentLoad >= nThreads && tickSubscription != null) {
 				tickSubscription.unsubscribe();
 				tickSubscription = null;
 			}
+		}
+
+		private void emitIdleEvent() {
+			int freeThreadsCount = nThreads - executingTasks.intValue();
+			if (freeThreadsCount > 0)
+				idleEvents.onNext(new IdleEvent(freeThreadsCount));
 		}
 
 		void threadAcquired() {

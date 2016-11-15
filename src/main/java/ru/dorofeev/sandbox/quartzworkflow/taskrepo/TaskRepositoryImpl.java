@@ -1,9 +1,9 @@
 package ru.dorofeev.sandbox.quartzworkflow.taskrepo;
 
-import ru.dorofeev.sandbox.quartzworkflow.JobDataMap;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
 import ru.dorofeev.sandbox.quartzworkflow.TaskId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
+import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import rx.Observable;
 import rx.Subscriber;
@@ -37,7 +37,7 @@ class TaskRepositoryImpl implements TaskRepository {
 	public rx.Observable<Event> bind(Observable<Cmd> input) {
 
 		input.ofType(AddTaskCmd.class)
-			.compose(errors.mapRetry(cmd -> addTaskInternal(cmd.getParentId(), cmd.getJobKey(), cmd.getJobDataMap(), cmd.getQueueingOption())))
+			.compose(errors.mapRetry(cmd -> addTaskInternal(cmd.getParentId(), cmd.getJobKey(), cmd.getArgs(), cmd.getQueueingOption())))
 			.subscribe(this.events);
 
 		input.ofType(CompleteTaskCmd.class)
@@ -71,13 +71,13 @@ class TaskRepositoryImpl implements TaskRepository {
 	}
 
 	@Override
-	public Task addTask(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption) {
-		Event event = addTaskInternal(parentId, jobKey, jobDataMap, queueingOption);
+	public Task addTask(TaskId parentId, JobKey jobKey, SerializedObject args, QueueingOption queueingOption) {
+		Event event = addTaskInternal(parentId, jobKey, args, queueingOption);
 		events.onNext(event);
 		return event.getTask();
 	}
 
-	private synchronized Event addTaskInternal(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption) {
+	private synchronized Event addTaskInternal(TaskId parentId, JobKey jobKey, SerializedObject args, QueueingOption queueingOption) {
 		if (parentId != null && !taskTable.containsKey(parentId))
 			throw new TaskRepositoryException("Task[id=" + parentId + "] not found");
 
@@ -85,7 +85,7 @@ class TaskRepositoryImpl implements TaskRepository {
 		String queueName = queueingOption != null ? queueingOption.getQueueName() : "default";
 		QueueingOption.ExecutionType executionType = queueingOption != null ? queueingOption.getExecutionType() : PARALLEL;
 
-		Task t = new Task(taskId, queueName, executionType, jobKey, jobDataMap);
+		Task t = new Task(taskId, queueName, executionType, jobKey, args);
 		taskTable.put(taskId, t);
 
 		if (parentId != null)

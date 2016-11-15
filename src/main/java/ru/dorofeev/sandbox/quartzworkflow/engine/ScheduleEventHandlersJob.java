@@ -1,24 +1,13 @@
 package ru.dorofeev.sandbox.quartzworkflow.engine;
 
-import ru.dorofeev.sandbox.quartzworkflow.JobDataMap;
 import ru.dorofeev.sandbox.quartzworkflow.TaskId;
 import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
-import ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task;
-import ru.dorofeev.sandbox.quartzworkflow.utils.JsonUtils;
+import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
+import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
 
 import java.util.Set;
 
 class ScheduleEventHandlersJob implements Executable {
-
-	private static final String PARAM_EVENT_CLASS = "eventClass";
-	private static final String PARAM_EVENT_JSON_DATA = "eventJsonData";
-
-	static JobDataMap params(Event event) {
-		JobDataMap jobDataMap = new JobDataMap();
-		jobDataMap.put(ScheduleEventHandlersJob.PARAM_EVENT_CLASS, event.getClass().getName());
-		jobDataMap.put(ScheduleEventHandlersJob.PARAM_EVENT_JSON_DATA, JsonUtils.toJson(event));
-		return jobDataMap;
-	}
 
 	private final EngineImpl engine;
 
@@ -27,15 +16,31 @@ class ScheduleEventHandlersJob implements Executable {
 	}
 
 	@Override
-	public void execute(JobDataMap args) throws ClassNotFoundException {
-		String eventClassName = args.get(PARAM_EVENT_CLASS);
-		String eventJson = args.get(PARAM_EVENT_JSON_DATA);
-		String taskId = args.get(Task.TASK_ID);
+	public void execute(TaskId taskId, SerializedObject serializedArgs) throws ClassNotFoundException {
+		Args args = Args.deserializeFrom(serializedArgs);
+		Set<String> handlers = engine.findHandlers(args.event.getClass());
 
-		Event event = JsonUtils.toObject(eventClassName, eventJson);
+		handlers.forEach(eh -> engine.submitHandler(taskId, args.event, eh));
+	}
 
-		Set<String> handlers = engine.findHandlers(event.getClass());
+	static class Args {
 
-		handlers.forEach(eh -> engine.submitHandler(new TaskId(taskId), event, eh));
+		private final Event event;
+
+		Args(Event event) {
+			this.event = event;
+		}
+
+		SerializedObject serialize(SerializedObjectFactory factory) {
+			SerializedObject serializedObject = factory.spawn();
+			serializedObject.addUntypedObject("event", event);
+			return serializedObject;
+		}
+
+		static Args deserializeFrom(SerializedObject serializedObject) {
+			return new Args(
+				serializedObject.getUntypedObject("event", Event.class)
+			);
+		}
 	}
 }

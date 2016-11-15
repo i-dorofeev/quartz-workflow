@@ -1,12 +1,12 @@
 package ru.dorofeev.sandbox.quartzworkflow.execution;
 
-import ru.dorofeev.sandbox.quartzworkflow.JobDataMap;
 import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import rx.Observable;
 
 public interface ExecutorService {
 
-	static ScheduleTaskCmd scheduleTaskCmd(TaskId task, JobDataMap args, Executable runnable) {
+	static ScheduleTaskCmd scheduleTaskCmd(TaskId task, SerializedObject args, Executable runnable) {
 		return new ScheduleTaskCmd(task, args, runnable);
 	}
 
@@ -29,10 +29,10 @@ public interface ExecutorService {
 	class ScheduleTaskCmd implements Cmd {
 
 		private final TaskId taskId;
-		private final JobDataMap args;
+		private final SerializedObject args;
 		private final Executable executable;
 
-		ScheduleTaskCmd(TaskId taskId, JobDataMap args, Executable executable) {
+		ScheduleTaskCmd(TaskId taskId, SerializedObject args, Executable executable) {
 			this.taskId = taskId;
 			this.args = args;
 			this.executable = executable;
@@ -46,7 +46,7 @@ public interface ExecutorService {
 			return executable;
 		}
 
-		JobDataMap getArgs() {
+		SerializedObject getArgs() {
 			return args;
 		}
 	}

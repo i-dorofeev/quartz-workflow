@@ -1,26 +1,13 @@
 package ru.dorofeev.sandbox.quartzworkflow.engine;
 
-import ru.dorofeev.sandbox.quartzworkflow.JobDataMap;
 import ru.dorofeev.sandbox.quartzworkflow.TaskId;
 import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
-import ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task;
-import ru.dorofeev.sandbox.quartzworkflow.utils.JsonUtils;
+import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
+import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
 
 import java.util.Optional;
 
 class ExecuteEventHandlerJob implements Executable {
-
-	private static final String PARAM_EVENT_HANDLER_URI = "eventHandlerUri";
-	private static final String PARAM_EVENT_CLASS = "eventClass";
-	private static final String PARAM_EVENT_JSON_DATA = "eventJsonData";
-
-	static JobDataMap params(Event event, String eventHandlerUri) {
-		JobDataMap jobDataMap = new JobDataMap();
-		jobDataMap.put(ExecuteEventHandlerJob.PARAM_EVENT_CLASS, event.getClass().getName());
-		jobDataMap.put(ExecuteEventHandlerJob.PARAM_EVENT_JSON_DATA, JsonUtils.toJson(event));
-		jobDataMap.put(ExecuteEventHandlerJob.PARAM_EVENT_HANDLER_URI, eventHandlerUri);
-		return jobDataMap;
-	}
 
 	private final EngineImpl engine;
 
@@ -29,18 +16,41 @@ class ExecuteEventHandlerJob implements Executable {
 	}
 
 	@Override
-	public void execute(JobDataMap args) throws Throwable {
-		String eventHandlerUri = args.get(PARAM_EVENT_HANDLER_URI);
-		String eventClassName = args.get(PARAM_EVENT_CLASS);
-		String eventJson = args.get(PARAM_EVENT_JSON_DATA);
-		String taskId = args.get(Task.TASK_ID);
+	public void execute(TaskId taskId, SerializedObject serializedArgs) throws Throwable {
 
-		Event event = JsonUtils.toObject(eventClassName, eventJson);
+		Args args = Args.deserializeFrom(serializedArgs);
 
-		Optional<EventHandler> handler = engine.findHandlerByUri(eventHandlerUri);
+		Optional<EventHandler> handler = engine.findHandlerByUri(args.eventHandlerUri);
 		handler
-			.orElseThrow(() -> new EngineException("No handler found for uri " + eventHandlerUri))
-			.handleEvent(event)
-			.forEach(e -> engine.submitEvent(new TaskId(taskId), e));
+			.orElseThrow(() -> new EngineException("No handler found for uri " + args.eventHandlerUri))
+			.handleEvent(args.event)
+			.forEach(e -> engine.submitEvent(taskId, e));
 	}
+
+	static class Args {
+
+		private final String eventHandlerUri;
+		private final Event event;
+
+		Args(String eventHandlerUri, Event event) {
+			this.eventHandlerUri = eventHandlerUri;
+			this.event = event;
+		}
+
+		SerializedObject serialize(SerializedObjectFactory factory) {
+			SerializedObject serializedObject = factory.spawn();
+
+			serializedObject.addString("eventHandlerUri", eventHandlerUri);
+			serializedObject.addUntypedObject("event", event);
+
+			return serializedObject;
+		}
+
+		static Args deserializeFrom(SerializedObject serializedObject) {
+			return new Args(
+				serializedObject.getString("eventHandlerUri"),
+				serializedObject.getUntypedObject("event", Event.class));
+		}
+	}
+
 }

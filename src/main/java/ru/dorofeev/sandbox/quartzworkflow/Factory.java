@@ -8,6 +8,8 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManagerFactory;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueStore;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory;
+import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory;
+import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
 import ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository;
 import ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepositoryFactory;
 
@@ -22,6 +24,8 @@ public class Factory {
 		QueueStore queueStore = QueueStoreFactory.createInMemoryStore();
 		QueueManager queueManager = QueueManagerFactory.create(Factory.class.getName(), queueStore);
 
-		return EngineFactory.create(taskRepository, executorService, queueManager);
+		SerializedObjectFactory serializedObjectFactory = SerializationFactory.json();
+
+		return EngineFactory.create(taskRepository, executorService, queueManager, serializedObjectFactory);
 	}
 }

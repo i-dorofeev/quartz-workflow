@@ -5,6 +5,7 @@ import ru.dorofeev.sandbox.quartzworkflow.TaskId;
 import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
+import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
 import ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task;
 import ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository;
 import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
@@ -26,6 +27,7 @@ class EngineImpl implements Engine {
 	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
 
 	private final TaskRepository taskRepository;
+	private final SerializedObjectFactory serializedObjectFactory;
 
 	private ErrorObservable errors = new ErrorObservable();
 	private final JobKey scheduleEventHandlersJob = new JobKey("scheduleEventHandlersJob");
@@ -41,8 +43,9 @@ class EngineImpl implements Engine {
 	private final PublishSubject<ExecutorService.Cmd> executorServiceCmds = PublishSubject.create();
 
 
-	EngineImpl(TaskRepository taskRepository, ExecutorService executorService, QueueManager queueManager) {
+	EngineImpl(TaskRepository taskRepository, ExecutorService executorService, QueueManager queueManager, SerializedObjectFactory serializedObjectFactory) {
 		this.taskRepository = taskRepository;
+		this.serializedObjectFactory = serializedObjectFactory;
 
 		this.errors.subscribeTo(taskRepository.getErrors());
 		this.errors.subscribeTo(executorService.getErrors());
@@ -83,7 +86,7 @@ class EngineImpl implements Engine {
 
 		Task task = taskRepository.findTask(taskId).orElseThrow(() -> new EngineException("Couldn't find task " + taskId));
 		Executable executable = getExecutable(task);
-		return scheduleTaskCmd(taskId, task.getJobData(), executable);
+		return scheduleTaskCmd(taskId, task.getArgs(), executable);
 	}
 
 	private Executable getExecutable(Task task) {
@@ -124,7 +127,9 @@ class EngineImpl implements Engine {
 	}
 
 	Task submitEvent(TaskId parentId, Event event) {
-		return taskRepository.addTask(parentId, scheduleEventHandlersJob, ScheduleEventHandlersJob.params(event), /* queueingOption */ null);
+		return taskRepository.addTask(
+			parentId, scheduleEventHandlersJob,
+			new ScheduleEventHandlersJob.Args(event).serialize(serializedObjectFactory), /* queueingOption */ null);
 	}
 
 	@Override
@@ -160,9 +165,11 @@ class EngineImpl implements Engine {
 		Optional<EventHandler> handlerByUriOpt = findHandlerByUri(handlerUri);
 		EventHandler eventHandler = handlerByUriOpt.orElseThrow(() -> new EngineException("Handler instance for URI " + handlerUri + " not found"));
 
-		taskRepositoryCmds.onNext(addTaskCmd(parentId, executeEventHandlerJob,
-			ExecuteEventHandlerJob.params(event, handlerUri),
-			eventHandler.getQueueingOption(event)));
+		taskRepositoryCmds.onNext(
+			addTaskCmd(
+				parentId, executeEventHandlerJob,
+				new ExecuteEventHandlerJob.Args(handlerUri, event).serialize(serializedObjectFactory),
+				eventHandler.getQueueingOption(event)));
 	}
 
 	Optional<EventHandler> findHandlerByUri(String handlerUri) {

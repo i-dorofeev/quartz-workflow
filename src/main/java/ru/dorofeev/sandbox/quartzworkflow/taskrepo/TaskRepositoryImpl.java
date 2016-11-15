@@ -2,9 +2,8 @@ package ru.dorofeev.sandbox.quartzworkflow.taskrepo;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobDataMap;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
-import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
 import ru.dorofeev.sandbox.quartzworkflow.TaskId;
-import ru.dorofeev.sandbox.quartzworkflow.engine.EngineException;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
 import rx.Observable;
 import rx.Subscriber;
 import rx.functions.Func1;
@@ -42,7 +41,7 @@ class TaskRepositoryImpl implements TaskRepository {
 		input.ofType(CompleteTaskCmd.class)
 			.map(cmd -> {
 				Task task = ofNullable(taskTable.get(cmd.getTaskId()))
-					.orElseThrow(() -> new EngineException("Couldn't find task[id=" + cmd.getTaskId() + "]"));
+					.orElseThrow(() -> new TaskRepositoryException("Couldn't find task[id=" + cmd.getTaskId() + "]"));
 
 				if (cmd.getException() != null)
 					task.recordResult(Task.Result.FAILED, cmd.getException());
@@ -73,7 +72,7 @@ class TaskRepositoryImpl implements TaskRepository {
 
 	private synchronized Event addTaskInternal(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption) {
 		if (parentId != null && !taskTable.containsKey(parentId))
-			throw new EngineException("Task[id=" + parentId + "] not found");
+			throw new TaskRepositoryException("Task[id=" + parentId + "] not found");
 
 		TaskId taskId = nextTaskId();
 		String queueName = queueingOption != null ? queueingOption.getQueueName() : "default";
@@ -117,7 +116,7 @@ class TaskRepositoryImpl implements TaskRepository {
 	private void traverse(TaskId rootId, Subscriber<? super Task> subscriber) {
 		Task t = taskTable.get(rootId);
 		if (t == null)
-			subscriber.onError(new EngineException("Couldn't find task[id=" + rootId + "]"));
+			subscriber.onError(new TaskRepositoryException("Couldn't find task[id=" + rootId + "]"));
 		else {
 			subscriber.onNext(t);
 			ofNullable(childrenIndex.get(t.getId()))

@@ -1,15 +1,12 @@
 package ru.dorofeev.sandbox.quartzworkflow.queue;
 
 import ru.dorofeev.sandbox.quartzworkflow.TaskId;
-import ru.dorofeev.sandbox.quartzworkflow.engine.EngineException;
 import rx.Observable;
 import rx.subjects.PublishSubject;
 
 import java.util.Optional;
 
 class QueueManagerImpl implements QueueManager {
-
-
 
 	private final PublishSubject<Event> outputHolder = PublishSubject.create();
 	private final PublishSubject<Exception> errorOutputHolder = PublishSubject.create();
@@ -41,7 +38,7 @@ class QueueManagerImpl implements QueueManager {
 				requestNewTasks();
 
 			else
-				errorOutputHolder.onNext(new EngineException("Unrecognized cmd " + cmd));
+				errorOutputHolder.onNext(new QueueManagerException("Unrecognized cmd " + cmd));
 		});
 
 		return outputHolder;
@@ -61,7 +58,7 @@ class QueueManagerImpl implements QueueManager {
 			queueStore.insertQueueItem(cmd.getTaskId(), cmd.getQueueName(), cmd.getExecutionType());
 			tryPushNext(cmd.getQueueName());
 		} catch (QueueStoreException e) {
-			errorOutputHolder.onNext(new EngineException(e.getMessage(), e));
+			errorOutputHolder.onNext(new QueueManagerException(e.getMessage(), e));
 		}
 	}
 

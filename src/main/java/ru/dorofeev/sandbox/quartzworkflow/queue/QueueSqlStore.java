@@ -7,7 +7,6 @@ import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.exception.LiquibaseException;
 import ru.dorofeev.sandbox.quartzworkflow.TaskId;
-import ru.dorofeev.sandbox.quartzworkflow.engine.EngineException;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -26,7 +25,7 @@ class QueueSqlStore implements QueueStore {
 			Liquibase liquibase = new Liquibase("engine.db.changelog.xml", new CustomClassLoaderResourceAccessor(QueueSqlStore.class.getClassLoader()), db);
 			liquibase.update(new Contexts());
 		} catch (SQLException | LiquibaseException e) {
-			throw new EngineException(e);
+			throw new QueueManagerException(e);
 		}
 	}
 

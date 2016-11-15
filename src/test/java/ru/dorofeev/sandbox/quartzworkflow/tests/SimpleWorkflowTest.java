@@ -1,10 +1,10 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests;
 
-import org.junit.*;
-import ru.dorofeev.sandbox.quartzworkflow.Engine;
-import ru.dorofeev.sandbox.quartzworkflow.Event;
-import ru.dorofeev.sandbox.quartzworkflow.Task;
-import ru.dorofeev.sandbox.quartzworkflow.TypedEventHandler;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import ru.dorofeev.sandbox.quartzworkflow.*;
 
 import java.util.HashMap;
 import java.util.List;
@@ -17,7 +17,8 @@ import static java.util.stream.Collectors.toList;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.stringContainsInOrder;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.events;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
@@ -51,7 +52,7 @@ public class SimpleWorkflowTest {
 	@BeforeClass
 	public static void beforeClass() throws Exception {
 
-		engine = new Engine(org.h2.Driver.class, "jdbc:h2:~/test");
+		engine = EngineFactory.create(org.h2.Driver.class, "jdbc:h2:~/test");
 		engine.errors().subscribe(System.out::println);
 
 		model = new Model();

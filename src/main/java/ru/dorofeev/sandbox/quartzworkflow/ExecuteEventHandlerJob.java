@@ -16,9 +16,9 @@ class ExecuteEventHandlerJob implements Executable {
 		return jobDataMap;
 	}
 
-	private final Engine engine;
+	private final EngineImpl engine;
 
-	ExecuteEventHandlerJob(Engine engine) {
+	ExecuteEventHandlerJob(EngineImpl engine) {
 		this.engine = engine;
 	}
 

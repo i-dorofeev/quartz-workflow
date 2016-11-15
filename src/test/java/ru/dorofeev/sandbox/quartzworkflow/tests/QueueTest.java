@@ -1,10 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests;
 
 import org.junit.*;
-import ru.dorofeev.sandbox.quartzworkflow.Engine;
-import ru.dorofeev.sandbox.quartzworkflow.Event;
-import ru.dorofeev.sandbox.quartzworkflow.QueueingOption;
-import ru.dorofeev.sandbox.quartzworkflow.TypedEventHandler;
+import ru.dorofeev.sandbox.quartzworkflow.*;
 
 import java.util.List;
 import java.util.Random;
@@ -42,7 +39,7 @@ public class QueueTest {
 		H2Db h2Db = new H2Db("./build/test");
 		h2Db.deleteDb();
 
-		engine = new Engine(org.h2.Driver.class, h2Db.jdbcUrl());
+		engine = EngineFactory.create(org.h2.Driver.class, h2Db.jdbcUrl());
 		engine.errors().subscribe(errors::add);
 		model = new Model();
 

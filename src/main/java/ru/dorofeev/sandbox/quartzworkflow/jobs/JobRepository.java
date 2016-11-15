@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow.taskrepo;
+package ru.dorofeev.sandbox.quartzworkflow.jobs;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
@@ -10,28 +10,28 @@ import rx.functions.Func1;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository.EventType.ADD;
-import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository.EventType.COMPLETE;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository.EventType.ADD;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository.EventType.COMPLETE;
 
-public interface TaskRepository {
+public interface JobRepository {
 
 	rx.Observable<Event> bind(Observable<Cmd> input);
 
 	Observable<Throwable> getErrors();
 
-	Task addTask(JobId parentId, JobKey jobKey, SerializedObject args, QueueingOption queueingOption);
+	Job addJob(JobId parentId, JobKey jobKey, SerializedObject args, QueueingOption queueingOption);
 
-	Optional<Task> findTask(JobId jobId);
+	Optional<Job> findJob(JobId jobId);
 
-	Stream<Task> traverse();
+	Stream<Job> traverse();
 
-	rx.Observable<Task> traverse(Task.Result result);
+	rx.Observable<Job> traverse(Job.Result result);
 
-	rx.Observable<Task> traverse(JobId rootId, Func1<? super Task, Boolean> predicate);
+	rx.Observable<Job> traverse(JobId rootId, Func1<? super Job, Boolean> predicate);
 
-	rx.Observable<Task> traverse(JobId rootId, Task.Result result);
+	rx.Observable<Job> traverse(JobId rootId, Job.Result result);
 
-	Stream<Task> traverseFailed();
+	Stream<Job> traverseFailed();
 
 	enum EventType { ADD, COMPLETE }
 
@@ -40,15 +40,15 @@ public interface TaskRepository {
 	class Event {
 
 		private final EventType eventType;
-		private final Task task;
+		private final Job job;
 
-		Event(EventType eventType, Task task) {
+		Event(EventType eventType, Job job) {
 			this.eventType = eventType;
-			this.task = task;
+			this.job = job;
 		}
 
-		public Task getTask() {
-			return task;
+		public Job getJob() {
+			return job;
 		}
 
 		public boolean isAdd() {
@@ -60,14 +60,14 @@ public interface TaskRepository {
 		}
 	}
 
-	class AddTaskCmd implements Cmd {
+	class AddJobCmd implements Cmd {
 
 		private final JobId parentId;
 		private final JobKey jobKey;
 		private final SerializedObject args;
 		private final QueueingOption queueingOption;
 
-		AddTaskCmd(JobId parentId, JobKey jobKey, SerializedObject args, QueueingOption queueingOption) {
+		AddJobCmd(JobId parentId, JobKey jobKey, SerializedObject args, QueueingOption queueingOption) {
 			this.parentId = parentId;
 			this.jobKey = jobKey;
 			this.args = args;
@@ -91,11 +91,11 @@ public interface TaskRepository {
 		}
 	}
 
-	class CompleteTaskCmd implements Cmd {
+	class CompleteJobCmd implements Cmd {
 		private final JobId jobId;
 		private final Throwable exception;
 
-		CompleteTaskCmd(JobId jobId, Throwable exception) {
+		CompleteJobCmd(JobId jobId, Throwable exception) {
 			this.jobId = jobId;
 			this.exception = exception;
 		}
@@ -109,11 +109,11 @@ public interface TaskRepository {
 		}
 	}
 
-	static CompleteTaskCmd completeTaskCmd(JobId jobId, Throwable ex) {
-		return new CompleteTaskCmd(jobId, ex);
+	static CompleteJobCmd completeJobCmd(JobId jobId, Throwable ex) {
+		return new CompleteJobCmd(jobId, ex);
 	}
 
-	static AddTaskCmd addTaskCmd(JobId parentId, JobKey jobKey, SerializedObject args, QueueingOption queueingOption) {
-		return new AddTaskCmd(parentId, jobKey, args, queueingOption);
+	static AddJobCmd addJobCmd(JobId parentId, JobKey jobKey, SerializedObject args, QueueingOption queueingOption) {
+		return new AddJobCmd(parentId, jobKey, args, queueingOption);
 	}
 }

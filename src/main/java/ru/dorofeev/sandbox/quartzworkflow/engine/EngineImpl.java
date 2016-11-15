@@ -5,33 +5,33 @@ import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
-import ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task;
-import ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository;
+import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
+import ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository;
 import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import rx.Observable;
 import rx.subjects.PublishSubject;
 
 import java.util.*;
 
-import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleTaskCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleJobCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.enqueueCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.giveMeMoreCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.notifyCompletedCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository.addTaskCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository.completeTaskCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository.addJobCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository.completeJobCmd;
 
 class EngineImpl implements Engine {
 
 	private Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
 	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
 
-	private final TaskRepository taskRepository;
+	private final JobRepository jobRepository;
 	private final SerializedObjectFactory serializedObjectFactory;
 
 	private ErrorObservable errors = new ErrorObservable();
 
 	@SuppressWarnings("FieldCanBeLocal")
-	private final PublishSubject<TaskRepository.Cmd> taskRepositoryCmds = PublishSubject.create();
+	private final PublishSubject<JobRepository.Cmd> jobRepositoryCmds = PublishSubject.create();
 
 	@SuppressWarnings("FieldCanBeLocal")
 	private final PublishSubject<QueueManager.Cmd> queueManagerCmds = PublishSubject.create();
@@ -40,66 +40,66 @@ class EngineImpl implements Engine {
 	private final PublishSubject<ExecutorService.Cmd> executorServiceCmds = PublishSubject.create();
 
 
-	EngineImpl(TaskRepository taskRepository, ExecutorService executorService, QueueManager queueManager, SerializedObjectFactory serializedObjectFactory) {
-		this.taskRepository = taskRepository;
+	EngineImpl(JobRepository jobRepository, ExecutorService executorService, QueueManager queueManager, SerializedObjectFactory serializedObjectFactory) {
+		this.jobRepository = jobRepository;
 		this.serializedObjectFactory = serializedObjectFactory;
 
-		this.errors.subscribeTo(taskRepository.getErrors());
+		this.errors.subscribeTo(jobRepository.getErrors());
 		this.errors.subscribeTo(executorService.getErrors());
 		this.errors.subscribeTo(queueManager.getErrors());
 
-		Observable<TaskRepository.Event> taskRepositoryOutput = taskRepositoryCmds.compose(this.taskRepository::bind);
-		taskRepositoryOutput
-			.compose(errors.filterMapRetry(TaskRepository.Event::isAdd, this::asEnqueueCmd))
+		Observable<JobRepository.Event> jobRepositoryOutput = jobRepositoryCmds.compose(this.jobRepository::bind);
+		jobRepositoryOutput
+			.compose(errors.filterMapRetry(JobRepository.Event::isAdd, this::asEnqueueCmd))
 			.subscribe(queueManagerCmds);
 
-		taskRepositoryOutput
-			.compose(errors.filterMapRetry(TaskRepository.Event::isComplete, this::asNotifyCompletedCmd))
+		jobRepositoryOutput
+			.compose(errors.filterMapRetry(JobRepository.Event::isComplete, this::asNotifyCompletedCmd))
 			.subscribe(queueManagerCmds);
 
 		Observable<QueueManager.Event> queueManagerOutput = queueManagerCmds.compose(queueManager::bind);
 		queueManagerOutput
-			.compose(errors.filterMapRetry(QueueManager.TaskPoppedEvent.class, this::asScheduleTaskCmd))
+			.compose(errors.filterMapRetry(QueueManager.JobPoppedEvent.class, this::asScheduleJobCmd))
 			.subscribe(executorServiceCmds);
 
 		rx.Observable<ExecutorService.Event> executorServiceOutput = executorServiceCmds.compose(executorService::bind);
 		executorServiceOutput
-			.compose(errors.filterMapRetry(ExecutorService.TaskCompletedEvent.class, this::asCompleteTaskCmd))
-			.subscribe(taskRepositoryCmds);
+			.compose(errors.filterMapRetry(ExecutorService.JobCompletedEvent.class, this::asCompleteJobCmd))
+			.subscribe(jobRepositoryCmds);
 
 		executorServiceOutput
 			.compose(errors.filterMapRetry(ExecutorService.IdleEvent.class, this::asGiveMeMoreCmd))
 			.subscribe(queueManagerCmds);
 	}
 
-	private TaskRepository.CompleteTaskCmd asCompleteTaskCmd(ExecutorService.TaskCompletedEvent event) {
-		return completeTaskCmd(event.getJobId(), event.getException());
+	private JobRepository.CompleteJobCmd asCompleteJobCmd(ExecutorService.JobCompletedEvent event) {
+		return completeJobCmd(event.getJobId(), event.getException());
 	}
 
-	private ExecutorService.ScheduleTaskCmd asScheduleTaskCmd(QueueManager.TaskPoppedEvent event) {
+	private ExecutorService.ScheduleJobCmd asScheduleJobCmd(QueueManager.JobPoppedEvent event) {
 		JobId jobId = event.getJobId();
 
-		Task task = taskRepository.findTask(jobId).orElseThrow(() -> new EngineException("Couldn't find task " + jobId));
-		Executable executable = getExecutable(task);
-		return scheduleTaskCmd(jobId, task.getArgs(), executable);
+		Job job = jobRepository.findJob(jobId).orElseThrow(() -> new EngineException("Couldn't find job " + jobId));
+		Executable executable = getExecutable(job);
+		return scheduleJobCmd(jobId, job.getArgs(), executable);
 	}
 
-	private Executable getExecutable(Task task) {
-		if (task.getJobKey().equals(SCHEDULE_EVENT_HANDLERS_JOB)) {
+	private Executable getExecutable(Job job) {
+		if (job.getJobKey().equals(SCHEDULE_EVENT_HANDLERS_JOB)) {
 			return new ScheduleEventHandlersJob(this);
-		} else if (task.getJobKey().equals(EXECUTE_EVENT_HANDLER_JOB)) {
+		} else if (job.getJobKey().equals(EXECUTE_EVENT_HANDLER_JOB)) {
 			return new ExecuteEventHandlerJob(this);
 		} else {
-			throw new EngineException("Unknown job key " + task.getJobKey());
+			throw new EngineException("Unknown job key " + job.getJobKey());
 		}
 	}
 
-	private QueueManager.NotifyCompletedCmd asNotifyCompletedCmd(TaskRepository.Event event) {
-		return notifyCompletedCmd(event.getTask().getId());
+	private QueueManager.NotifyCompletedCmd asNotifyCompletedCmd(JobRepository.Event event) {
+		return notifyCompletedCmd(event.getJob().getId());
 	}
 
-	private QueueManager.EnqueueCmd asEnqueueCmd(TaskRepository.Event event) {
-		return enqueueCmd(event.getTask().getQueueName(), event.getTask().getExecutionType(), event.getTask().getId());
+	private QueueManager.EnqueueCmd asEnqueueCmd(JobRepository.Event event) {
+		return enqueueCmd(event.getJob().getQueueName(), event.getJob().getExecutionType(), event.getJob().getId());
 	}
 
 	private QueueManager.Cmd asGiveMeMoreCmd(ExecutorService.Event event) {
@@ -111,18 +111,17 @@ class EngineImpl implements Engine {
 		return this.errors.asObservable();
 	}
 
-	@Override
-	public TaskRepository getTaskRepository() {
-		return taskRepository;
+	public JobRepository getJobRepository() {
+		return jobRepository;
 	}
 
 	@Override
-	public Task submitEvent(Event event) {
+	public Job submitEvent(Event event) {
 		return submitEvent(/* parentId */ null, event);
 	}
 
-	Task submitEvent(JobId parentId, Event event) {
-		return taskRepository.addTask(
+	Job submitEvent(JobId parentId, Event event) {
+		return jobRepository.addJob(
 			parentId, SCHEDULE_EVENT_HANDLERS_JOB,
 			new ScheduleEventHandlersJob.Args(event).serialize(serializedObjectFactory), /* queueingOption */ null);
 	}
@@ -160,8 +159,8 @@ class EngineImpl implements Engine {
 		Optional<EventHandler> handlerByUriOpt = findHandlerByUri(handlerUri);
 		EventHandler eventHandler = handlerByUriOpt.orElseThrow(() -> new EngineException("Handler instance for URI " + handlerUri + " not found"));
 
-		taskRepositoryCmds.onNext(
-			addTaskCmd(
+		jobRepositoryCmds.onNext(
+			addJobCmd(
 				parentId, EXECUTE_EVENT_HANDLER_JOB,
 				new ExecuteEventHandlerJob.Args(handlerUri, event).serialize(serializedObjectFactory),
 				eventHandler.getQueueingOption(event)));

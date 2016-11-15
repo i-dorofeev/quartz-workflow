@@ -15,10 +15,10 @@ import java.util.stream.IntStream;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
-import static ru.dorofeev.sandbox.quartzworkflow.JobId.taskId;
+import static ru.dorofeev.sandbox.quartzworkflow.JobId.jobId;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.enqueueCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.notifyCompletedCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.taskPoppedEvent;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.JobPoppedEvent;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption.ExecutionType.EXCLUSIVE;
 import static rx.schedulers.Schedulers.computation;
 
@@ -55,21 +55,21 @@ public class MultinodeQueueManagerTests {
 		qm1Events.mergeWith(qm2Events).subscribe(eventSubscriber);
 
 		qm1Events.observeOn(computation()).subscribe(event -> {
-			QueueManager.TaskPoppedEvent tpe = (QueueManager.TaskPoppedEvent) event;
+			QueueManager.JobPoppedEvent tpe = (QueueManager.JobPoppedEvent) event;
 			cmdFlow2.onNext(notifyCompletedCmd(tpe.getJobId()));
 		});
 
 		qm2Events.observeOn(computation()).subscribe(event -> {
-			QueueManager.TaskPoppedEvent tpe = (QueueManager.TaskPoppedEvent) event;
+			QueueManager.JobPoppedEvent tpe = (QueueManager.JobPoppedEvent) event;
 			cmdFlow1.onNext(notifyCompletedCmd(tpe.getJobId()));
 		});
 
 		IntStream.range(0, 10)
-			.mapToObj(i -> enqueueCmd(EXCLUSIVE, taskId("task" + i)))
+			.mapToObj(i -> enqueueCmd(EXCLUSIVE, jobId("job" + i)))
 			.forEach(cmd -> cmdFlow1.onNext(cmd));
 
 		List<QueueManager.Event> expectedEvents = IntStream.range(0, 10)
-			.mapToObj(i -> taskPoppedEvent(taskId("task" + i)))
+			.mapToObj(i -> JobPoppedEvent(jobId("job" + i)))
 			.collect(toList());
 
 		eventSubscriber.awaitValueCount(10, 1, SECONDS);

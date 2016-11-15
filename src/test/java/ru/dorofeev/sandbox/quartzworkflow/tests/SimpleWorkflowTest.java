@@ -8,7 +8,7 @@ import ru.dorofeev.sandbox.quartzworkflow.Factory;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
-import ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task;
+import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 
 import java.util.HashMap;
 import java.util.List;
@@ -26,7 +26,7 @@ import static org.hamcrest.Matchers.stringContainsInOrder;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.events;
 import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
-import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task.Result.FAILED;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.FAILED;
 import static ru.dorofeev.sandbox.quartzworkflow.tests.utils.Matchers.hasOnlyOneItem;
 
 public class SimpleWorkflowTest {
@@ -82,7 +82,7 @@ public class SimpleWorkflowTest {
 	@After
 	public void afterTest() {
 		assertThat(errors, is(empty()));
-		assertThat(engine.getTaskRepository().traverseFailed().collect(toList()), is(empty()));
+		assertThat(engine.getJobRepository().traverseFailed().collect(toList()), is(empty()));
 	}
 
 	@Test
@@ -98,18 +98,18 @@ public class SimpleWorkflowTest {
 	public void faultToleranceTest() {
 		assignRoleCmdHandler.setFail(true);
 
-		Task t = engine.submitEvent(new AddPersonCmdEvent("james"));
+		Job t = engine.submitEvent(new AddPersonCmdEvent("james"));
 		await().until(() -> model.findPerson("james").isPresent(), is(true));
-		await().until(() -> engine.getTaskRepository().traverse(t.getId(), FAILED), hasOnlyOneItem());
+		await().until(() -> engine.getJobRepository().traverse(t.getId(), FAILED), hasOnlyOneItem());
 
-		List<Task> failedTasks = engine.getTaskRepository().traverse(t.getId(), FAILED).toList().toBlocking().single();
-		assertThat(failedTasks, hasSize(1));
+		List<Job> failedJobs = engine.getJobRepository().traverse(t.getId(), FAILED).toList().toBlocking().single();
+		assertThat(failedJobs, hasSize(1));
 
-		Task failedTask = failedTasks.get(0);
-		System.out.println(failedTask.prettyPrint());
-		assertThat(failedTask.getException().getMessage(), stringContainsInOrder(singletonList("AssignRoleCmdHandler failed")));
+		Job failedJob = failedJobs.get(0);
+		System.out.println(failedJob.prettyPrint());
+		assertThat(failedJob.getException().getMessage(), stringContainsInOrder(singletonList("AssignRoleCmdHandler failed")));
 		assignRoleCmdHandler.setFail(false);
-		engine.retryExecution(failedTask.getId());
+		engine.retryExecution(failedJob.getId());
 
 		await().until(() -> model.findPerson("james").map(Person::getRole), is(Optional.of("baseRole")));
 		await().until(() -> model.findPerson("james").map(Person::getAccount), is(Optional.of("baseRole_account")));

@@ -1,8 +1,8 @@
 package ru.dorofeev.sandbox.quartzworkflow.engine;
 
 import ru.dorofeev.sandbox.quartzworkflow.*;
-import ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task;
-import ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository;
+import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
+import ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository;
 
 public interface Engine {
 
@@ -11,9 +11,9 @@ public interface Engine {
 
 	rx.Observable<Throwable> errors();
 
-	TaskRepository getTaskRepository();
+	JobRepository getJobRepository();
 
-	Task submitEvent(Event event);
+	Job submitEvent(Event event);
 
 	void retryExecution(JobId jobId);
 

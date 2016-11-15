@@ -4,11 +4,11 @@ import java.util.UUID;
 
 public class JobId {
 
-	public static JobId taskId(String id) {
+	public static JobId jobId(String id) {
 		return new JobId(id);
 	}
 
-	public static JobId createUniqueTaskId() {
+	public static JobId createUniqueJobId() {
 		return new JobId(UUID.randomUUID().toString());
 	}
 

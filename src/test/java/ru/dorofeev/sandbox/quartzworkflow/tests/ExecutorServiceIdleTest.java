@@ -6,7 +6,6 @@ import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.Cmd;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.Event;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.IdleEvent;
-import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.TaskCompletedEvent;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestExecutable;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestStorage;
@@ -15,8 +14,8 @@ import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static ru.dorofeev.sandbox.quartzworkflow.JobId.taskId;
-import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleTaskCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.JobId.jobId;
+import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleJobCmd;
 import static rx.Observable.range;
 import static rx.schedulers.Schedulers.io;
 
@@ -49,19 +48,19 @@ public class ExecutorServiceIdleTest {
 			.subscribe(eventStorage::add);
 
 		Observable<IdleEvent> idleEvents = executorEvents.ofType(IdleEvent.class);
-		Observable<TaskCompletedEvent> taskCompletedEvents = executorEvents.ofType(TaskCompletedEvent.class);
+		Observable<ExecutorService.JobCompletedEvent> jobCompletedEvents = executorEvents.ofType(ExecutorService.JobCompletedEvent.class);
 
 		// idle
 		Thread.sleep(100);
 
-		// emitting scheduleTaskCmd in response to the first 50 idle events
+		// emitting scheduleJobCmd in response to the first 50 idle events
 		idleEvents
 			.flatMap(idleEvent -> range(0, idleEvent.getFreeThreadsCount()))
-			.map(i -> scheduleTaskCmd(taskId("task"), null, testExecutable))
+			.map(i -> scheduleJobCmd(jobId("job"), null, testExecutable))
 			.take(50)
 			.subscribe(cmdFlow::onNext);	// we shouldn't complete the stream here, so propagating only onNext events
 
-		taskCompletedEvents
+		jobCompletedEvents
 			.subscribe(eventTestSubscriber);
 
 		eventTestSubscriber.awaitValueCount(50, 1000, MILLISECONDS);
@@ -70,7 +69,7 @@ public class ExecutorServiceIdleTest {
 		Thread.sleep(100);
 
 		eventStorage.assertNextItemsOfTypeMin(IdleEvent.class, 10);
-		eventStorage.assertNextItemsOfTypeExact(TaskCompletedEvent.class, 50);
+		eventStorage.assertNextItemsOfTypeExact(ExecutorService.JobCompletedEvent.class, 50);
 		eventStorage.assertNextItemsOfTypeMin(IdleEvent.class, 10);
 	}
 }

@@ -6,7 +6,7 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
 import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
 
-import static ru.dorofeev.sandbox.quartzworkflow.JobId.taskId;
+import static ru.dorofeev.sandbox.quartzworkflow.JobId.jobId;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.*;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManagerFactory.create;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.createInMemoryStore;
@@ -33,8 +33,8 @@ public class QueueManagerTests {
 	@Test
 	public void sanityTest() {
 
-		cmdFlow.onNext(enqueueCmd(taskId("task")));
-		eventSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task")));
+		cmdFlow.onNext(enqueueCmd(jobId("job")));
+		eventSubscriber.assertValuesAndClear(JobPoppedEvent(jobId("job")));
 		errorSubscriber.assertNoValues();
 
 		cmdFlow.onNext(giveMeMoreCmd());
@@ -45,35 +45,35 @@ public class QueueManagerTests {
 	@Test
 	public void simpleParallelQueueingTest() {
 
-		cmdFlow.onNext(enqueueCmd(PARALLEL, taskId("task1")));
-		cmdFlow.onNext(enqueueCmd(PARALLEL, taskId("task2")));
+		cmdFlow.onNext(enqueueCmd(PARALLEL, jobId("job1")));
+		cmdFlow.onNext(enqueueCmd(PARALLEL, jobId("job2")));
 
-		eventSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task1")), taskPoppedEvent(taskId("task2")));
+		eventSubscriber.assertValuesAndClear(JobPoppedEvent(jobId("job1")), JobPoppedEvent(jobId("job2")));
 		errorSubscriber.assertNoValues();
 	}
 
 	@Test
 	public void simpleSequentialQueueingTest() {
 
-		cmdFlow.onNext(enqueueCmd(EXCLUSIVE, taskId("task1")));
-		cmdFlow.onNext(enqueueCmd(EXCLUSIVE, taskId("task2")));
+		cmdFlow.onNext(enqueueCmd(EXCLUSIVE, jobId("job1")));
+		cmdFlow.onNext(enqueueCmd(EXCLUSIVE, jobId("job2")));
 
-		eventSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task1")));
+		eventSubscriber.assertValuesAndClear(JobPoppedEvent(jobId("job1")));
 
-		cmdFlow.onNext(notifyCompletedCmd(taskId("task1")));
+		cmdFlow.onNext(notifyCompletedCmd(jobId("job1")));
 
-		eventSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task2")));
+		eventSubscriber.assertValuesAndClear(JobPoppedEvent(jobId("job2")));
 
 		errorSubscriber.assertNoValues();
 	}
 
 	@Test
-	public void cannotEnqueueSameTaskTwice() {
+	public void cannotEnqueueSameJobTwice() {
 
-		cmdFlow.onNext(enqueueCmd(PARALLEL, taskId("task1")));
-		cmdFlow.onNext(enqueueCmd(PARALLEL, taskId("task1")));
+		cmdFlow.onNext(enqueueCmd(PARALLEL, jobId("job1")));
+		cmdFlow.onNext(enqueueCmd(PARALLEL, jobId("job1")));
 
-		eventSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task1")));
-		errorSubscriber.assertValuesAndClear("task1 is already enqueued");
+		eventSubscriber.assertValuesAndClear(JobPoppedEvent(jobId("job1")));
+		errorSubscriber.assertValuesAndClear("job1 is already enqueued");
 	}
 }

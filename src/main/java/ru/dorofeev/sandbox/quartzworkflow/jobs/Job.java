@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow.taskrepo;
+package ru.dorofeev.sandbox.quartzworkflow.jobs;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
@@ -6,7 +6,7 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.utils.JsonUtils;
 
-public class Task {
+public class Job {
 
 	public enum Result {
 		CREATED, RUNNING, SUCCESS, FAILED
@@ -21,7 +21,7 @@ public class Task {
 	private Result result = Result.CREATED;
 	private Throwable exception;
 
-	Task(JobId jobId, String queueName, QueueingOption.ExecutionType executionType, JobKey jobKey, SerializedObject args) {
+	Job(JobId jobId, String queueName, QueueingOption.ExecutionType executionType, JobKey jobKey, SerializedObject args) {
 		this.jobId = jobId;
 		this.queueName = queueName;
 		this.executionType = executionType;
@@ -57,7 +57,7 @@ public class Task {
 		return args;
 	}
 
-	void recordResult(Task.Result res, Throwable ex) {
+	void recordResult(Job.Result res, Throwable ex) {
 		result = res;
 		exception = ex;
 	}
@@ -68,6 +68,6 @@ public class Task {
 
 	@Override
 	public String toString() {
-		return "Task{" + jobId + "}";
+		return "Job{" + jobId + "}";
 	}
 }

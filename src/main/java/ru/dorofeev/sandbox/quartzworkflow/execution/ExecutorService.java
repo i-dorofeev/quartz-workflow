@@ -6,16 +6,16 @@ import rx.Observable;
 
 public interface ExecutorService {
 
-	static ScheduleTaskCmd scheduleTaskCmd(JobId task, SerializedObject args, Executable runnable) {
-		return new ScheduleTaskCmd(task, args, runnable);
+	static ScheduleJobCmd scheduleJobCmd(JobId jobId, SerializedObject args, Executable runnable) {
+		return new ScheduleJobCmd(jobId, args, runnable);
 	}
 
-	static TaskCompletedEvent taskSuccessfullyCompletedEvent(JobId jobId) {
-		return new TaskCompletedEvent(jobId, null);
+	static JobCompletedEvent jobSuccessfullyCompletedEvent(JobId jobId) {
+		return new JobCompletedEvent(jobId, null);
 	}
 
-	static TaskCompletedEvent taskFailedEvent(JobId jobId, Throwable e) {
-		return new TaskCompletedEvent(jobId, e);
+	static JobCompletedEvent jobFailedEvent(JobId jobId, Throwable e) {
+		return new JobCompletedEvent(jobId, e);
 	}
 
 	rx.Observable<Event> bind(rx.Observable<Cmd> input);
@@ -26,13 +26,13 @@ public interface ExecutorService {
 
 	interface Event { }
 
-	class ScheduleTaskCmd implements Cmd {
+	class ScheduleJobCmd implements Cmd {
 
 		private final JobId jobId;
 		private final SerializedObject args;
 		private final Executable executable;
 
-		ScheduleTaskCmd(JobId jobId, SerializedObject args, Executable executable) {
+		ScheduleJobCmd(JobId jobId, SerializedObject args, Executable executable) {
 			this.jobId = jobId;
 			this.args = args;
 			this.executable = executable;
@@ -51,12 +51,12 @@ public interface ExecutorService {
 		}
 	}
 
-	class TaskCompletedEvent implements Event {
+	class JobCompletedEvent implements Event {
 
 		private final JobId jobId;
 		private final Throwable exception;
 
-		TaskCompletedEvent(JobId jobId, Throwable exception) {
+		JobCompletedEvent(JobId jobId, Throwable exception) {
 			this.jobId = jobId;
 			this.exception = exception;
 		}
@@ -74,7 +74,7 @@ public interface ExecutorService {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
 
-			ExecutorService.TaskCompletedEvent that = (TaskCompletedEvent) o;
+			JobCompletedEvent that = (JobCompletedEvent) o;
 
 			return jobId.equals(that.jobId) && (exception != null ? exception.equals(that.exception) : that.exception == null);
 		}
@@ -88,7 +88,7 @@ public interface ExecutorService {
 
 		@Override
 		public String toString() {
-			return "TaskCompletedEvent{" +
+			return "JobCompletedEvent{" +
 				"jobId=" + jobId +
 				", exception=" + exception +
 				'}';

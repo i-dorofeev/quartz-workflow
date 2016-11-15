@@ -35,12 +35,12 @@ class QueueManagerImpl implements QueueManager {
 			.subscribe(this::notifyCompleted);
 
 		input.ofType(GiveMeMoreCmd.class)
-			.subscribe(cmd -> requestNewTasks());
+			.subscribe(cmd -> giveMeMoreCmd());
 
 		return events;
 	}
 
-	private void requestNewTasks() {
+	private void giveMeMoreCmd() {
 		tryPushNext(null);
 	}
 
@@ -61,7 +61,7 @@ class QueueManagerImpl implements QueueManager {
 	private void tryPushNext(String queueName) {
 		Optional<JobId> nextOpt = queueStore.getNextPendingQueueItem(queueName);
 		nextOpt
-			.map(TaskPoppedEvent::new)
+			.map(JobPoppedEvent::new)
 			.ifPresent(tpe -> {
 				events.onNext(tpe);
 				tryPushNext(queueName);

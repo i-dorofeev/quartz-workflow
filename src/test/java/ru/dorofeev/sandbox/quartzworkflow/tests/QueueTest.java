@@ -20,8 +20,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
-import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task.Result.CREATED;
-import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task.Result.RUNNING;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.CREATED;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.RUNNING;
 
 public class QueueTest {
 
@@ -66,7 +66,7 @@ public class QueueTest {
 		System.out.println("Model: " + model.v1 + "/" + model.v2 + "/" + model.v3);
 
 		assertThat(errors, is(empty()));
-		assertThat(engine.getTaskRepository().traverseFailed().collect(toList()), is(empty()));
+		assertThat(engine.getJobRepository().traverseFailed().collect(toList()), is(empty()));
 	}
 
 	@Test
@@ -76,8 +76,8 @@ public class QueueTest {
 			.mapToObj(i -> (random.nextInt(3) == 0) ? new IncrementCmdEvent() : new VerifyCmdEvent())
 			.forEach(e -> engine.submitEvent(e));
 
-		await("starting").until(() -> engine.getTaskRepository().traverse(CREATED).count().toBlocking().single(), is(equalTo(0)));
-		await("completing").until(() -> engine.getTaskRepository().traverse(RUNNING).count().toBlocking().single(), is(equalTo(0)));
+		await("starting").until(() -> engine.getJobRepository().traverse(CREATED).count().toBlocking().single(), is(equalTo(0)));
+		await("completing").until(() -> engine.getJobRepository().traverse(RUNNING).count().toBlocking().single(), is(equalTo(0)));
 	}
 
 	private static class IncrementCmdEvent extends Event { }

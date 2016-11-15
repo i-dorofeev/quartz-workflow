@@ -35,8 +35,8 @@ public interface QueueManager {
 		return new NotifyCompletedCmd(jobId);
 	}
 
-	static TaskPoppedEvent taskPoppedEvent(JobId jobId) {
-		return new TaskPoppedEvent(jobId);
+	static JobPoppedEvent JobPoppedEvent(JobId jobId) {
+		return new JobPoppedEvent(jobId);
 	}
 
 	static GiveMeMoreCmd giveMeMoreCmd() {
@@ -84,11 +84,11 @@ public interface QueueManager {
 
 	class GiveMeMoreCmd implements Cmd { }
 
-	class TaskPoppedEvent implements Event {
+	class JobPoppedEvent implements Event {
 
 		private final JobId jobId;
 
-		TaskPoppedEvent(JobId jobId) {
+		JobPoppedEvent(JobId jobId) {
 			this.jobId = jobId;
 		}
 
@@ -101,7 +101,7 @@ public interface QueueManager {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
 
-			QueueManager.TaskPoppedEvent that = (TaskPoppedEvent) o;
+			JobPoppedEvent that = (JobPoppedEvent) o;
 
 			return jobId.equals(that.jobId);
 		}
@@ -113,7 +113,7 @@ public interface QueueManager {
 
 		@Override
 		public String toString() {
-			return "TaskPoppedEvent{" +
+			return "JobPoppedEvent{" +
 				"jobId=" + jobId +
 				'}';
 		}

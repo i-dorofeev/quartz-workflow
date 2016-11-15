@@ -11,10 +11,10 @@ import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static ru.dorofeev.sandbox.quartzworkflow.JobId.taskId;
-import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleTaskCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.taskFailedEvent;
-import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.taskSuccessfullyCompletedEvent;
+import static ru.dorofeev.sandbox.quartzworkflow.JobId.jobId;
+import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleJobCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.jobFailedEvent;
+import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.jobSuccessfullyCompletedEvent;
 
 public class ExecutorServiceTests {
 
@@ -38,10 +38,10 @@ public class ExecutorServiceTests {
 
 		TestExecutable testExecutable = new TestExecutable();
 
-		cmdFlow.onNext(scheduleTaskCmd(taskId("task0"), null, testExecutable));
+		cmdFlow.onNext(scheduleJobCmd(jobId("job0"), null, testExecutable));
 
 		eventTestSubscriber.awaitValueCount(1, 500, MILLISECONDS);
-		eventTestSubscriber.assertValuesAndClear(taskSuccessfullyCompletedEvent(taskId("task0")));
+		eventTestSubscriber.assertValuesAndClear(jobSuccessfullyCompletedEvent(jobId("job0")));
 		testExecutable.assertInvoked();
 	}
 
@@ -51,10 +51,10 @@ public class ExecutorServiceTests {
 		RuntimeException exception = new RuntimeException("Error!");
 		TestExecutable testRunnable = new TestExecutable().throwsException(exception);
 
-		cmdFlow.onNext(scheduleTaskCmd(taskId("task0"), null, testRunnable));
+		cmdFlow.onNext(scheduleJobCmd(jobId("job0"), null, testRunnable));
 
 		eventTestSubscriber.awaitValueCount(1, 500, MILLISECONDS);
-		eventTestSubscriber.assertValuesAndClear(taskFailedEvent(taskId("task0"), exception));
+		eventTestSubscriber.assertValuesAndClear(jobFailedEvent(jobId("job0"), exception));
 		testRunnable.assertInvoked();
 	}
 }

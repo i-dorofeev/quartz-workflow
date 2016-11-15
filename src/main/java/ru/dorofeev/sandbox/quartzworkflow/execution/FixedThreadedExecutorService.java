@@ -30,15 +30,15 @@ class FixedThreadedExecutorService implements ExecutorService {
 	@Override
 	public rx.Observable<Event> bind(rx.Observable<Cmd> input) {
 
-		input.ofType(ScheduleTaskCmd.class)
+		input.ofType(ScheduleJobCmd.class)
 			.compose(errors.doOnNextRetry(cmd -> idleMonitor.threadAcquired()))
 			.observeOn(Schedulers.from(executor))
 			.compose(errors.mapRetry(cmd -> {
 					try {
 						cmd.getExecutable().execute(cmd.getJobId(), cmd.getArgs());
-						return new TaskCompletedEvent(cmd.getJobId(), null);
+						return new JobCompletedEvent(cmd.getJobId(), null);
 					} catch (Throwable e) {
-						return new TaskCompletedEvent(cmd.getJobId(), e);
+						return new JobCompletedEvent(cmd.getJobId(), e);
 					}
 				}))
 			.compose(errors.doOnNextRetry(event -> idleMonitor.threadReleased()))
@@ -54,7 +54,7 @@ class FixedThreadedExecutorService implements ExecutorService {
 
 	private static class IdleMonitor {
 
-		private final AtomicInteger executingTasks = new AtomicInteger(0);
+		private final AtomicInteger executingJobs = new AtomicInteger(0);
 		private final PublishSubject<IdleEvent> idleEvents = PublishSubject.create();
 		private Subscription tickSubscription;
 
@@ -65,7 +65,7 @@ class FixedThreadedExecutorService implements ExecutorService {
 			this.nThreads = nThreads;
 			this.idleInterval = idleInterval;
 
-			int load = executingTasks.intValue();
+			int load = executingJobs.intValue();
 			adjustIdleTicks(load);
 		}
 
@@ -85,18 +85,18 @@ class FixedThreadedExecutorService implements ExecutorService {
 		}
 
 		private void emitIdleEvent() {
-			int freeThreadsCount = nThreads - executingTasks.intValue();
+			int freeThreadsCount = nThreads - executingJobs.intValue();
 			if (freeThreadsCount > 0)
 				idleEvents.onNext(new IdleEvent(freeThreadsCount));
 		}
 
 		void threadAcquired() {
-			int load = executingTasks.incrementAndGet();
+			int load = executingJobs.incrementAndGet();
 			adjustIdleTicks(load);
 		}
 
 		void threadReleased() {
-			int load = executingTasks.decrementAndGet();
+			int load = executingJobs.decrementAndGet();
 			adjustIdleTicks(load);
 		}
 	}

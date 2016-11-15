@@ -44,7 +44,7 @@ public class EngineTests {
 	@After
 	public void afterTest() {
 		assertThat(errors, is(empty()));
-		assertThat(engine.getTaskRepository().traverseFailed().collect(toList()), is(empty()));
+		assertThat(engine.getJobRepository().traverseFailed().collect(toList()), is(empty()));
 	}
 
 	@Test

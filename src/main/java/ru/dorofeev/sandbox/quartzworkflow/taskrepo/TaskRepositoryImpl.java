@@ -4,6 +4,7 @@ import ru.dorofeev.sandbox.quartzworkflow.JobDataMap;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
 import ru.dorofeev.sandbox.quartzworkflow.TaskId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
+import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import rx.Observable;
 import rx.Subscriber;
 import rx.functions.Func1;
@@ -19,7 +20,8 @@ class TaskRepositoryImpl implements TaskRepository {
 
 	private final Map<TaskId, Task> taskTable = new HashMap<>();
 	private final Map<TaskId, Set<TaskId>> childrenIndex = new HashMap<>();
-	private final PublishSubject<Event> eventsHolder = PublishSubject.create();
+	private final PublishSubject<Event> events = PublishSubject.create();
+	private final ErrorObservable errors = new ErrorObservable();
 
 	private void indexChild(TaskId parent, TaskId child) {
 		Set<TaskId> children = childrenIndex.get(parent);
@@ -35,11 +37,11 @@ class TaskRepositoryImpl implements TaskRepository {
 	public rx.Observable<Event> bind(Observable<Cmd> input) {
 
 		input.ofType(AddTaskCmd.class)
-			.map(cmd -> addTaskInternal(cmd.getParentId(), cmd.getJobKey(), cmd.getJobDataMap(), cmd.getQueueingOption()))
-			.subscribe(this.eventsHolder);
+			.compose(errors.mapRetry(cmd -> addTaskInternal(cmd.getParentId(), cmd.getJobKey(), cmd.getJobDataMap(), cmd.getQueueingOption())))
+			.subscribe(this.events);
 
 		input.ofType(CompleteTaskCmd.class)
-			.map(cmd -> {
+			.compose(errors.mapRetry(cmd -> {
 				Task task = ofNullable(taskTable.get(cmd.getTaskId()))
 					.orElseThrow(() -> new TaskRepositoryException("Couldn't find task[id=" + cmd.getTaskId() + "]"));
 
@@ -49,10 +51,15 @@ class TaskRepositoryImpl implements TaskRepository {
 					task.recordResult(Task.Result.SUCCESS, null);
 
 				return new Event(EventType.COMPLETE, task);
-			})
-			.subscribe(eventsHolder);
+			}))
+			.subscribe(events);
 
-		return eventsHolder;
+		return events;
+	}
+
+	@Override
+	public Observable<Throwable> getErrors() {
+		return errors.asObservable();
 	}
 
 	private TaskId nextTaskId() {
@@ -66,7 +73,7 @@ class TaskRepositoryImpl implements TaskRepository {
 	@Override
 	public Task addTask(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption) {
 		Event event = addTaskInternal(parentId, jobKey, jobDataMap, queueingOption);
-		eventsHolder.onNext(event);
+		events.onNext(event);
 		return event.getTask();
 	}
 

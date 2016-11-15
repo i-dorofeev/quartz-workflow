@@ -9,7 +9,7 @@ public interface QueueManager {
 
 	QueueingOption.ExecutionType DEFAULT_EXECUTION_TYPE = QueueingOption.ExecutionType.PARALLEL;
 
-	Observable<Exception> errors();
+	Observable<Throwable> getErrors();
 
 	rx.Observable<Event> bind(rx.Observable<Cmd> input);
 

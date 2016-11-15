@@ -1,5 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.execution;
 
+import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import rx.Observable;
 import rx.Subscription;
 import rx.schedulers.Schedulers;
@@ -15,6 +16,7 @@ import static rx.Observable.interval;
 class FixedThreadedExecutorService implements ExecutorService {
 
 	private final PublishSubject<Event> events = PublishSubject.create();
+	private final ErrorObservable errors = new ErrorObservable();
 	private final Executor executor;
 	private final IdleMonitor idleMonitor;
 
@@ -29,20 +31,25 @@ class FixedThreadedExecutorService implements ExecutorService {
 	public rx.Observable<Event> bind(rx.Observable<Cmd> input) {
 
 		input.ofType(ScheduleTaskCmd.class)
-			.doOnNext(cmd -> idleMonitor.threadAcquired())
+			.compose(errors.doOnNextRetry(cmd -> idleMonitor.threadAcquired()))
 			.observeOn(Schedulers.from(executor))
-			.map(cmd -> {
+			.compose(errors.mapRetry(cmd -> {
 					try {
 						cmd.getExecutable().execute(cmd.getArgs());
 						return new TaskCompletedEvent(cmd.getTaskId(), null);
 					} catch (Throwable e) {
 						return new TaskCompletedEvent(cmd.getTaskId(), e);
 					}
-				})
-			.doOnNext(event -> idleMonitor.threadReleased())
+				}))
+			.compose(errors.doOnNextRetry(event -> idleMonitor.threadReleased()))
 			.subscribe(events);
 
 		return events;
+	}
+
+	@Override
+	public Observable<Throwable> getErrors() {
+		return errors.asObservable();
 	}
 
 	private static class IdleMonitor {

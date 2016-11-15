@@ -17,6 +17,8 @@ public interface TaskRepository {
 
 	rx.Observable<Event> bind(Observable<Cmd> input);
 
+	Observable<Throwable> getErrors();
+
 	Task addTask(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption);
 
 	Optional<Task> findTask(TaskId taskId);

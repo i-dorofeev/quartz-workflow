@@ -1,6 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.queue;
 
 import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import rx.Observable;
 import rx.subjects.PublishSubject;
 
@@ -8,8 +9,8 @@ import java.util.Optional;
 
 class QueueManagerImpl implements QueueManager {
 
-	private final PublishSubject<Event> outputHolder = PublishSubject.create();
-	private final PublishSubject<Exception> errorOutputHolder = PublishSubject.create();
+	private final PublishSubject<Event> events = PublishSubject.create();
+	private final ErrorObservable errors = new ErrorObservable();
 
 	private final String name;
 	private final QueueStore queueStore;
@@ -20,28 +21,23 @@ class QueueManagerImpl implements QueueManager {
 	}
 
 	@Override
-	public Observable<Exception> errors() {
-		return errorOutputHolder;
+	public Observable<Throwable> getErrors() {
+		return errors.asObservable();
 	}
 
 	@Override
 	public rx.Observable<Event> bind(rx.Observable<Cmd> input) {
-		input.subscribe(cmd -> {
 
-			if (cmd instanceof EnqueueCmd)
-				enqueue((EnqueueCmd) cmd);
+		input.ofType(EnqueueCmd.class)
+			.subscribe(this::enqueue);
 
-			else if (cmd instanceof NotifyCompletedCmd)
-				notifyCompleted((NotifyCompletedCmd) cmd);
+		input.ofType(NotifyCompletedCmd.class)
+			.subscribe(this::notifyCompleted);
 
-			else if (cmd instanceof GiveMeMoreCmd)
-				requestNewTasks();
+		input.ofType(GiveMeMoreCmd.class)
+			.subscribe(cmd -> requestNewTasks());
 
-			else
-				errorOutputHolder.onNext(new QueueManagerException("Unrecognized cmd " + cmd));
-		});
-
-		return outputHolder;
+		return events;
 	}
 
 	private void requestNewTasks() {
@@ -58,7 +54,7 @@ class QueueManagerImpl implements QueueManager {
 			queueStore.insertQueueItem(cmd.getTaskId(), cmd.getQueueName(), cmd.getExecutionType());
 			tryPushNext(cmd.getQueueName());
 		} catch (QueueStoreException e) {
-			errorOutputHolder.onNext(new QueueManagerException(e.getMessage(), e));
+			errors.asObserver().onNext(new QueueManagerException(e.getMessage(), e));
 		}
 	}
 
@@ -67,7 +63,7 @@ class QueueManagerImpl implements QueueManager {
 		nextOpt
 			.map(TaskPoppedEvent::new)
 			.ifPresent(tpe -> {
-				outputHolder.onNext(tpe);
+				events.onNext(tpe);
 				tryPushNext(queueName);
 			});
 	}

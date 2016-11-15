@@ -7,8 +7,8 @@ import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
 import ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task;
 import ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository;
+import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import rx.Observable;
-import rx.functions.Func1;
 import rx.subjects.PublishSubject;
 
 import java.util.*;
@@ -24,7 +24,7 @@ class EngineImpl implements Engine {
 
 	private final TaskRepository taskRepository;
 
-	private PublishSubject<Throwable> errors = PublishSubject.create();
+	private ErrorObservable errors = new ErrorObservable();
 	private final JobKey scheduleEventHandlersJob = new JobKey("scheduleEventHandlersJob");
 	private final JobKey executeEventHandlerJob = new JobKey("executeEventHandlerJob");
 
@@ -41,47 +41,35 @@ class EngineImpl implements Engine {
 	EngineImpl(TaskRepository taskRepository, ExecutorService executorService, QueueManager queueManager) {
 		this.taskRepository = taskRepository;
 
+		this.errors.subscribeTo(taskRepository.getErrors());
+		this.errors.subscribeTo(executorService.getErrors());
+		this.errors.subscribeTo(queueManager.getErrors());
+
 		Observable<TaskRepository.Event> taskRepositoryOutput = taskRepositoryCmds.compose(this.taskRepository::bind);
 		taskRepositoryOutput
-			.compose(filterMapRetry(TaskRepository.Event::isAdd, this::asEnqueueCmd))
+			.compose(errors.filterMapRetry(TaskRepository.Event::isAdd, this::asEnqueueCmd))
 			.subscribe(queueManagerCmds);
 
 		taskRepositoryOutput
-			.compose(filterMapRetry(TaskRepository.Event::isComplete, this::asNotifyCompletedCmd))
+			.compose(errors.filterMapRetry(TaskRepository.Event::isComplete, this::asNotifyCompletedCmd))
 			.subscribe(queueManagerCmds);
 
 		Observable<QueueManager.Event> queueManagerOutput = queueManagerCmds.compose(queueManager::bind);
 		queueManagerOutput
-			.compose(filterMapRetry(QueueManager.TaskPoppedEvent.class, this::asScheduleTaskCmd))
+			.compose(errors.filterMapRetry(QueueManager.TaskPoppedEvent.class, this::asScheduleTaskCmd))
 			.subscribe(executorServiceCmds);
 
 		rx.Observable<ExecutorService.Event> executorServiceOutput = executorServiceCmds.compose(executorService::bind);
 		executorServiceOutput
-			.compose(filterMapRetry(ExecutorService.TaskCompletedEvent.class, this::asCompleteTaskCmd))
+			.compose(errors.filterMapRetry(ExecutorService.TaskCompletedEvent.class, this::asCompleteTaskCmd))
 			.subscribe(taskRepositoryCmds);
 
 		executorServiceOutput
-			.compose(filterMapRetry(ExecutorService.IdleEvent.class, this::asGiveMeMoreCmd))
+			.compose(errors.filterMapRetry(ExecutorService.IdleEvent.class, this::asGiveMeMoreCmd))
 			.subscribe(queueManagerCmds);
 	}
 
-	private <I, F extends I, O> Observable.Transformer<I, O> filterMapRetry(Class<F> filter, Func1<F, O> func) {
-		return observable ->
-			observable.ofType(filter)
-				.compose(mapRetry(func));
-	}
 
-	private <I, O> Observable.Transformer<I, O> filterMapRetry(Func1<I, Boolean> filter, Func1<I, O> func) {
-		return observable ->
-			observable.filter(filter)
-				.compose(mapRetry(func));
-	}
-
-	private <I, O> Observable.Transformer<I, O> mapRetry(Func1<I, O> func) {
-		return observable ->
-			observable.map(func)
-				.retryWhen(errors -> errors.doOnNext(this.errors::onNext)); // publish unhandled exceptions to errors stream
-	}
 
 	private TaskRepository.CompleteTaskCmd asCompleteTaskCmd(ExecutorService.TaskCompletedEvent event) {
 		return new TaskRepository.CompleteTaskCmd(event.getTaskId(), event.getException());
@@ -119,7 +107,7 @@ class EngineImpl implements Engine {
 
 	@Override
 	public rx.Observable<Throwable> errors() {
-		return this.errors;
+		return this.errors.asObservable();
 	}
 
 	@Override

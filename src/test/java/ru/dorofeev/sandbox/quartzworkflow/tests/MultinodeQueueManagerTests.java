@@ -45,11 +45,11 @@ public class MultinodeQueueManagerTests {
 
 		QueueManager queueManager1 = QueueManagerFactory.create("qm1", store);
 		Observable<QueueManager.Event> qm1Events = queueManager1.bind(cmdFlow1);
-		Observable<String> qm1Errors = queueManager1.errors().map(Throwable::getMessage);
+		Observable<String> qm1Errors = queueManager1.getErrors().map(Throwable::getMessage);
 
 		QueueManager queueManager2 = QueueManagerFactory.create("qm2", store);
 		Observable<QueueManager.Event> qm2Events = queueManager2.bind(cmdFlow2);
-		Observable<String> qm2Errors = queueManager2.errors().map(Throwable::getMessage);
+		Observable<String> qm2Errors = queueManager2.getErrors().map(Throwable::getMessage);
 
 		qm1Errors.mergeWith(qm2Errors).subscribe(errorSubscriber);
 		qm1Events.mergeWith(qm2Events).subscribe(eventSubscriber);

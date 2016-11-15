@@ -2,6 +2,7 @@ package ru.dorofeev.sandbox.quartzworkflow.execution;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobDataMap;
 import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import rx.Observable;
 
 public interface ExecutorService {
 
@@ -18,6 +19,8 @@ public interface ExecutorService {
 	}
 
 	rx.Observable<Event> bind(rx.Observable<Cmd> input);
+
+	Observable<Throwable> getErrors();
 
 	interface Cmd { }
 

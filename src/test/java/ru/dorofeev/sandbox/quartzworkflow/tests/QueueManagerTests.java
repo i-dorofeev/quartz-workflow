@@ -27,7 +27,7 @@ public class QueueManagerTests {
 
 		QueueManager queueManager = create("QueueManagerTests", createInMemoryStore());
 		queueManager.bind(cmdFlow).subscribe(eventSubscriber);
-		queueManager.errors().map(Throwable::getMessage).subscribe(errorSubscriber);
+		queueManager.getErrors().map(Throwable::getMessage).subscribe(errorSubscriber);
 	}
 
 	@Test

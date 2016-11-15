@@ -11,7 +11,7 @@ import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static ru.dorofeev.sandbox.quartzworkflow.TaskId.taskId;
+import static ru.dorofeev.sandbox.quartzworkflow.JobId.taskId;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleTaskCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.taskFailedEvent;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.taskSuccessfullyCompletedEvent;

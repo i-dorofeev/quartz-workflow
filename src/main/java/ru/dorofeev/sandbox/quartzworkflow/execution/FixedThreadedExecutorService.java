@@ -35,10 +35,10 @@ class FixedThreadedExecutorService implements ExecutorService {
 			.observeOn(Schedulers.from(executor))
 			.compose(errors.mapRetry(cmd -> {
 					try {
-						cmd.getExecutable().execute(cmd.getTaskId(), cmd.getArgs());
-						return new TaskCompletedEvent(cmd.getTaskId(), null);
+						cmd.getExecutable().execute(cmd.getJobId(), cmd.getArgs());
+						return new TaskCompletedEvent(cmd.getJobId(), null);
 					} catch (Throwable e) {
-						return new TaskCompletedEvent(cmd.getTaskId(), e);
+						return new TaskCompletedEvent(cmd.getJobId(), e);
 					}
 				}))
 			.compose(errors.doOnNextRetry(event -> idleMonitor.threadReleased()))

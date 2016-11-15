@@ -1,6 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.engine;
 
-import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
@@ -73,15 +73,15 @@ class EngineImpl implements Engine {
 	}
 
 	private TaskRepository.CompleteTaskCmd asCompleteTaskCmd(ExecutorService.TaskCompletedEvent event) {
-		return completeTaskCmd(event.getTaskId(), event.getException());
+		return completeTaskCmd(event.getJobId(), event.getException());
 	}
 
 	private ExecutorService.ScheduleTaskCmd asScheduleTaskCmd(QueueManager.TaskPoppedEvent event) {
-		TaskId taskId = event.getTaskId();
+		JobId jobId = event.getJobId();
 
-		Task task = taskRepository.findTask(taskId).orElseThrow(() -> new EngineException("Couldn't find task " + taskId));
+		Task task = taskRepository.findTask(jobId).orElseThrow(() -> new EngineException("Couldn't find task " + jobId));
 		Executable executable = getExecutable(task);
-		return scheduleTaskCmd(taskId, task.getArgs(), executable);
+		return scheduleTaskCmd(jobId, task.getArgs(), executable);
 	}
 
 	private Executable getExecutable(Task task) {
@@ -121,15 +121,15 @@ class EngineImpl implements Engine {
 		return submitEvent(/* parentId */ null, event);
 	}
 
-	Task submitEvent(TaskId parentId, Event event) {
+	Task submitEvent(JobId parentId, Event event) {
 		return taskRepository.addTask(
 			parentId, SCHEDULE_EVENT_HANDLERS_JOB,
 			new ScheduleEventHandlersJob.Args(event).serialize(serializedObjectFactory), /* queueingOption */ null);
 	}
 
 	@Override
-	public void retryExecution(TaskId taskId) {
-		queueManagerCmds.onNext(enqueueCmd(taskId));
+	public void retryExecution(JobId jobId) {
+		queueManagerCmds.onNext(enqueueCmd(jobId));
 	}
 
 	@Override
@@ -156,7 +156,7 @@ class EngineImpl implements Engine {
 		registerEventHandler(cmdEventType, handlerUri);
 	}
 
-	void submitHandler(TaskId parentId, Event event, String handlerUri) {
+	void submitHandler(JobId parentId, Event event, String handlerUri) {
 		Optional<EventHandler> handlerByUriOpt = findHandlerByUri(handlerUri);
 		EventHandler eventHandler = handlerByUriOpt.orElseThrow(() -> new EngineException("Handler instance for URI " + handlerUri + " not found"));
 

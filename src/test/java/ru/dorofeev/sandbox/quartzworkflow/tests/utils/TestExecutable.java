@@ -1,7 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests.utils;
 
 import org.junit.Assert;
-import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 
@@ -35,7 +35,7 @@ public class TestExecutable implements Executable {
 	}
 
 	@Override
-	public void execute(TaskId taskId, SerializedObject serializedArgs) throws Throwable {
+	public void execute(JobId jobId, SerializedObject serializedArgs) throws Throwable {
 		invocationCount.incrementAndGet();
 
 		if (duration > 0)

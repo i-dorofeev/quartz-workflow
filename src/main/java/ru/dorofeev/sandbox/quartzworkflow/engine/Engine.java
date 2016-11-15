@@ -15,7 +15,7 @@ public interface Engine {
 
 	Task submitEvent(Event event);
 
-	void retryExecution(TaskId taskId);
+	void retryExecution(JobId jobId);
 
 	void registerEventHandlerInstance(String handlerUri, EventHandler eventHandler);
 

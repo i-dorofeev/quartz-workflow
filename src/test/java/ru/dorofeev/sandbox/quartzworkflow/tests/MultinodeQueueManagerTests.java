@@ -15,7 +15,7 @@ import java.util.stream.IntStream;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
-import static ru.dorofeev.sandbox.quartzworkflow.TaskId.taskId;
+import static ru.dorofeev.sandbox.quartzworkflow.JobId.taskId;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.enqueueCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.notifyCompletedCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.taskPoppedEvent;
@@ -56,12 +56,12 @@ public class MultinodeQueueManagerTests {
 
 		qm1Events.observeOn(computation()).subscribe(event -> {
 			QueueManager.TaskPoppedEvent tpe = (QueueManager.TaskPoppedEvent) event;
-			cmdFlow2.onNext(notifyCompletedCmd(tpe.getTaskId()));
+			cmdFlow2.onNext(notifyCompletedCmd(tpe.getJobId()));
 		});
 
 		qm2Events.observeOn(computation()).subscribe(event -> {
 			QueueManager.TaskPoppedEvent tpe = (QueueManager.TaskPoppedEvent) event;
-			cmdFlow1.onNext(notifyCompletedCmd(tpe.getTaskId()));
+			cmdFlow1.onNext(notifyCompletedCmd(tpe.getJobId()));
 		});
 
 		IntStream.range(0, 10)

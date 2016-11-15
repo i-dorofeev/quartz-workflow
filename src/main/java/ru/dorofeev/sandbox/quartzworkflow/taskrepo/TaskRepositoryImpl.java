@@ -1,7 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.taskrepo;
 
+import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
-import ru.dorofeev.sandbox.quartzworkflow.TaskId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
@@ -18,13 +18,13 @@ import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption.ExecutionT
 
 class TaskRepositoryImpl implements TaskRepository {
 
-	private final Map<TaskId, Task> taskTable = new HashMap<>();
-	private final Map<TaskId, Set<TaskId>> childrenIndex = new HashMap<>();
+	private final Map<JobId, Task> taskTable = new HashMap<>();
+	private final Map<JobId, Set<JobId>> childrenIndex = new HashMap<>();
 	private final PublishSubject<Event> events = PublishSubject.create();
 	private final ErrorObservable errors = new ErrorObservable();
 
-	private void indexChild(TaskId parent, TaskId child) {
-		Set<TaskId> children = childrenIndex.get(parent);
+	private void indexChild(JobId parent, JobId child) {
+		Set<JobId> children = childrenIndex.get(parent);
 		if (children == null) {
 			children = new HashSet<>();
 			childrenIndex.put(parent, children);
@@ -42,8 +42,8 @@ class TaskRepositoryImpl implements TaskRepository {
 
 		input.ofType(CompleteTaskCmd.class)
 			.compose(errors.mapRetry(cmd -> {
-				Task task = ofNullable(taskTable.get(cmd.getTaskId()))
-					.orElseThrow(() -> new TaskRepositoryException("Couldn't find task[id=" + cmd.getTaskId() + "]"));
+				Task task = ofNullable(taskTable.get(cmd.getJobId()))
+					.orElseThrow(() -> new TaskRepositoryException("Couldn't find task[id=" + cmd.getJobId() + "]"));
 
 				if (cmd.getException() != null)
 					task.recordResult(Task.Result.FAILED, cmd.getException());
@@ -62,31 +62,31 @@ class TaskRepositoryImpl implements TaskRepository {
 		return errors.asObservable();
 	}
 
-	private TaskId nextTaskId() {
-		TaskId taskId = TaskId.createUniqueTaskId();
-		while (taskTable.containsKey(taskId)) {
-			taskId = TaskId.createUniqueTaskId();
+	private JobId nextTaskId() {
+		JobId jobId = JobId.createUniqueTaskId();
+		while (taskTable.containsKey(jobId)) {
+			jobId = JobId.createUniqueTaskId();
 		}
-		return taskId;
+		return jobId;
 	}
 
 	@Override
-	public Task addTask(TaskId parentId, JobKey jobKey, SerializedObject args, QueueingOption queueingOption) {
+	public Task addTask(JobId parentId, JobKey jobKey, SerializedObject args, QueueingOption queueingOption) {
 		Event event = addTaskInternal(parentId, jobKey, args, queueingOption);
 		events.onNext(event);
 		return event.getTask();
 	}
 
-	private synchronized Event addTaskInternal(TaskId parentId, JobKey jobKey, SerializedObject args, QueueingOption queueingOption) {
+	private synchronized Event addTaskInternal(JobId parentId, JobKey jobKey, SerializedObject args, QueueingOption queueingOption) {
 		if (parentId != null && !taskTable.containsKey(parentId))
 			throw new TaskRepositoryException("Task[id=" + parentId + "] not found");
 
-		TaskId taskId = nextTaskId();
+		JobId jobId = nextTaskId();
 		String queueName = queueingOption != null ? queueingOption.getQueueName() : "default";
 		QueueingOption.ExecutionType executionType = queueingOption != null ? queueingOption.getExecutionType() : PARALLEL;
 
-		Task t = new Task(taskId, queueName, executionType, jobKey, args);
-		taskTable.put(taskId, t);
+		Task t = new Task(jobId, queueName, executionType, jobKey, args);
+		taskTable.put(jobId, t);
 
 		if (parentId != null)
 			indexChild(parentId, t.getId());
@@ -95,8 +95,8 @@ class TaskRepositoryImpl implements TaskRepository {
 	}
 
 	@Override
-	public Optional<Task> findTask(TaskId taskId) {
-		return ofNullable(taskTable.get(taskId));
+	public Optional<Task> findTask(JobId jobId) {
+		return ofNullable(taskTable.get(jobId));
 	}
 
 	@Override
@@ -113,14 +113,14 @@ class TaskRepositoryImpl implements TaskRepository {
 	}
 
 	@Override
-	public rx.Observable<Task> traverse(TaskId rootId, Func1<? super Task, Boolean> predicate) {
+	public rx.Observable<Task> traverse(JobId rootId, Func1<? super Task, Boolean> predicate) {
 		return rx.Observable.<Task>create(subscriber -> {
 				traverse(rootId, subscriber);
 				subscriber.onCompleted();
 		}).filter(predicate);
 	}
 
-	private void traverse(TaskId rootId, Subscriber<? super Task> subscriber) {
+	private void traverse(JobId rootId, Subscriber<? super Task> subscriber) {
 		Task t = taskTable.get(rootId);
 		if (t == null)
 			subscriber.onError(new TaskRepositoryException("Couldn't find task[id=" + rootId + "]"));
@@ -132,7 +132,7 @@ class TaskRepositoryImpl implements TaskRepository {
 	}
 
 	@Override
-	public rx.Observable<Task> traverse(TaskId rootId, Task.Result result) {
+	public rx.Observable<Task> traverse(JobId rootId, Task.Result result) {
 		return traverse(rootId, task -> task.getResult().equals(result));
 	}
 

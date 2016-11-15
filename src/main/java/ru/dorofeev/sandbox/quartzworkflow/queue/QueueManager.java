@@ -1,6 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.queue;
 
-import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import rx.Observable;
 
 public interface QueueManager {
@@ -19,24 +19,24 @@ public interface QueueManager {
 
 	}
 
-	static EnqueueCmd enqueueCmd(TaskId taskId) {
-		return new EnqueueCmd(DEFAULT_QUEUE_NAME, DEFAULT_EXECUTION_TYPE, taskId);
+	static EnqueueCmd enqueueCmd(JobId jobId) {
+		return new EnqueueCmd(DEFAULT_QUEUE_NAME, DEFAULT_EXECUTION_TYPE, jobId);
 	}
 
-	static EnqueueCmd enqueueCmd(QueueingOption.ExecutionType executionType, TaskId taskId) {
-		return new EnqueueCmd(DEFAULT_QUEUE_NAME, executionType, taskId);
+	static EnqueueCmd enqueueCmd(QueueingOption.ExecutionType executionType, JobId jobId) {
+		return new EnqueueCmd(DEFAULT_QUEUE_NAME, executionType, jobId);
 	}
 
-	static EnqueueCmd enqueueCmd(String queueName, QueueingOption.ExecutionType executionType, TaskId taskId) {
-		return new EnqueueCmd(queueName, executionType, taskId);
+	static EnqueueCmd enqueueCmd(String queueName, QueueingOption.ExecutionType executionType, JobId jobId) {
+		return new EnqueueCmd(queueName, executionType, jobId);
 	}
 
-	static NotifyCompletedCmd notifyCompletedCmd(TaskId taskId) {
-		return new NotifyCompletedCmd(taskId);
+	static NotifyCompletedCmd notifyCompletedCmd(JobId jobId) {
+		return new NotifyCompletedCmd(jobId);
 	}
 
-	static TaskPoppedEvent taskPoppedEvent(TaskId taskId) {
-		return new TaskPoppedEvent(taskId);
+	static TaskPoppedEvent taskPoppedEvent(JobId jobId) {
+		return new TaskPoppedEvent(jobId);
 	}
 
 	static GiveMeMoreCmd giveMeMoreCmd() {
@@ -47,12 +47,12 @@ public interface QueueManager {
 
 		private final String queueName;
 		private final QueueingOption.ExecutionType executionType;
-		private final TaskId taskId;
+		private final JobId jobId;
 
-		EnqueueCmd(String queueName, QueueingOption.ExecutionType executionType, TaskId taskId) {
+		EnqueueCmd(String queueName, QueueingOption.ExecutionType executionType, JobId jobId) {
 			this.queueName = queueName;
 			this.executionType = executionType;
-			this.taskId = taskId;
+			this.jobId = jobId;
 		}
 
 
@@ -64,21 +64,21 @@ public interface QueueManager {
 			return executionType;
 		}
 
-		TaskId getTaskId() {
-			return taskId;
+		JobId getJobId() {
+			return jobId;
 		}
 	}
 
 	class NotifyCompletedCmd implements Cmd {
 
-		private final TaskId taskId;
+		private final JobId jobId;
 
-		NotifyCompletedCmd(TaskId taskId) {
-			this.taskId = taskId;
+		NotifyCompletedCmd(JobId jobId) {
+			this.jobId = jobId;
 		}
 
-		TaskId getTaskId() {
-			return taskId;
+		JobId getJobId() {
+			return jobId;
 		}
 	}
 
@@ -86,14 +86,14 @@ public interface QueueManager {
 
 	class TaskPoppedEvent implements Event {
 
-		private final TaskId taskId;
+		private final JobId jobId;
 
-		TaskPoppedEvent(TaskId taskId) {
-			this.taskId = taskId;
+		TaskPoppedEvent(JobId jobId) {
+			this.jobId = jobId;
 		}
 
-		public TaskId getTaskId() {
-			return taskId;
+		public JobId getJobId() {
+			return jobId;
 		}
 
 		@Override
@@ -103,18 +103,18 @@ public interface QueueManager {
 
 			QueueManager.TaskPoppedEvent that = (TaskPoppedEvent) o;
 
-			return taskId.equals(that.taskId);
+			return jobId.equals(that.jobId);
 		}
 
 		@Override
 		public int hashCode() {
-			return taskId.hashCode();
+			return jobId.hashCode();
 		}
 
 		@Override
 		public String toString() {
 			return "TaskPoppedEvent{" +
-				"taskId=" + taskId +
+				"jobId=" + jobId +
 				'}';
 		}
 	}

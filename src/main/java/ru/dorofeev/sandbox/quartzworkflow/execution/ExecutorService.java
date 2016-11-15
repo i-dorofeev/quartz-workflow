@@ -1,21 +1,21 @@
 package ru.dorofeev.sandbox.quartzworkflow.execution;
 
-import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import rx.Observable;
 
 public interface ExecutorService {
 
-	static ScheduleTaskCmd scheduleTaskCmd(TaskId task, SerializedObject args, Executable runnable) {
+	static ScheduleTaskCmd scheduleTaskCmd(JobId task, SerializedObject args, Executable runnable) {
 		return new ScheduleTaskCmd(task, args, runnable);
 	}
 
-	static TaskCompletedEvent taskSuccessfullyCompletedEvent(TaskId taskId) {
-		return new TaskCompletedEvent(taskId, null);
+	static TaskCompletedEvent taskSuccessfullyCompletedEvent(JobId jobId) {
+		return new TaskCompletedEvent(jobId, null);
 	}
 
-	static TaskCompletedEvent taskFailedEvent(TaskId taskId, Throwable e) {
-		return new TaskCompletedEvent(taskId, e);
+	static TaskCompletedEvent taskFailedEvent(JobId jobId, Throwable e) {
+		return new TaskCompletedEvent(jobId, e);
 	}
 
 	rx.Observable<Event> bind(rx.Observable<Cmd> input);
@@ -28,18 +28,18 @@ public interface ExecutorService {
 
 	class ScheduleTaskCmd implements Cmd {
 
-		private final TaskId taskId;
+		private final JobId jobId;
 		private final SerializedObject args;
 		private final Executable executable;
 
-		ScheduleTaskCmd(TaskId taskId, SerializedObject args, Executable executable) {
-			this.taskId = taskId;
+		ScheduleTaskCmd(JobId jobId, SerializedObject args, Executable executable) {
+			this.jobId = jobId;
 			this.args = args;
 			this.executable = executable;
 		}
 
-		public TaskId getTaskId() {
-			return taskId;
+		public JobId getJobId() {
+			return jobId;
 		}
 
 		Executable getExecutable() {
@@ -53,16 +53,16 @@ public interface ExecutorService {
 
 	class TaskCompletedEvent implements Event {
 
-		private final TaskId taskId;
+		private final JobId jobId;
 		private final Throwable exception;
 
-		TaskCompletedEvent(TaskId taskId, Throwable exception) {
-			this.taskId = taskId;
+		TaskCompletedEvent(JobId jobId, Throwable exception) {
+			this.jobId = jobId;
 			this.exception = exception;
 		}
 
-		public TaskId getTaskId() {
-			return taskId;
+		public JobId getJobId() {
+			return jobId;
 		}
 
 		public Throwable getException() {
@@ -76,12 +76,12 @@ public interface ExecutorService {
 
 			ExecutorService.TaskCompletedEvent that = (TaskCompletedEvent) o;
 
-			return taskId.equals(that.taskId) && (exception != null ? exception.equals(that.exception) : that.exception == null);
+			return jobId.equals(that.jobId) && (exception != null ? exception.equals(that.exception) : that.exception == null);
 		}
 
 		@Override
 		public int hashCode() {
-			int result = taskId.hashCode();
+			int result = jobId.hashCode();
 			result = 31 * result + (exception != null ? exception.hashCode() : 0);
 			return result;
 		}
@@ -89,7 +89,7 @@ public interface ExecutorService {
 		@Override
 		public String toString() {
 			return "TaskCompletedEvent{" +
-				"taskId=" + taskId +
+				"jobId=" + jobId +
 				", exception=" + exception +
 				'}';
 		}

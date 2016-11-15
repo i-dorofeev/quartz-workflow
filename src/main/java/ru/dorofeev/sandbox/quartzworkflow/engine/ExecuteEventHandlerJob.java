@@ -1,6 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.engine;
 
-import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
@@ -16,7 +16,7 @@ class ExecuteEventHandlerJob implements Executable {
 	}
 
 	@Override
-	public void execute(TaskId taskId, SerializedObject serializedArgs) throws Throwable {
+	public void execute(JobId jobId, SerializedObject serializedArgs) throws Throwable {
 
 		Args args = Args.deserializeFrom(serializedArgs);
 
@@ -24,7 +24,7 @@ class ExecuteEventHandlerJob implements Executable {
 		handler
 			.orElseThrow(() -> new EngineException("No handler found for uri " + args.eventHandlerUri))
 			.handleEvent(args.event)
-			.forEach(e -> engine.submitEvent(taskId, e));
+			.forEach(e -> engine.submitEvent(jobId, e));
 	}
 
 	static class Args {

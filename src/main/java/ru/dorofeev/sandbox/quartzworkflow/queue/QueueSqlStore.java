@@ -6,7 +6,7 @@ import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.exception.LiquibaseException;
-import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.JobId;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -30,17 +30,17 @@ class QueueSqlStore implements QueueStore {
 	}
 
 	@Override
-	public void insertQueueItem(TaskId taskId, String queueName, QueueingOption.ExecutionType executionType) throws QueueStoreException {
+	public void insertQueueItem(JobId jobId, String queueName, QueueingOption.ExecutionType executionType) throws QueueStoreException {
 		throw new UnsupportedOperationException("Not implemented yet");
 	}
 
 	@Override
-	public Optional<TaskId> getNextPendingQueueItem(String queueName) {
+	public Optional<JobId> getNextPendingQueueItem(String queueName) {
 		throw new UnsupportedOperationException("Not implemented yet");
 	}
 
 	@Override
-	public Optional<String> removeQueueItem(TaskId taskId) {
+	public Optional<String> removeQueueItem(JobId jobId) {
 		throw new UnsupportedOperationException("Not implemented yet");
 	}
 }

@@ -2,19 +2,19 @@ package ru.dorofeev.sandbox.quartzworkflow;
 
 import java.util.UUID;
 
-public class TaskId {
+public class JobId {
 
-	public static TaskId taskId(String id) {
-		return new TaskId(id);
+	public static JobId taskId(String id) {
+		return new JobId(id);
 	}
 
-	public static TaskId createUniqueTaskId() {
-		return new TaskId(UUID.randomUUID().toString());
+	public static JobId createUniqueTaskId() {
+		return new JobId(UUID.randomUUID().toString());
 	}
 
 	private final String value;
 
-	public TaskId(String value) {
+	public JobId(String value) {
 		this.value = value;
 	}
 
@@ -28,9 +28,9 @@ public class TaskId {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		TaskId taskId = (TaskId) o;
+		JobId jobId = (JobId) o;
 
-		return value != null ? value.equals(taskId.value) : taskId.value == null;
+		return value != null ? value.equals(jobId.value) : jobId.value == null;
 
 	}
 

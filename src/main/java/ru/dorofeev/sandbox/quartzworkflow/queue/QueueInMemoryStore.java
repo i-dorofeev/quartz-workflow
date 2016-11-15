@@ -1,6 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.queue;
 
-import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.JobId;
 
 import java.util.Optional;
 import java.util.SortedSet;
@@ -15,15 +15,15 @@ class QueueInMemoryStore implements QueueStore {
 	private static class QueueItem {
 
 		final long ordinal;
-		final TaskId taskId;
+		final JobId jobId;
 		final QueueingOption.ExecutionType executionType;
 		final String queueName;
 
 		QueueItemStatus status;
 
-		QueueItem(long ordinal, TaskId taskId, String queueName, QueueingOption.ExecutionType executionType) {
+		QueueItem(long ordinal, JobId jobId, String queueName, QueueingOption.ExecutionType executionType) {
 			this.ordinal = ordinal;
-			this.taskId = taskId;
+			this.jobId = jobId;
 			this.queueName = queueName;
 			this.executionType = executionType;
 			this.status = QueueItemStatus.PENDING;
@@ -38,12 +38,12 @@ class QueueInMemoryStore implements QueueStore {
 	private long ordinalSeq = 0;
 
 	@Override
-	public void insertQueueItem(TaskId taskId, String queueName, QueueingOption.ExecutionType executionType) throws QueueStoreException {
+	public void insertQueueItem(JobId jobId, String queueName, QueueingOption.ExecutionType executionType) throws QueueStoreException {
 		synchronized (sync) {
-			if (queue.stream().filter(qi -> qi.taskId.equals(taskId)).count() > 0)
-				throw new QueueStoreException(taskId + " is already enqueued");
+			if (queue.stream().filter(qi -> qi.jobId.equals(jobId)).count() > 0)
+				throw new QueueStoreException(jobId + " is already enqueued");
 
-			queue.add(new QueueItem(ordinalSeq++, taskId, queueName, executionType));
+			queue.add(new QueueItem(ordinalSeq++, jobId, queueName, executionType));
 		}
 	}
 
@@ -64,18 +64,18 @@ class QueueInMemoryStore implements QueueStore {
 	}
 
 	@Override
-	public Optional<TaskId> getNextPendingQueueItem(String queueName) {
+	public Optional<JobId> getNextPendingQueueItem(String queueName) {
 		synchronized (sync) {
 			Optional<QueueItem> nextItemOpt = getNextPending(queueName != null ? qn -> qn.equals(queueName) : qn -> true);
 
 			return nextItemOpt.flatMap(nextItem -> {
 				if (nextItem.executionType == QueueingOption.ExecutionType.PARALLEL && !anyExclusivePopped(queueName)) {
 					nextItem.status = QueueItemStatus.POPPED;
-					return of(nextItem.taskId);
+					return of(nextItem.jobId);
 
 				} else if (nextItem.executionType == QueueingOption.ExecutionType.EXCLUSIVE && !anyPopped(queueName)) {
 					nextItem.status = QueueItemStatus.POPPED;
-					return of(nextItem.taskId);
+					return of(nextItem.jobId);
 
 				} else {
 					return empty();
@@ -85,9 +85,9 @@ class QueueInMemoryStore implements QueueStore {
 	}
 
 	@Override
-	public Optional<String> removeQueueItem(TaskId taskId) {
+	public Optional<String> removeQueueItem(JobId jobId) {
 		synchronized (sync) {
-			Optional<QueueItem> queueItem = queue.stream().filter(qi -> qi.taskId.equals(taskId)).findFirst();
+			Optional<QueueItem> queueItem = queue.stream().filter(qi -> qi.jobId.equals(jobId)).findFirst();
 			if (queueItem.isPresent()) {
 				queue.remove(queueItem.get());
 				return of(queueItem.get().queueName);

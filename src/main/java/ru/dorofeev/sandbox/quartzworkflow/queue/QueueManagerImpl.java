@@ -1,6 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.queue;
 
-import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import rx.Observable;
 import rx.subjects.PublishSubject;
@@ -45,13 +45,13 @@ class QueueManagerImpl implements QueueManager {
 	}
 
 	private void notifyCompleted(NotifyCompletedCmd cmd) {
-		Optional<String> queueName = queueStore.removeQueueItem(cmd.getTaskId());
+		Optional<String> queueName = queueStore.removeQueueItem(cmd.getJobId());
 		queueName.ifPresent(this::tryPushNext);
 	}
 
 	private void enqueue(EnqueueCmd cmd) {
 		try {
-			queueStore.insertQueueItem(cmd.getTaskId(), cmd.getQueueName(), cmd.getExecutionType());
+			queueStore.insertQueueItem(cmd.getJobId(), cmd.getQueueName(), cmd.getExecutionType());
 			tryPushNext(cmd.getQueueName());
 		} catch (QueueStoreException e) {
 			errors.asObserver().onNext(new QueueManagerException(e.getMessage(), e));
@@ -59,7 +59,7 @@ class QueueManagerImpl implements QueueManager {
 	}
 
 	private void tryPushNext(String queueName) {
-		Optional<TaskId> nextOpt = queueStore.getNextPendingQueueItem(queueName);
+		Optional<JobId> nextOpt = queueStore.getNextPendingQueueItem(queueName);
 		nextOpt
 			.map(TaskPoppedEvent::new)
 			.ifPresent(tpe -> {

@@ -6,7 +6,7 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
 import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
 
-import static ru.dorofeev.sandbox.quartzworkflow.TaskId.taskId;
+import static ru.dorofeev.sandbox.quartzworkflow.JobId.taskId;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.*;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManagerFactory.create;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.createInMemoryStore;

@@ -1,6 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.engine;
 
-import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
@@ -16,11 +16,11 @@ class ScheduleEventHandlersJob implements Executable {
 	}
 
 	@Override
-	public void execute(TaskId taskId, SerializedObject serializedArgs) throws ClassNotFoundException {
+	public void execute(JobId jobId, SerializedObject serializedArgs) throws ClassNotFoundException {
 		Args args = Args.deserializeFrom(serializedArgs);
 		Set<String> handlers = engine.findHandlers(args.event.getClass());
 
-		handlers.forEach(eh -> engine.submitHandler(taskId, args.event, eh));
+		handlers.forEach(eh -> engine.submitHandler(jobId, args.event, eh));
 	}
 
 	static class Args {

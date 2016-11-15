@@ -6,6 +6,9 @@ import ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository;
 
 public interface Engine {
 
+	JobKey SCHEDULE_EVENT_HANDLERS_JOB = new JobKey("SCHEDULE_EVENT_HANDLERS_JOB");
+	JobKey EXECUTE_EVENT_HANDLER_JOB = new JobKey("EXECUTE_EVENT_HANDLER_JOB");
+
 	rx.Observable<Throwable> errors();
 
 	TaskRepository getTaskRepository();

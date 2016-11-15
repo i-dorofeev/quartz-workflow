@@ -1,6 +1,5 @@
 package ru.dorofeev.sandbox.quartzworkflow.engine;
 
-import ru.dorofeev.sandbox.quartzworkflow.JobKey;
 import ru.dorofeev.sandbox.quartzworkflow.TaskId;
 import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
@@ -30,8 +29,6 @@ class EngineImpl implements Engine {
 	private final SerializedObjectFactory serializedObjectFactory;
 
 	private ErrorObservable errors = new ErrorObservable();
-	private final JobKey scheduleEventHandlersJob = new JobKey("scheduleEventHandlersJob");
-	private final JobKey executeEventHandlerJob = new JobKey("executeEventHandlerJob");
 
 	@SuppressWarnings("FieldCanBeLocal")
 	private final PublishSubject<TaskRepository.Cmd> taskRepositoryCmds = PublishSubject.create();
@@ -75,8 +72,6 @@ class EngineImpl implements Engine {
 			.subscribe(queueManagerCmds);
 	}
 
-
-
 	private TaskRepository.CompleteTaskCmd asCompleteTaskCmd(ExecutorService.TaskCompletedEvent event) {
 		return completeTaskCmd(event.getTaskId(), event.getException());
 	}
@@ -90,9 +85,9 @@ class EngineImpl implements Engine {
 	}
 
 	private Executable getExecutable(Task task) {
-		if (task.getJobKey().equals(scheduleEventHandlersJob)) {
+		if (task.getJobKey().equals(SCHEDULE_EVENT_HANDLERS_JOB)) {
 			return new ScheduleEventHandlersJob(this);
-		} else if (task.getJobKey().equals(executeEventHandlerJob)) {
+		} else if (task.getJobKey().equals(EXECUTE_EVENT_HANDLER_JOB)) {
 			return new ExecuteEventHandlerJob(this);
 		} else {
 			throw new EngineException("Unknown job key " + task.getJobKey());
@@ -128,7 +123,7 @@ class EngineImpl implements Engine {
 
 	Task submitEvent(TaskId parentId, Event event) {
 		return taskRepository.addTask(
-			parentId, scheduleEventHandlersJob,
+			parentId, SCHEDULE_EVENT_HANDLERS_JOB,
 			new ScheduleEventHandlersJob.Args(event).serialize(serializedObjectFactory), /* queueingOption */ null);
 	}
 
@@ -167,7 +162,7 @@ class EngineImpl implements Engine {
 
 		taskRepositoryCmds.onNext(
 			addTaskCmd(
-				parentId, executeEventHandlerJob,
+				parentId, EXECUTE_EVENT_HANDLER_JOB,
 				new ExecuteEventHandlerJob.Args(handlerUri, event).serialize(serializedObjectFactory),
 				eventHandler.getQueueingOption(event)));
 	}

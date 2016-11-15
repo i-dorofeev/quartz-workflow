@@ -8,11 +8,15 @@ import ru.dorofeev.sandbox.quartzworkflow.TypedEventHandler;
 
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toList;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
 import static ru.dorofeev.sandbox.quartzworkflow.Task.Result.CREATED;
 import static ru.dorofeev.sandbox.quartzworkflow.Task.Result.RUNNING;
@@ -20,6 +24,7 @@ import static ru.dorofeev.sandbox.quartzworkflow.Task.Result.RUNNING;
 public class QueueTest {
 
 	private static Engine engine;
+	private static List<Throwable> errors = new CopyOnWriteArrayList<>();
 	private static Model model;
 
 	private static class Model {
@@ -38,28 +43,28 @@ public class QueueTest {
 		h2Db.deleteDb();
 
 		engine = new Engine(org.h2.Driver.class, h2Db.jdbcUrl());
+		engine.errors().subscribe(errors::add);
 		model = new Model();
 
 		engine.registerEventHandler(IncrementCmdEvent.class, new IncrementCmdHandler(model), handlerUri("incrementCmd"));
 		engine.registerEventHandler(VerifyCmdEvent.class, new VerifyCmdHandler(model), handlerUri("verifyCmd"));
-
-		engine.start();
 	}
 
 	@AfterClass
 	public static void afterClass() {
-		engine.shutdown();
 	}
 
 	@Before
 	public void beforeTest() {
-		engine.resetErrors();
+		errors.clear();
 	}
 
 	@After
 	public void afterTest() {
 		System.out.println("Model: " + model.v1 + "/" + model.v2 + "/" + model.v3);
-		engine.assertSuccess();
+
+		assertThat(errors, is(empty()));
+		assertThat(engine.getTaskRepository().traverseFailed().collect(toList()), is(empty()));
 	}
 
 	@Test

@@ -34,7 +34,7 @@ public class ExecutorServiceTests {
 
 		TestExecutable testExecutable = new TestExecutable();
 
-		cmdFlow.onNext(scheduleTaskCmd(taskId("task0"), testExecutable));
+		cmdFlow.onNext(scheduleTaskCmd(taskId("task0"), null, testExecutable));
 
 		eventTestSubscriber.awaitValueCount(1, 500, MILLISECONDS);
 		eventTestSubscriber.assertValuesAndClear(taskSuccessfullyCompletedEvent(taskId("task0")));
@@ -47,7 +47,7 @@ public class ExecutorServiceTests {
 		RuntimeException exception = new RuntimeException("Error!");
 		TestExecutable testRunnable = new TestExecutable().throwsException(exception);
 
-		cmdFlow.onNext(scheduleTaskCmd(taskId("task0"), testRunnable));
+		cmdFlow.onNext(scheduleTaskCmd(taskId("task0"), null, testRunnable));
 
 		eventTestSubscriber.awaitValueCount(1, 500, MILLISECONDS);
 		eventTestSubscriber.assertValuesAndClear(taskFailedEvent(taskId("task0"), exception));

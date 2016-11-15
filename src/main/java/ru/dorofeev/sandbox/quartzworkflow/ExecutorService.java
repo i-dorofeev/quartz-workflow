@@ -14,8 +14,8 @@ import static rx.Observable.interval;
 
 public class ExecutorService {
 
-	public static ScheduleTaskCmd scheduleTaskCmd(TaskId task, Executable runnable) {
-		return new ScheduleTaskCmd(task, runnable);
+	public static ScheduleTaskCmd scheduleTaskCmd(TaskId task, JobDataMap args, Executable runnable) {
+		return new ScheduleTaskCmd(task, args, runnable);
 	}
 
 	public static TaskCompletedEvent taskSuccessfullyCompletedEvent(TaskId taskId) {
@@ -32,10 +32,12 @@ public class ExecutorService {
 	public static class ScheduleTaskCmd implements Cmd {
 
 		private final TaskId taskId;
+		private final JobDataMap args;
 		private final Executable executable;
 
-		ScheduleTaskCmd(TaskId taskId, Executable executable) {
+		ScheduleTaskCmd(TaskId taskId, JobDataMap args, Executable executable) {
 			this.taskId = taskId;
+			this.args = args;
 			this.executable = executable;
 		}
 
@@ -45,6 +47,10 @@ public class ExecutorService {
 
 		Executable getExecutable() {
 			return executable;
+		}
+
+		public JobDataMap getArgs() {
+			return args;
 		}
 	}
 
@@ -132,7 +138,7 @@ public class ExecutorService {
 			.observeOn(Schedulers.from(executor))
 			.map(cmd -> {
 					try {
-						cmd.getExecutable().execute();
+						cmd.getExecutable().execute(cmd.getArgs());
 						return new TaskCompletedEvent(cmd.getTaskId(), null);
 					} catch (Throwable e) {
 						return new TaskCompletedEvent(cmd.getTaskId(), e);

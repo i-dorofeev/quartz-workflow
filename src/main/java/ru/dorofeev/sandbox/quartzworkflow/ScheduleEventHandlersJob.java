@@ -1,13 +1,8 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
-import org.quartz.Job;
-import org.quartz.JobDataMap;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-
 import java.util.Set;
 
-class ScheduleEventHandlersJob implements Job {
+class ScheduleEventHandlersJob implements Executable {
 
 	private static final String PARAM_EVENT_CLASS = "eventClass";
 	private static final String PARAM_EVENT_JSON_DATA = "eventJsonData";
@@ -26,20 +21,15 @@ class ScheduleEventHandlersJob implements Job {
 	}
 
 	@Override
-	public void execute(JobExecutionContext context) throws JobExecutionException {
+	public void execute(JobDataMap args) throws ClassNotFoundException {
+		String eventClassName = args.get(PARAM_EVENT_CLASS);
+		String eventJson = args.get(PARAM_EVENT_JSON_DATA);
+		String taskId = args.get(Task.TASK_ID);
 
-		try {
-			String eventClassName = (String) context.getMergedJobDataMap().get(PARAM_EVENT_CLASS);
-			String eventJson = (String) context.getMergedJobDataMap().get(PARAM_EVENT_JSON_DATA);
-			String taskId = (String)context.getMergedJobDataMap().get(Task.TASK_ID);
+		Event event = JsonUtils.toObject(eventClassName, eventJson);
 
-			Event event = JsonUtils.toObject(eventClassName, eventJson);
+		Set<String> handlers = engine.findHandlers(event.getClass());
 
-			Set<String> handlers = engine.findHandlers(event.getClass());
-
-			handlers.forEach(eh -> engine.submitHandler(new TaskId(taskId), event, eh));
-		} catch (Exception e) {
-			throw new JobExecutionException(e);
-		}
+		handlers.forEach(eh -> engine.submitHandler(new TaskId(taskId), event, eh));
 	}
 }

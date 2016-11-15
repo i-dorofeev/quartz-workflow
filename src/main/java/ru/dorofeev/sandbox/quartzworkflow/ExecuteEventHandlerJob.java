@@ -1,13 +1,8 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
-import org.quartz.Job;
-import org.quartz.JobDataMap;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-
 import java.util.Optional;
 
-class ExecuteEventHandlerJob implements Job {
+class ExecuteEventHandlerJob implements Executable {
 
 	private static final String PARAM_EVENT_HANDLER_URI = "eventHandlerUri";
 	private static final String PARAM_EVENT_CLASS = "eventClass";
@@ -28,22 +23,18 @@ class ExecuteEventHandlerJob implements Job {
 	}
 
 	@Override
-	public void execute(JobExecutionContext context) throws JobExecutionException {
-		try {
-			String eventHandlerUri = (String) context.getMergedJobDataMap().get(PARAM_EVENT_HANDLER_URI);
-			String eventClassName = (String) context.getMergedJobDataMap().get(PARAM_EVENT_CLASS);
-			String eventJson = (String) context.getMergedJobDataMap().get(PARAM_EVENT_JSON_DATA);
-			String taskId = (String)context.getMergedJobDataMap().get(Task.TASK_ID);
+	public void execute(JobDataMap args) throws Throwable {
+		String eventHandlerUri = args.get(PARAM_EVENT_HANDLER_URI);
+		String eventClassName = args.get(PARAM_EVENT_CLASS);
+		String eventJson = args.get(PARAM_EVENT_JSON_DATA);
+		String taskId = args.get(Task.TASK_ID);
 
-			Event event = JsonUtils.toObject(eventClassName, eventJson);
+		Event event = JsonUtils.toObject(eventClassName, eventJson);
 
-			Optional<EventHandler> handler = engine.findHandlerByUri(eventHandlerUri);
-			handler
-				.orElseThrow(() -> new JobExecutionException("No handler found for uri " + eventHandlerUri))
-				.handleEvent(event)
-				.forEach(e -> engine.submitEvent(new TaskId(taskId), e));
-		} catch (Exception e) {
-			throw new JobExecutionException(e);
-		}
+		Optional<EventHandler> handler = engine.findHandlerByUri(eventHandlerUri);
+		handler
+			.orElseThrow(() -> new EngineException("No handler found for uri " + eventHandlerUri))
+			.handleEvent(event)
+			.forEach(e -> engine.submitEvent(new TaskId(taskId), e));
 	}
 }

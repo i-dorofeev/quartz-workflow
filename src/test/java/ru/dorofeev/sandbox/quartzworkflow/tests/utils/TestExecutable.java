@@ -2,6 +2,7 @@ package ru.dorofeev.sandbox.quartzworkflow.tests.utils;
 
 import org.junit.Assert;
 import ru.dorofeev.sandbox.quartzworkflow.Executable;
+import ru.dorofeev.sandbox.quartzworkflow.JobDataMap;
 
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,7 +38,7 @@ public class TestExecutable implements Executable {
 	}
 
 	@Override
-	public void execute() throws Throwable {
+	public void execute(JobDataMap args) throws Throwable {
 		invocationCount.incrementAndGet();
 
 		if (duration > 0)

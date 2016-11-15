@@ -56,7 +56,7 @@ public class ExecutorServiceIdleTest {
 		// emitting scheduleTaskCmd in response to the first 50 idle events
 		idleEvents
 			.flatMap(idleEvent -> range(0, idleEvent.getFreeThreadsCount()))
-			.map(i -> scheduleTaskCmd(taskId("task"), testExecutable))
+			.map(i -> scheduleTaskCmd(taskId("task"), null, testExecutable))
 			.take(50)
 			.subscribe(cmdFlow::onNext);	// we shouldn't complete the stream here, so propagating only onNext events
 

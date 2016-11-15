@@ -7,13 +7,19 @@ import ru.dorofeev.sandbox.quartzworkflow.EventHandler;
 import ru.dorofeev.sandbox.quartzworkflow.QueueingOption;
 
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
+import static java.util.stream.Collectors.toList;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
 
 public class EngineTests {
 
 	private static Engine engine;
+	private static List<Throwable> errors = new CopyOnWriteArrayList<>();
 
 	@BeforeClass
 	public static void beforeClass() throws Exception {
@@ -21,22 +27,22 @@ public class EngineTests {
 		h2Db.deleteDb();
 
 		engine = new Engine(org.h2.Driver.class, h2Db.jdbcUrl());
-		engine.start();
+		engine.errors().subscribe(errors::add);
 	}
 
 	@AfterClass
 	public static void afterClass() throws Exception {
-		engine.shutdown();
 	}
 
 	@Before
 	public void beforeTest() {
-		engine.resetErrors();
+		errors.clear();
 	}
 
 	@After
 	public void afterTest() {
-		engine.assertSuccess();
+		assertThat(errors, is(empty()));
+		assertThat(engine.getTaskRepository().traverseFailed().collect(toList()), is(empty()));
 	}
 
 	@Test

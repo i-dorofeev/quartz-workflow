@@ -1,6 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
-import org.quartz.utils.Key;
+import java.util.UUID;
 
 public class TaskId {
 
@@ -9,7 +9,7 @@ public class TaskId {
 	}
 
 	static TaskId createUniqueTaskId() {
-		return new TaskId(Key.createUniqueName(TaskId.class.getName()));
+		return new TaskId(UUID.randomUUID().toString());
 	}
 
 	private final String value;

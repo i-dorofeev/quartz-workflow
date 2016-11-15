@@ -6,90 +6,135 @@ import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.exception.LiquibaseException;
-import org.quartz.*;
-import org.quartz.impl.StdSchedulerFactory;
+import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.IdleEvent;
+import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.TaskCompletedEvent;
+import ru.dorofeev.sandbox.quartzworkflow.QueueManager.TaskPoppedEvent;
+import rx.Observable;
+import rx.functions.Func1;
+import rx.subjects.PublishSubject;
 
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.Callable;
 
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.TriggerBuilder.newTrigger;
+import static ru.dorofeev.sandbox.quartzworkflow.ExecutorService.scheduleTaskCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.enqueueCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.giveMeMoreCmd;
 
 public class Engine {
-
-	private final Scheduler scheduler;
-	private final EngineJobFactory jobFactory;
-	private final EngineSchedulerListener schedulerListener;
 
 	private Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
 	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
 
 	private final TaskRepository taskRepository = new TaskRepository();
 
-	private final JobKey scheduleEventHandlersJob;
-	private final JobKey executeEventHandlerJob;
+	private PublishSubject<Throwable> errors = PublishSubject.create();
+	private final JobKey scheduleEventHandlersJob = new JobKey("scheduleEventHandlersJob");
+	private final JobKey executeEventHandlerJob = new JobKey("executeEventHandlerJob");
+
+	@SuppressWarnings("FieldCanBeLocal")
+	private final PublishSubject<TaskRepository.Cmd> taskRepositoryCmds = PublishSubject.create();
+
+	@SuppressWarnings("FieldCanBeLocal")
+	private final PublishSubject<QueueManager.Cmd> queueManagerCmds = PublishSubject.create();
+
+	@SuppressWarnings("FieldCanBeLocal")
+	private final PublishSubject<ExecutorService.Cmd> executorServiceCmds = PublishSubject.create();
+
+	@SuppressWarnings("FieldCanBeLocal")
+	private final QueueManager queueManager;
+
+	@SuppressWarnings("FieldCanBeLocal")
+	private final ExecutorService executorService;
 
 	public Engine(Class<? extends java.sql.Driver> sqlDriver, String dataSourceUrl) {
-		try {
-			prepareDatabase(dataSourceUrl);
+		prepareDatabase(dataSourceUrl);
 
-			StdSchedulerFactory schedulerFactory = new StdSchedulerFactory(getSchedulerProperties(sqlDriver.getName(), dataSourceUrl));
-			this.scheduler = schedulerFactory.getScheduler();
+		this.queueManager = new QueueManager("EngineQueueManager", new QueueInMemoryStore());
+		this.executorService = new ExecutorService(10, 1000);
 
-			this.jobFactory = new EngineJobFactory();
-			this.scheduler.setJobFactory(jobFactory);
+		Observable<TaskRepository.Event> taskRepositoryOutput = taskRepositoryCmds.compose(taskRepository::bind);
+		taskRepositoryOutput
+			.compose(filterMapRetry(TaskRepository.Event::isAdd, this::asEnqueueCmd))
+			.subscribe(queueManagerCmds);
 
-			this.schedulerListener = new EngineSchedulerListener();
-			this.scheduler.getListenerManager().addSchedulerListener(schedulerListener);
+		taskRepositoryOutput
+			.compose(filterMapRetry(TaskRepository.Event::isComplete, this::asNotifyCompletedCmd))
+			.subscribe(queueManagerCmds);
 
-			EngineJobListener jobListener = new EngineJobListener(taskRepository);
-			this.scheduler.getListenerManager().addJobListener(jobListener);
+		Observable<QueueManager.Event> queueManagerOutput = queueManagerCmds.compose(queueManager::bind);
+		queueManagerOutput
+			.compose(filterMapRetry(TaskPoppedEvent.class, this::asScheduleTaskCmd))
+			.subscribe(executorServiceCmds);
 
-			this.scheduleEventHandlersJob = createJob("scheduleEventHandlers",
-				ScheduleEventHandlersJob.class, () -> new ScheduleEventHandlersJob(this));
+		rx.Observable<ExecutorService.Event> executorServiceOutput = executorServiceCmds.compose(executorService::bind);
+		executorServiceOutput
+			.compose(filterMapRetry(TaskCompletedEvent.class, this::asCompleteTaskCmd))
+			.subscribe(taskRepositoryCmds);
 
-			this.executeEventHandlerJob = createJob("executeEventHandler",
-				ExecuteEventHandlerJob.class, () -> new ExecuteEventHandlerJob(this));
+		executorServiceOutput
+			.compose(filterMapRetry(IdleEvent.class, this::asGiveMeMoreCmd))
+			.subscribe(queueManagerCmds);
+	}
 
-			QueueManager queueManager = new QueueManager("EngineQueueManager", new QueueInMemoryStore());
-			this.taskRepository.events()
-				.map(this::asQueueManagerCmd).compose(queueManager::bindEvents)
-				.map(this::asTaskId).subscribe(this::enqueue);
+	private <I, F extends I, O> Observable.Transformer<I, O> filterMapRetry(Class<F> filter, Func1<F, O> func) {
+		return observable ->
+			observable.ofType(filter)
+				.compose(mapRetry(func));
+	}
 
-		} catch (SchedulerException e) {
-			throw new EngineException(e);
+	private <I, O> Observable.Transformer<I, O> filterMapRetry(Func1<I, Boolean> filter, Func1<I, O> func) {
+		return observable ->
+			observable.filter(filter)
+				.compose(mapRetry(func));
+	}
+
+	private <I, O> Observable.Transformer<I, O> mapRetry(Func1<I, O> func) {
+		return observable ->
+			observable.map(func)
+				.retryWhen(errors -> errors.doOnNext(this.errors::onNext)); // publish unhandled exceptions to errors stream
+	}
+
+	private TaskRepository.CompleteTaskCmd asCompleteTaskCmd(TaskCompletedEvent event) {
+		return new TaskRepository.CompleteTaskCmd(event.getTaskId(), event.getException());
+	}
+
+	public rx.Observable<Throwable> errors() {
+		return this.errors;
+	}
+
+	private ExecutorService.ScheduleTaskCmd asScheduleTaskCmd(TaskPoppedEvent event) {
+		TaskId taskId = event.getTaskId();
+
+		Task task = taskRepository.findTask(taskId).orElseThrow(() -> new EngineException("Couldn't find task " + taskId));
+		Executable executable = getExecutable(task);
+		return scheduleTaskCmd(taskId, task.getJobData(), executable);
+	}
+
+	private Executable getExecutable(Task task) {
+		if (task.getJobKey().equals(scheduleEventHandlersJob)) {
+			return new ScheduleEventHandlersJob(this);
+		} else if (task.getJobKey().equals(executeEventHandlerJob)) {
+			return new ExecuteEventHandlerJob(this);
+		} else {
+			throw new EngineException("Unknown job key " + task.getJobKey());
 		}
 	}
 
-	private TaskId asTaskId(QueueManager.Event event) {
-		if (event instanceof QueueManager.TaskPoppedEvent)
-			return ((QueueManager.TaskPoppedEvent)event).getTaskId();
-		else
-			throw new EngineException("Unrecognized queue manager event " + event);
+	private QueueManager.NotifyCompletedCmd asNotifyCompletedCmd(TaskRepository.Event event) {
+		return new QueueManager.NotifyCompletedCmd(event.getTask().getId());
 	}
 
-	private QueueManager.Cmd asQueueManagerCmd(TaskRepository.Event event) {
-		if (event.getEventType() == TaskRepository.EventType.ADD)
-			return new QueueManager.EnqueueCmd(event.getTask().getQueueName(), event.getTask().getExecutionType(), event.getTask().getId());
-		else if (event.getEventType() == TaskRepository.EventType.COMPLETE)
-			return new QueueManager.NotifyCompletedCmd(event.getTask().getId());
-		else
-			throw new EngineException("Unrecognized task repository event " + event);
+	private QueueManager.EnqueueCmd asEnqueueCmd(TaskRepository.Event event) {
+		return new QueueManager.EnqueueCmd(event.getTask().getQueueName(), event.getTask().getExecutionType(), event.getTask().getId());
+	}
+
+	private QueueManager.Cmd asGiveMeMoreCmd(ExecutorService.Event event) {
+		return giveMeMoreCmd();
 	}
 
 	public TaskRepository getTaskRepository() {
 		return taskRepository;
-	}
-
-	public void resetErrors() {
-		schedulerListener.resetSchedulerErrors();
-	}
-
-	public void assertSuccess() {
-		schedulerListener.getSchedulerErrors().forEach(e -> { throw e; });
-		taskRepository.traverseFailed().forEach(t -> { throw new EngineException("Task failed: " + t.getId()); });
 	}
 
 	private void prepareDatabase(String dataSourceUrl) {
@@ -103,58 +148,6 @@ public class Engine {
 		}
 	}
 
-	private Properties getSchedulerProperties(String sqlDriverName, String dataSourceUrl) {
-		Properties p = new Properties();
-
-		p.setProperty("org.quartz.scheduler.instanceName", "DefaultQuartzScheduler");
-		p.setProperty("org.quartz.scheduler.rmi.export", "false");
-		p.setProperty("org.quartz.scheduler.rmi.proxy", "false");
-		p.setProperty("org.quartz.scheduler.wrapJobExecutionInUserTransaction", "false");
-		p.setProperty("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
-		p.setProperty("org.quartz.threadPool.threadCount", "10");
-		p.setProperty("org.quartz.threadPool.threadPriority", "5");
-		p.setProperty("org.quartz.threadPool.threadsInheritContextClassLoaderOfInitializingThread", "true");
-		p.setProperty("org.quartz.jobStore.misfireThreshold", "6000");
-
-		p.setProperty("org.quartz.jobStore.class", "org.quartz.impl.jdbcjobstore.JobStoreTX");
-		p.setProperty("org.quartz.jobStore.dataSource", "ds");
-		p.setProperty("org.quartz.dataSource.ds.driver", sqlDriverName);
-		p.setProperty("org.quartz.dataSource.ds.URL", dataSourceUrl);
-
-
-		// p.setProperty("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore");
-
-		return p;
-	}
-
-	public void start() {
-		try {
-			scheduler.start();
-		} catch (SchedulerException e) {
-			throw new EngineException(e);
-		}
-	}
-
-	public void shutdown() {
-		try {
-			scheduler.shutdown(true);
-		} catch (SchedulerException e) {
-			throw new EngineException(e);
-		}
-	}
-
-	private <T extends Job> JobKey createJob(String name, Class<T> jobType, Callable<T> jobTypeFactory) throws SchedulerException {
-		jobFactory.registerFactory(jobType, jobTypeFactory);
-
-		JobDetail jobDetail = newJob(jobType)
-			.withIdentity(name)
-			.storeDurably()
-			.build();
-
-		scheduler.addJob(jobDetail, /* replace */ true);
-
-		return jobDetail.getKey();
-	}
 
 	public Task submitEvent(Event event) {
 		return submitEvent(/* parentId */ null, event);
@@ -165,7 +158,7 @@ public class Engine {
 	}
 
 	public void retryExecution(TaskId taskId) {
-		enqueue(taskId);
+		queueManagerCmds.onNext(enqueueCmd(taskId));
 	}
 
 	void submitHandler(TaskId parentId, Event event, String handlerUri) {
@@ -175,28 +168,6 @@ public class Engine {
 		taskRepository.addTask(parentId, executeEventHandlerJob,
 			ExecuteEventHandlerJob.params(event, handlerUri),
 			eventHandler.getQueueingOption(event));
-	}
-
-	private void enqueue(TaskId taskId) {
-		Optional<Task> taskOpt = taskRepository.findTask(taskId);
-		Task t = taskOpt.orElseThrow(() -> new EngineException("Task " + taskId + " not found."));
-
-		Trigger trigger = newTrigger()
-			.forJob(t.getJobKey())
-			.withIdentity(t.getId().toString())
-			.usingJobData(new JobDataMap(t.getJobData()))
-			.startNow()
-			.build();
-
-		scheduleTrigger(scheduler, trigger);
-	}
-
-	private void scheduleTrigger(Scheduler scheduler, Trigger trigger) {
-		try {
-			scheduler.scheduleJob(trigger);
-		} catch (SchedulerException e) {
-			throw new EngineException(e);
-		}
 	}
 
 	Optional<EventHandler> findHandlerByUri(String handlerUri) {

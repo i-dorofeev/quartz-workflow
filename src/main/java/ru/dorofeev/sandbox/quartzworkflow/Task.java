@@ -1,8 +1,5 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
-import org.quartz.JobDataMap;
-import org.quartz.JobKey;
-
 public class Task {
 
 	static final String TASK_ID = "taskId";

@@ -10,11 +10,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.events;
 import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
 import static ru.dorofeev.sandbox.quartzworkflow.Task.Result.FAILED;
@@ -22,7 +26,8 @@ import static ru.dorofeev.sandbox.quartzworkflow.tests.Matchers.hasOnlyOneItem;
 
 public class SimpleWorkflowTest {
 
-	private static Engine engine = new Engine(org.h2.Driver.class, "jdbc:h2:~/test");
+	private static Engine engine;
+	private static List<Throwable> errors = new CopyOnWriteArrayList<>();
 	private static Model model = new Model();
 
 	@SuppressWarnings("FieldCanBeLocal")
@@ -45,6 +50,10 @@ public class SimpleWorkflowTest {
 
 	@BeforeClass
 	public static void beforeClass() throws Exception {
+
+		engine = new Engine(org.h2.Driver.class, "jdbc:h2:~/test");
+		engine.errors().subscribe(System.out::println);
+
 		model = new Model();
 
 		addPersonCmdHandler = new AddPersonCmdHandler(model);
@@ -53,8 +62,6 @@ public class SimpleWorkflowTest {
 		assignBaseRolesOnPersonAddedEventHandler = new AssignBaseRolesOnPersonAddedEventHandler();
 		processRoleAssignmentOnRoleAssignedEventHandler = new ProcessRoleAssignmentOnRoleAssignedEventHandler();
 
-		engine.start();
-
 		engine.registerEventHandler(AddPersonCmdEvent.class, addPersonCmdHandler, handlerUri("addPersonCmd"));
 		engine.registerEventHandler(AssignRoleCmdEvent.class, assignRoleCmdHandler, handlerUri("assignRoleCmd"));
 		engine.registerEventHandler(AssignAccountCmdEvent.class, assignAccountCmdHandler, handlerUri("assignAccountCmd"));
@@ -62,19 +69,15 @@ public class SimpleWorkflowTest {
 		engine.registerEventHandler(RoleAssignedEvent.class, processRoleAssignmentOnRoleAssignedEventHandler, handlerUri("processRoleAssignmentOnRoleAssignedEvent"));
 	}
 
-	@AfterClass
-	public static void afterClass() throws Exception {
-		engine.shutdown();
-	}
-
 	@Before
 	public void beforeTest() {
-		engine.resetErrors();
+		errors.clear();
 	}
 
 	@After
 	public void afterTest() {
-		engine.assertSuccess();
+		assertThat(errors, is(empty()));
+		assertThat(engine.getTaskRepository().traverseFailed().collect(toList()), is(empty()));
 	}
 
 	@Test

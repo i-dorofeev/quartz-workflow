@@ -32,8 +32,8 @@ public class QueueManager {
 		return new TaskPoppedEvent(taskId);
 	}
 
-	public static RequestNewTasksCmd requestNewTasksCmd() {
-		return new RequestNewTasksCmd();
+	public static GiveMeMoreCmd giveMeMoreCmd() {
+		return new GiveMeMoreCmd();
 	}
 
 	public interface Cmd { }
@@ -78,7 +78,7 @@ public class QueueManager {
 		}
 	}
 
-	private static class RequestNewTasksCmd implements Cmd { }
+	private static class GiveMeMoreCmd implements Cmd { }
 
 	public interface Event {
 
@@ -136,7 +136,7 @@ public class QueueManager {
 		return errorOutputHolder;
 	}
 
-	public rx.Observable<Event> bindEvents(rx.Observable<Cmd> input) {
+	public rx.Observable<Event> bind(rx.Observable<Cmd> input) {
 		input.subscribe(cmd -> {
 
 			if (cmd instanceof EnqueueCmd)
@@ -145,7 +145,7 @@ public class QueueManager {
 			else if (cmd instanceof NotifyCompletedCmd)
 				notifyCompleted((NotifyCompletedCmd) cmd);
 
-			else if (cmd instanceof RequestNewTasksCmd)
+			else if (cmd instanceof GiveMeMoreCmd)
 				requestNewTasks();
 
 			else

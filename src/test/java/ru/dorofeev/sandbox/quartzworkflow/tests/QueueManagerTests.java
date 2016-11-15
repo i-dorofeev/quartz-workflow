@@ -26,7 +26,7 @@ public class QueueManagerTests {
 		errorSubscriber = new TestSubscriber<>();
 
 		QueueManager queueManager = new QueueManager("QueueManagerTests", new QueueInMemoryStore());
-		queueManager.bindEvents(cmdFlow).subscribe(eventSubscriber);
+		queueManager.bind(cmdFlow).subscribe(eventSubscriber);
 		queueManager.errors().map(Throwable::getMessage).subscribe(errorSubscriber);
 	}
 
@@ -37,7 +37,7 @@ public class QueueManagerTests {
 		eventSubscriber.assertValuesAndClear(taskPoppedEvent(taskId("task")));
 		errorSubscriber.assertNoValues();
 
-		cmdFlow.onNext(requestNewTasksCmd());
+		cmdFlow.onNext(giveMeMoreCmd());
 		eventSubscriber.assertNoValues();
 		errorSubscriber.assertNoValues();
 	}

@@ -42,7 +42,7 @@ public interface TaskRepository {
 		private final EventType eventType;
 		private final Task task;
 
-		public Event(EventType eventType, Task task) {
+		Event(EventType eventType, Task task) {
 			this.eventType = eventType;
 			this.task = task;
 		}
@@ -67,7 +67,7 @@ public interface TaskRepository {
 		private final JobDataMap jobDataMap;
 		private final QueueingOption queueingOption;
 
-		public AddTaskCmd(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption) {
+		AddTaskCmd(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption) {
 			this.parentId = parentId;
 			this.jobKey = jobKey;
 			this.jobDataMap = jobDataMap;
@@ -95,7 +95,7 @@ public interface TaskRepository {
 		private final TaskId taskId;
 		private final Throwable exception;
 
-		public CompleteTaskCmd(TaskId taskId, Throwable exception) {
+		CompleteTaskCmd(TaskId taskId, Throwable exception) {
 			this.taskId = taskId;
 			this.exception = exception;
 		}
@@ -107,5 +107,13 @@ public interface TaskRepository {
 		public Throwable getException() {
 			return exception;
 		}
+	}
+
+	static CompleteTaskCmd completeTaskCmd(TaskId taskId, Throwable ex) {
+		return new CompleteTaskCmd(taskId, ex);
+	}
+
+	static AddTaskCmd addTaskCmd(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption) {
+		return new AddTaskCmd(parentId, jobKey, jobDataMap, queueingOption);
 	}
 }

@@ -27,6 +27,10 @@ public interface QueueManager {
 		return new EnqueueCmd(DEFAULT_QUEUE_NAME, executionType, taskId);
 	}
 
+	static EnqueueCmd enqueueCmd(String queueName, QueueingOption.ExecutionType executionType, TaskId taskId) {
+		return new EnqueueCmd(queueName, executionType, taskId);
+	}
+
 	static NotifyCompletedCmd notifyCompletedCmd(TaskId taskId) {
 		return new NotifyCompletedCmd(taskId);
 	}
@@ -45,7 +49,7 @@ public interface QueueManager {
 		private final QueueingOption.ExecutionType executionType;
 		private final TaskId taskId;
 
-		public EnqueueCmd(String queueName, QueueingOption.ExecutionType executionType, TaskId taskId) {
+		EnqueueCmd(String queueName, QueueingOption.ExecutionType executionType, TaskId taskId) {
 			this.queueName = queueName;
 			this.executionType = executionType;
 			this.taskId = taskId;
@@ -69,7 +73,7 @@ public interface QueueManager {
 
 		private final TaskId taskId;
 
-		public NotifyCompletedCmd(TaskId taskId) {
+		NotifyCompletedCmd(TaskId taskId) {
 			this.taskId = taskId;
 		}
 
@@ -100,7 +104,6 @@ public interface QueueManager {
 			QueueManager.TaskPoppedEvent that = (TaskPoppedEvent) o;
 
 			return taskId.equals(that.taskId);
-
 		}
 
 		@Override

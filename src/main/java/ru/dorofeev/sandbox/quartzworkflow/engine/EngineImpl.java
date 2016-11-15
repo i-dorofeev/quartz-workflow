@@ -16,6 +16,9 @@ import java.util.*;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleTaskCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.enqueueCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.giveMeMoreCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.notifyCompletedCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository.addTaskCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository.completeTaskCmd;
 
 class EngineImpl implements Engine {
 
@@ -72,7 +75,7 @@ class EngineImpl implements Engine {
 
 
 	private TaskRepository.CompleteTaskCmd asCompleteTaskCmd(ExecutorService.TaskCompletedEvent event) {
-		return new TaskRepository.CompleteTaskCmd(event.getTaskId(), event.getException());
+		return completeTaskCmd(event.getTaskId(), event.getException());
 	}
 
 	private ExecutorService.ScheduleTaskCmd asScheduleTaskCmd(QueueManager.TaskPoppedEvent event) {
@@ -94,11 +97,11 @@ class EngineImpl implements Engine {
 	}
 
 	private QueueManager.NotifyCompletedCmd asNotifyCompletedCmd(TaskRepository.Event event) {
-		return new QueueManager.NotifyCompletedCmd(event.getTask().getId());
+		return notifyCompletedCmd(event.getTask().getId());
 	}
 
 	private QueueManager.EnqueueCmd asEnqueueCmd(TaskRepository.Event event) {
-		return new QueueManager.EnqueueCmd(event.getTask().getQueueName(), event.getTask().getExecutionType(), event.getTask().getId());
+		return enqueueCmd(event.getTask().getQueueName(), event.getTask().getExecutionType(), event.getTask().getId());
 	}
 
 	private QueueManager.Cmd asGiveMeMoreCmd(ExecutorService.Event event) {
@@ -157,7 +160,7 @@ class EngineImpl implements Engine {
 		Optional<EventHandler> handlerByUriOpt = findHandlerByUri(handlerUri);
 		EventHandler eventHandler = handlerByUriOpt.orElseThrow(() -> new EngineException("Handler instance for URI " + handlerUri + " not found"));
 
-		taskRepositoryCmds.onNext(new TaskRepository.AddTaskCmd(parentId, executeEventHandlerJob,
+		taskRepositoryCmds.onNext(addTaskCmd(parentId, executeEventHandlerJob,
 			ExecuteEventHandlerJob.params(event, handlerUri),
 			eventHandler.getQueueingOption(event)));
 	}

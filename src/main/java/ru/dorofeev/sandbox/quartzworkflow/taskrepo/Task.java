@@ -1,8 +1,14 @@
-package ru.dorofeev.sandbox.quartzworkflow;
+package ru.dorofeev.sandbox.quartzworkflow.taskrepo;
+
+import ru.dorofeev.sandbox.quartzworkflow.JobDataMap;
+import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
+import ru.dorofeev.sandbox.quartzworkflow.utils.JsonUtils;
 
 public class Task {
 
-	static final String TASK_ID = "taskId";
+	public static final String TASK_ID = "taskId";
 
 
 	public enum Result {
@@ -18,7 +24,7 @@ public class Task {
 	private Result result = Result.CREATED;
 	private Throwable exception;
 
-	public Task(TaskId taskId, String queueName, QueueingOption.ExecutionType executionType, JobKey jobKey, JobDataMap jobData) {
+	Task(TaskId taskId, String queueName, QueueingOption.ExecutionType executionType, JobKey jobKey, JobDataMap jobData) {
 		this.taskId = taskId;
 		this.queueName = queueName;
 		this.executionType = executionType;
@@ -35,7 +41,7 @@ public class Task {
 		return result;
 	}
 
-	String getQueueName() {
+	public String getQueueName() {
 		return queueName;
 	}
 
@@ -47,11 +53,11 @@ public class Task {
 		return exception;
 	}
 
-	JobKey getJobKey() {
+	public JobKey getJobKey() {
 		return jobKey;
 	}
 
-	JobDataMap getJobData() {
+	public JobDataMap getJobData() {
 		return jobData;
 	}
 

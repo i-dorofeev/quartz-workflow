@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow;
+package ru.dorofeev.sandbox.quartzworkflow.engine;
 
 import java.util.Arrays;
 import java.util.Collections;

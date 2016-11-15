@@ -1,5 +1,6 @@
-package ru.dorofeev.sandbox.quartzworkflow;
+package ru.dorofeev.sandbox.quartzworkflow.queue;
 
+@SuppressWarnings("unused")
 public class QueueStoreException extends Exception {
 
 	public QueueStoreException() {

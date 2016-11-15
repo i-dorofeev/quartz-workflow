@@ -2,9 +2,10 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 
 import org.junit.Before;
 import org.junit.Test;
-import ru.dorofeev.sandbox.quartzworkflow.QueueInMemoryStore;
-import ru.dorofeev.sandbox.quartzworkflow.QueueManager;
-import ru.dorofeev.sandbox.quartzworkflow.QueueManager.*;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManagerFactory;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueStore;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory;
 import rx.Observable;
 import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
@@ -14,18 +15,20 @@ import java.util.stream.IntStream;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.*;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.TaskId.taskId;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.enqueueCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.notifyCompletedCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.taskPoppedEvent;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption.ExecutionType.EXCLUSIVE;
 import static rx.schedulers.Schedulers.computation;
 
 public class MultinodeQueueManagerTests {
 
-	private PublishSubject<Cmd> cmdFlow1;
-	private PublishSubject<Cmd> cmdFlow2;
+	private PublishSubject<QueueManager.Cmd> cmdFlow1;
+	private PublishSubject<QueueManager.Cmd> cmdFlow2;
 	private TestSubscriber<QueueManager.Event> eventSubscriber;
 	private TestSubscriber<String> errorSubscriber;
-	private QueueInMemoryStore store;
+	private QueueStore store;
 
 	@Before
 	public void beforeTest() {
@@ -34,17 +37,17 @@ public class MultinodeQueueManagerTests {
 		eventSubscriber = new TestSubscriber<>();
 		errorSubscriber = new TestSubscriber<>();
 
-		store = new QueueInMemoryStore();
+		store = QueueStoreFactory.createInMemoryStore();
 	}
 
 	@Test
 	public void sanityTest() {
 
-		QueueManager queueManager1 = new QueueManager("qm1", store);
+		QueueManager queueManager1 = QueueManagerFactory.create("qm1", store);
 		Observable<QueueManager.Event> qm1Events = queueManager1.bind(cmdFlow1);
 		Observable<String> qm1Errors = queueManager1.errors().map(Throwable::getMessage);
 
-		QueueManager queueManager2 = new QueueManager("qm2", store);
+		QueueManager queueManager2 = QueueManagerFactory.create("qm2", store);
 		Observable<QueueManager.Event> qm2Events = queueManager2.bind(cmdFlow2);
 		Observable<String> qm2Errors = queueManager2.errors().map(Throwable::getMessage);
 
@@ -52,12 +55,12 @@ public class MultinodeQueueManagerTests {
 		qm1Events.mergeWith(qm2Events).subscribe(eventSubscriber);
 
 		qm1Events.observeOn(computation()).subscribe(event -> {
-			TaskPoppedEvent tpe = (TaskPoppedEvent) event;
+			QueueManager.TaskPoppedEvent tpe = (QueueManager.TaskPoppedEvent) event;
 			cmdFlow2.onNext(notifyCompletedCmd(tpe.getTaskId()));
 		});
 
 		qm2Events.observeOn(computation()).subscribe(event -> {
-			TaskPoppedEvent tpe = (TaskPoppedEvent) event;
+			QueueManager.TaskPoppedEvent tpe = (QueueManager.TaskPoppedEvent) event;
 			cmdFlow1.onNext(notifyCompletedCmd(tpe.getTaskId()));
 		});
 

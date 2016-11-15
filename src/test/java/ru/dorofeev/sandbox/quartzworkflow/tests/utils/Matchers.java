@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow.tests;
+package ru.dorofeev.sandbox.quartzworkflow.tests.utils;
 
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -7,13 +7,13 @@ import rx.functions.Func1;
 
 import java.util.List;
 
-class Matchers {
+public class Matchers {
 
-	static <T> org.hamcrest.Matcher<Observable<T>> hasOnlyOneItem() {
+	public static <T> org.hamcrest.Matcher<Observable<T>> hasOnlyOneItem() {
 		return hasOnlyOneItem(null, item -> true);
 	}
 
-	static <T> org.hamcrest.Matcher<Observable<T>> hasOnlyOneItem(String descr, Func1<? super T, Boolean> predicate) {
+	public static <T> org.hamcrest.Matcher<Observable<T>> hasOnlyOneItem(String descr, Func1<? super T, Boolean> predicate) {
 		return new BaseMatcher<Observable<T>>() {
 			@Override
 			public boolean matches(Object item) {

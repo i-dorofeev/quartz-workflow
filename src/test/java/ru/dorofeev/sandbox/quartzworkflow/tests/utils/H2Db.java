@@ -1,21 +1,21 @@
-package ru.dorofeev.sandbox.quartzworkflow.tests;
+package ru.dorofeev.sandbox.quartzworkflow.tests.utils;
 
 import java.io.File;
 
-class H2Db {
+public class H2Db {
 
 	private final String path;
 
-	H2Db(String path) {
+	public H2Db(String path) {
 		this.path = path;
 	}
 
-	String jdbcUrl() {
+	public String jdbcUrl() {
 		return "jdbc:h2:" + path;
 	}
 
 	@SuppressWarnings("ResultOfMethodCallIgnored")
-	void deleteDb() {
+	public void deleteDb() {
 		new File(path + ".mv.db").delete();
 		new File(path + ".trace.db").delete();
 	}

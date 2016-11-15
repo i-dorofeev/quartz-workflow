@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow;
+package ru.dorofeev.sandbox.quartzworkflow.queue;
 
 public class QueueingOption {
 

@@ -1,39 +1,35 @@
-package ru.dorofeev.sandbox.quartzworkflow;
+package ru.dorofeev.sandbox.quartzworkflow.engine;
 
-import liquibase.Contexts;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.exception.LiquibaseException;
-import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.IdleEvent;
-import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.TaskCompletedEvent;
-import ru.dorofeev.sandbox.quartzworkflow.QueueManager.TaskPoppedEvent;
+import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
+import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
+import ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task;
+import ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository;
 import rx.Observable;
 import rx.functions.Func1;
 import rx.subjects.PublishSubject;
 
-import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.*;
 
-import static ru.dorofeev.sandbox.quartzworkflow.ExecutorService.scheduleTaskCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.enqueueCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.giveMeMoreCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleTaskCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.enqueueCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.giveMeMoreCmd;
 
 class EngineImpl implements Engine {
 
 	private Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
 	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
 
-	private final TaskRepositoryImpl taskRepository = new TaskRepositoryImpl();
+	private final TaskRepository taskRepository;
 
 	private PublishSubject<Throwable> errors = PublishSubject.create();
 	private final JobKey scheduleEventHandlersJob = new JobKey("scheduleEventHandlersJob");
 	private final JobKey executeEventHandlerJob = new JobKey("executeEventHandlerJob");
 
 	@SuppressWarnings("FieldCanBeLocal")
-	private final PublishSubject<TaskRepositoryImpl.Cmd> taskRepositoryCmds = PublishSubject.create();
+	private final PublishSubject<TaskRepository.Cmd> taskRepositoryCmds = PublishSubject.create();
 
 	@SuppressWarnings("FieldCanBeLocal")
 	private final PublishSubject<QueueManager.Cmd> queueManagerCmds = PublishSubject.create();
@@ -41,19 +37,11 @@ class EngineImpl implements Engine {
 	@SuppressWarnings("FieldCanBeLocal")
 	private final PublishSubject<ExecutorService.Cmd> executorServiceCmds = PublishSubject.create();
 
-	@SuppressWarnings("FieldCanBeLocal")
-	private final QueueManager queueManager;
 
-	@SuppressWarnings("FieldCanBeLocal")
-	private final ExecutorService executorService;
+	EngineImpl(TaskRepository taskRepository, ExecutorService executorService, QueueManager queueManager) {
+		this.taskRepository = taskRepository;
 
-	public EngineImpl(Class<? extends java.sql.Driver> sqlDriver, String dataSourceUrl) {
-		prepareDatabase(dataSourceUrl);
-
-		this.queueManager = new QueueManager("EngineQueueManager", new QueueInMemoryStore());
-		this.executorService = new ExecutorService(10, 1000);
-
-		Observable<TaskRepositoryImpl.Event> taskRepositoryOutput = taskRepositoryCmds.compose(taskRepository::bind);
+		Observable<TaskRepository.Event> taskRepositoryOutput = taskRepositoryCmds.compose(this.taskRepository::bind);
 		taskRepositoryOutput
 			.compose(filterMapRetry(TaskRepository.Event::isAdd, this::asEnqueueCmd))
 			.subscribe(queueManagerCmds);
@@ -64,16 +52,16 @@ class EngineImpl implements Engine {
 
 		Observable<QueueManager.Event> queueManagerOutput = queueManagerCmds.compose(queueManager::bind);
 		queueManagerOutput
-			.compose(filterMapRetry(TaskPoppedEvent.class, this::asScheduleTaskCmd))
+			.compose(filterMapRetry(QueueManager.TaskPoppedEvent.class, this::asScheduleTaskCmd))
 			.subscribe(executorServiceCmds);
 
 		rx.Observable<ExecutorService.Event> executorServiceOutput = executorServiceCmds.compose(executorService::bind);
 		executorServiceOutput
-			.compose(filterMapRetry(TaskCompletedEvent.class, this::asCompleteTaskCmd))
+			.compose(filterMapRetry(ExecutorService.TaskCompletedEvent.class, this::asCompleteTaskCmd))
 			.subscribe(taskRepositoryCmds);
 
 		executorServiceOutput
-			.compose(filterMapRetry(IdleEvent.class, this::asGiveMeMoreCmd))
+			.compose(filterMapRetry(ExecutorService.IdleEvent.class, this::asGiveMeMoreCmd))
 			.subscribe(queueManagerCmds);
 	}
 
@@ -95,16 +83,11 @@ class EngineImpl implements Engine {
 				.retryWhen(errors -> errors.doOnNext(this.errors::onNext)); // publish unhandled exceptions to errors stream
 	}
 
-	private TaskRepositoryImpl.CompleteTaskCmd asCompleteTaskCmd(TaskCompletedEvent event) {
-		return new TaskRepositoryImpl.CompleteTaskCmd(event.getTaskId(), event.getException());
+	private TaskRepository.CompleteTaskCmd asCompleteTaskCmd(ExecutorService.TaskCompletedEvent event) {
+		return new TaskRepository.CompleteTaskCmd(event.getTaskId(), event.getException());
 	}
 
-	@Override
-	public rx.Observable<Throwable> errors() {
-		return this.errors;
-	}
-
-	private ExecutorService.ScheduleTaskCmd asScheduleTaskCmd(TaskPoppedEvent event) {
+	private ExecutorService.ScheduleTaskCmd asScheduleTaskCmd(QueueManager.TaskPoppedEvent event) {
 		TaskId taskId = event.getTaskId();
 
 		Task task = taskRepository.findTask(taskId).orElseThrow(() -> new EngineException("Couldn't find task " + taskId));
@@ -122,11 +105,11 @@ class EngineImpl implements Engine {
 		}
 	}
 
-	private QueueManager.NotifyCompletedCmd asNotifyCompletedCmd(TaskRepositoryImpl.Event event) {
+	private QueueManager.NotifyCompletedCmd asNotifyCompletedCmd(TaskRepository.Event event) {
 		return new QueueManager.NotifyCompletedCmd(event.getTask().getId());
 	}
 
-	private QueueManager.EnqueueCmd asEnqueueCmd(TaskRepositoryImpl.Event event) {
+	private QueueManager.EnqueueCmd asEnqueueCmd(TaskRepository.Event event) {
 		return new QueueManager.EnqueueCmd(event.getTask().getQueueName(), event.getTask().getExecutionType(), event.getTask().getId());
 	}
 
@@ -135,21 +118,14 @@ class EngineImpl implements Engine {
 	}
 
 	@Override
-	public TaskRepositoryImpl getTaskRepository() {
+	public rx.Observable<Throwable> errors() {
+		return this.errors;
+	}
+
+	@Override
+	public TaskRepository getTaskRepository() {
 		return taskRepository;
 	}
-
-	private void prepareDatabase(String dataSourceUrl) {
-		try {
-			JdbcConnection h2Connection = new JdbcConnection(DriverManager.getConnection(dataSourceUrl));
-			Database db = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(h2Connection);
-			Liquibase liquibase = new Liquibase("engine.db.changelog.xml", new CustomClassLoaderResourceAccessor(EngineImpl.class.getClassLoader()), db);
-			liquibase.update(new Contexts());
-		} catch (SQLException | LiquibaseException e) {
-			throw new EngineException(e);
-		}
-	}
-
 
 	@Override
 	public Task submitEvent(Event event) {
@@ -163,20 +139,6 @@ class EngineImpl implements Engine {
 	@Override
 	public void retryExecution(TaskId taskId) {
 		queueManagerCmds.onNext(enqueueCmd(taskId));
-	}
-
-	void submitHandler(TaskId parentId, Event event, String handlerUri) {
-		Optional<EventHandler> handlerByUriOpt = findHandlerByUri(handlerUri);
-		EventHandler eventHandler = handlerByUriOpt.orElseThrow(() -> new EngineException("Handler instance for URI " + handlerUri + " not found"));
-
-		taskRepository.addTask(parentId, executeEventHandlerJob,
-			ExecuteEventHandlerJob.params(event, handlerUri),
-			eventHandler.getQueueingOption(event));
-	}
-
-	Optional<EventHandler> findHandlerByUri(String handlerUri) {
-		EventHandler eventHandler = eventHandlerInstances.get(handlerUri);
-		return Optional.ofNullable(eventHandler);
 	}
 
 	@Override
@@ -201,6 +163,20 @@ class EngineImpl implements Engine {
 	public void registerEventHandler(Class<? extends Event> cmdEventType, EventHandler cmdHandler, String handlerUri) {
 		registerEventHandlerInstance(handlerUri, cmdHandler);
 		registerEventHandler(cmdEventType, handlerUri);
+	}
+
+	void submitHandler(TaskId parentId, Event event, String handlerUri) {
+		Optional<EventHandler> handlerByUriOpt = findHandlerByUri(handlerUri);
+		EventHandler eventHandler = handlerByUriOpt.orElseThrow(() -> new EngineException("Handler instance for URI " + handlerUri + " not found"));
+
+		taskRepositoryCmds.onNext(new TaskRepository.AddTaskCmd(parentId, executeEventHandlerJob,
+			ExecuteEventHandlerJob.params(event, handlerUri),
+			eventHandler.getQueueingOption(event)));
+	}
+
+	Optional<EventHandler> findHandlerByUri(String handlerUri) {
+		EventHandler eventHandler = eventHandlerInstances.get(handlerUri);
+		return Optional.ofNullable(eventHandler);
 	}
 
 	Set<String> findHandlers(Class<? extends Event> eventType) {

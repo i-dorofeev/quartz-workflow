@@ -1,4 +1,8 @@
-package ru.dorofeev.sandbox.quartzworkflow;
+package ru.dorofeev.sandbox.quartzworkflow.engine;
+
+import ru.dorofeev.sandbox.quartzworkflow.*;
+import ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task;
+import ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository;
 
 public interface Engine {
 

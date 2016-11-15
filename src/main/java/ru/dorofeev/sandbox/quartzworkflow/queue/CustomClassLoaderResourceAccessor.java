@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow;
+package ru.dorofeev.sandbox.quartzworkflow.queue;
 
 import liquibase.resource.ClassLoaderResourceAccessor;
 
@@ -18,15 +18,14 @@ class CustomClassLoaderResourceAccessor extends ClassLoaderResourceAccessor {
 
 	// этот код идентичен коду ClassLoaderResourceAccessor за исключением закомментированной строчки
 	// она, как оказалось, очень ресурсоемка (2 сек)
-	@SuppressWarnings("Convert2Diamond")
 	@Override
 	public Set<InputStream> getResourcesAsStream(String path) throws IOException {
 		Enumeration<URL> resources = toClassLoader().getResources(path);
 		if (resources == null || !resources.hasMoreElements()) {
 			return null;
 		}
-		Set<String> seenUrls = new HashSet<String>();
-		Set<InputStream> returnSet = new HashSet<InputStream>();
+		Set<String> seenUrls = new HashSet<>();
+		Set<InputStream> returnSet = new HashSet<>();
 		while (resources.hasMoreElements()) {
 			URL url = resources.nextElement();
 			if (seenUrls.contains(url.toExternalForm())) {

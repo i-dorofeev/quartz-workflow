@@ -1,4 +1,6 @@
-package ru.dorofeev.sandbox.quartzworkflow;
+package ru.dorofeev.sandbox.quartzworkflow.queue;
+
+import ru.dorofeev.sandbox.quartzworkflow.TaskId;
 
 import java.util.Optional;
 import java.util.SortedSet;
@@ -7,10 +9,8 @@ import java.util.function.Predicate;
 
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.EXCLUSIVE;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.PARALLEL;
 
-public class QueueInMemoryStore implements QueueStore {
+class QueueInMemoryStore implements QueueStore {
 
 	private static class QueueItem {
 
@@ -49,7 +49,7 @@ public class QueueInMemoryStore implements QueueStore {
 
 	private boolean anyExclusivePopped(String queueName) {
 		return queue.stream()
-			.filter(qi -> qi.status == QueueItemStatus.POPPED && qi.executionType == EXCLUSIVE && qi.queueName.equals(queueName))
+			.filter(qi -> qi.status == QueueItemStatus.POPPED && qi.executionType == QueueingOption.ExecutionType.EXCLUSIVE && qi.queueName.equals(queueName))
 			.count() != 0;
 	}
 
@@ -69,11 +69,11 @@ public class QueueInMemoryStore implements QueueStore {
 			Optional<QueueItem> nextItemOpt = getNextPending(queueName != null ? qn -> qn.equals(queueName) : qn -> true);
 
 			return nextItemOpt.flatMap(nextItem -> {
-				if (nextItem.executionType == PARALLEL && !anyExclusivePopped(queueName)) {
+				if (nextItem.executionType == QueueingOption.ExecutionType.PARALLEL && !anyExclusivePopped(queueName)) {
 					nextItem.status = QueueItemStatus.POPPED;
 					return of(nextItem.taskId);
 
-				} else if (nextItem.executionType == EXCLUSIVE && !anyPopped(queueName)) {
+				} else if (nextItem.executionType == QueueingOption.ExecutionType.EXCLUSIVE && !anyPopped(queueName)) {
 					nextItem.status = QueueItemStatus.POPPED;
 					return of(nextItem.taskId);
 

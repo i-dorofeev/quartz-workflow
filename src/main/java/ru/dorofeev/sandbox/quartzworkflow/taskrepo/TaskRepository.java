@@ -1,13 +1,25 @@
-package ru.dorofeev.sandbox.quartzworkflow;
+package ru.dorofeev.sandbox.quartzworkflow.taskrepo;
 
+import ru.dorofeev.sandbox.quartzworkflow.JobDataMap;
+import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
+import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import rx.Observable;
 import rx.functions.Func1;
 
+import java.util.Optional;
 import java.util.stream.Stream;
 
-import static ru.dorofeev.sandbox.quartzworkflow.TaskRepository.EventType.ADD;
-import static ru.dorofeev.sandbox.quartzworkflow.TaskRepository.EventType.COMPLETE;
+import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository.EventType.ADD;
+import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.TaskRepository.EventType.COMPLETE;
 
 public interface TaskRepository {
+
+	rx.Observable<Event> bind(Observable<Cmd> input);
+
+	Task addTask(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption);
+
+	Optional<Task> findTask(TaskId taskId);
 
 	Stream<Task> traverse();
 
@@ -31,10 +43,6 @@ public interface TaskRepository {
 		public Event(EventType eventType, Task task) {
 			this.eventType = eventType;
 			this.task = task;
-		}
-
-		public EventType getEventType() {
-			return eventType;
 		}
 
 		public Task getTask() {
@@ -64,19 +72,19 @@ public interface TaskRepository {
 			this.queueingOption = queueingOption;
 		}
 
-		public TaskId getParentId() {
+		TaskId getParentId() {
 			return parentId;
 		}
 
-		public JobKey getJobKey() {
+		JobKey getJobKey() {
 			return jobKey;
 		}
 
-		public JobDataMap getJobDataMap() {
+		JobDataMap getJobDataMap() {
 			return jobDataMap;
 		}
 
-		public QueueingOption getQueueingOption() {
+		QueueingOption getQueueingOption() {
 			return queueingOption;
 		}
 	}

@@ -1,4 +1,6 @@
-package ru.dorofeev.sandbox.quartzworkflow;
+package ru.dorofeev.sandbox.quartzworkflow.queue;
+
+import ru.dorofeev.sandbox.quartzworkflow.TaskId;
 
 import java.util.Optional;
 

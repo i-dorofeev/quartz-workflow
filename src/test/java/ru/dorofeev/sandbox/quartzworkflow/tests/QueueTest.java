@@ -1,7 +1,12 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests;
 
 import org.junit.*;
-import ru.dorofeev.sandbox.quartzworkflow.*;
+import ru.dorofeev.sandbox.quartzworkflow.Factory;
+import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
+import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
+import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.H2Db;
 
 import java.util.List;
 import java.util.Random;
@@ -14,9 +19,9 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
-import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
-import static ru.dorofeev.sandbox.quartzworkflow.Task.Result.CREATED;
-import static ru.dorofeev.sandbox.quartzworkflow.Task.Result.RUNNING;
+import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
+import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task.Result.CREATED;
+import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task.Result.RUNNING;
 
 public class QueueTest {
 
@@ -39,7 +44,7 @@ public class QueueTest {
 		H2Db h2Db = new H2Db("./build/test");
 		h2Db.deleteDb();
 
-		engine = EngineFactory.create(org.h2.Driver.class, h2Db.jdbcUrl());
+		engine = Factory.createInMemory();
 		engine.errors().subscribe(errors::add);
 		model = new Model();
 

@@ -1,5 +1,10 @@
-package ru.dorofeev.sandbox.quartzworkflow;
+package ru.dorofeev.sandbox.quartzworkflow.taskrepo;
 
+import ru.dorofeev.sandbox.quartzworkflow.JobDataMap;
+import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
+import ru.dorofeev.sandbox.quartzworkflow.TaskId;
+import ru.dorofeev.sandbox.quartzworkflow.engine.EngineException;
 import rx.Observable;
 import rx.Subscriber;
 import rx.functions.Func1;
@@ -9,9 +14,7 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.Optional.ofNullable;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.PARALLEL;
-import static ru.dorofeev.sandbox.quartzworkflow.TaskRepository.EventType.ADD;
-import static ru.dorofeev.sandbox.quartzworkflow.TaskRepository.EventType.COMPLETE;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption.ExecutionType.PARALLEL;
 
 class TaskRepositoryImpl implements TaskRepository {
 
@@ -29,7 +32,8 @@ class TaskRepositoryImpl implements TaskRepository {
 		children.add(child);
 	}
 
-	rx.Observable<Event> bind(Observable<Cmd> input) {
+	@Override
+	public rx.Observable<Event> bind(Observable<Cmd> input) {
 
 		input.ofType(AddTaskCmd.class)
 			.map(cmd -> addTaskInternal(cmd.getParentId(), cmd.getJobKey(), cmd.getJobDataMap(), cmd.getQueueingOption()))
@@ -45,7 +49,7 @@ class TaskRepositoryImpl implements TaskRepository {
 				else
 					task.recordResult(Task.Result.SUCCESS, null);
 
-				return new Event(COMPLETE, task);
+				return new Event(EventType.COMPLETE, task);
 			})
 			.subscribe(eventsHolder);
 
@@ -60,7 +64,8 @@ class TaskRepositoryImpl implements TaskRepository {
 		return taskId;
 	}
 
-	Task addTask(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption) {
+	@Override
+	public Task addTask(TaskId parentId, JobKey jobKey, JobDataMap jobDataMap, QueueingOption queueingOption) {
 		Event event = addTaskInternal(parentId, jobKey, jobDataMap, queueingOption);
 		eventsHolder.onNext(event);
 		return event.getTask();
@@ -80,15 +85,15 @@ class TaskRepositoryImpl implements TaskRepository {
 		if (parentId != null)
 			indexChild(parentId, t.getId());
 
-		return new Event(ADD, t);
+		return new Event(EventType.ADD, t);
 	}
 
-	Optional<Task> findTask(TaskId taskId) {
+	@Override
+	public Optional<Task> findTask(TaskId taskId) {
 		return ofNullable(taskTable.get(taskId));
 	}
 
 	@Override
-	@SuppressWarnings("WeakerAccess")
 	public Stream<Task> traverse() {
 		return taskTable.values().stream();
 	}
@@ -102,7 +107,6 @@ class TaskRepositoryImpl implements TaskRepository {
 	}
 
 	@Override
-	@SuppressWarnings("WeakerAccess")
 	public rx.Observable<Task> traverse(TaskId rootId, Func1<? super Task, Boolean> predicate) {
 		return rx.Observable.<Task>create(subscriber -> {
 				traverse(rootId, subscriber);
@@ -127,7 +131,6 @@ class TaskRepositoryImpl implements TaskRepository {
 	}
 
 	@Override
-	@SuppressWarnings("WeakerAccess")
 	public Stream<Task> traverseFailed() {
 		return traverse()
 			.filter(t -> t.getResult().equals(Task.Result.FAILED));

@@ -2,21 +2,21 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 
 import org.junit.Before;
 import org.junit.Test;
-import ru.dorofeev.sandbox.quartzworkflow.QueueInMemoryStore;
-import ru.dorofeev.sandbox.quartzworkflow.QueueManager;
-import ru.dorofeev.sandbox.quartzworkflow.QueueManager.*;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
 import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
 
-import static ru.dorofeev.sandbox.quartzworkflow.QueueManager.*;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.EXCLUSIVE;
-import static ru.dorofeev.sandbox.quartzworkflow.QueueingOption.ExecutionType.PARALLEL;
 import static ru.dorofeev.sandbox.quartzworkflow.TaskId.taskId;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.*;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManagerFactory.create;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.createInMemoryStore;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption.ExecutionType.EXCLUSIVE;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption.ExecutionType.PARALLEL;
 
 public class QueueManagerTests {
 
-	private PublishSubject<Cmd> cmdFlow;
-	private TestSubscriber<Event> eventSubscriber;
+	private PublishSubject<QueueManager.Cmd> cmdFlow;
+	private TestSubscriber<QueueManager.Event> eventSubscriber;
 	private TestSubscriber<String> errorSubscriber;
 
 	@Before
@@ -25,7 +25,7 @@ public class QueueManagerTests {
 		eventSubscriber = new TestSubscriber<>();
 		errorSubscriber = new TestSubscriber<>();
 
-		QueueManager queueManager = new QueueManager("QueueManagerTests", new QueueInMemoryStore());
+		QueueManager queueManager = create("QueueManagerTests", createInMemoryStore());
 		queueManager.bind(cmdFlow).subscribe(eventSubscriber);
 		queueManager.errors().map(Throwable::getMessage).subscribe(errorSubscriber);
 	}

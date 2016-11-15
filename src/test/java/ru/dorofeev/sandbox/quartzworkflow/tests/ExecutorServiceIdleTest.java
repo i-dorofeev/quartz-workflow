@@ -2,11 +2,12 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 
 import org.junit.Before;
 import org.junit.Test;
-import ru.dorofeev.sandbox.quartzworkflow.ExecutorService;
-import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.Cmd;
-import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.Event;
-import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.IdleEvent;
-import ru.dorofeev.sandbox.quartzworkflow.ExecutorService.TaskCompletedEvent;
+import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
+import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.Cmd;
+import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.Event;
+import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.IdleEvent;
+import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.TaskCompletedEvent;
+import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestExecutable;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestStorage;
 import rx.Observable;
@@ -14,8 +15,8 @@ import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static ru.dorofeev.sandbox.quartzworkflow.ExecutorService.scheduleTaskCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.TaskId.taskId;
+import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleTaskCmd;
 import static rx.Observable.range;
 import static rx.schedulers.Schedulers.io;
 
@@ -38,7 +39,7 @@ public class ExecutorServiceIdleTest {
 	@Test
 	public void sanityTest() throws Exception {
 
-		ExecutorService executorService = new ExecutorService(10, 10);
+		ExecutorService executorService = ExecutorServiceFactory.createFixedThreaded(10, 10);
 
 		Observable<Event> executorEvents = executorService.bind(cmdFlow)
 			.subscribeOn(io());

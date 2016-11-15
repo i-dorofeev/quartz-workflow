@@ -1,7 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests.utils;
 
 import org.junit.Assert;
-import ru.dorofeev.sandbox.quartzworkflow.Executable;
+import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
 import ru.dorofeev.sandbox.quartzworkflow.JobDataMap;
 
 import java.util.Random;
@@ -31,10 +31,6 @@ public class TestExecutable implements Executable {
 		this.duration = durationMs;
 		this.accuracy = accuracyMs;
 		return this;
-	}
-
-	public int getInvocationCount() {
-		return invocationCount.intValue();
 	}
 
 	@Override

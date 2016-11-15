@@ -4,7 +4,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import ru.dorofeev.sandbox.quartzworkflow.*;
+import ru.dorofeev.sandbox.quartzworkflow.Factory;
+import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
+import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
+import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
+import ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,10 +24,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.stringContainsInOrder;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
-import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.events;
-import static ru.dorofeev.sandbox.quartzworkflow.EventUtils.noEvents;
-import static ru.dorofeev.sandbox.quartzworkflow.Task.Result.FAILED;
-import static ru.dorofeev.sandbox.quartzworkflow.tests.Matchers.hasOnlyOneItem;
+import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.events;
+import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
+import static ru.dorofeev.sandbox.quartzworkflow.taskrepo.Task.Result.FAILED;
+import static ru.dorofeev.sandbox.quartzworkflow.tests.utils.Matchers.hasOnlyOneItem;
 
 public class SimpleWorkflowTest {
 
@@ -52,7 +56,7 @@ public class SimpleWorkflowTest {
 	@BeforeClass
 	public static void beforeClass() throws Exception {
 
-		engine = EngineFactory.create(org.h2.Driver.class, "jdbc:h2:~/test");
+		engine = Factory.createInMemory();
 		engine.errors().subscribe(System.out::println);
 
 		model = new Model();

@@ -8,7 +8,7 @@ public class TaskId {
 		return new TaskId(id);
 	}
 
-	static TaskId createUniqueTaskId() {
+	public static TaskId createUniqueTaskId() {
 		return new TaskId(UUID.randomUUID().toString());
 	}
 

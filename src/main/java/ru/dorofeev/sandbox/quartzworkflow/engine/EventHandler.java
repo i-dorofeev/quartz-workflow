@@ -1,4 +1,6 @@
-package ru.dorofeev.sandbox.quartzworkflow;
+package ru.dorofeev.sandbox.quartzworkflow.engine;
+
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
 
 import java.util.List;
 

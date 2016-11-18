@@ -17,7 +17,6 @@ import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -26,13 +25,17 @@ import static org.hamcrest.Matchers.stringContainsInOrder;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.events;
 import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
+import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory.fixedThreadedExecutorService;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.FAILED;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.inMemoryJobStore;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.inMemoryQueueStore;
+import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory.jsonSerialization;
 import static ru.dorofeev.sandbox.quartzworkflow.tests.utils.Matchers.hasOnlyOneItem;
 
 public class SimpleWorkflowTest {
 
 	private static Engine engine;
-	private static List<Throwable> errors = new CopyOnWriteArrayList<>();
+	private static final List<Throwable> errors = new CopyOnWriteArrayList<>();
 	private static Model model = new Model();
 
 	@SuppressWarnings("FieldCanBeLocal")
@@ -56,7 +59,7 @@ public class SimpleWorkflowTest {
 	@BeforeClass
 	public static void beforeClass() throws Exception {
 
-		engine = Factory.createInMemory();
+		engine = Factory.spawn(jsonSerialization(), inMemoryJobStore(), inMemoryQueueStore(), fixedThreadedExecutorService(10, 1000));
 		engine.errors().subscribe(System.out::println);
 
 		model = new Model();
@@ -82,7 +85,7 @@ public class SimpleWorkflowTest {
 	@After
 	public void afterTest() {
 		assertThat(errors, is(empty()));
-		assertThat(engine.getJobRepository().traverseFailed().collect(toList()), is(empty()));
+		assertThat(engine.getJobRepository().traverse(FAILED).toList().toBlocking().single(), is(empty()));
 	}
 
 	@Test
@@ -106,8 +109,8 @@ public class SimpleWorkflowTest {
 		assertThat(failedJobs, hasSize(1));
 
 		Job failedJob = failedJobs.get(0);
-		System.out.println(failedJob.prettyPrint());
-		assertThat(failedJob.getException().getMessage(), stringContainsInOrder(singletonList("AssignRoleCmdHandler failed")));
+		System.out.println(failedJob.toString());
+		assertThat(failedJob.getException(), stringContainsInOrder(singletonList("AssignRoleCmdHandler failed")));
 		assignRoleCmdHandler.setFail(false);
 		engine.retryExecution(failedJob.getId());
 

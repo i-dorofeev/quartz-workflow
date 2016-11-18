@@ -19,7 +19,7 @@ import static ru.dorofeev.sandbox.quartzworkflow.JobId.jobId;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.enqueueCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.notifyCompletedCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.JobPoppedEvent;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption.ExecutionType.EXCLUSIVE;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
 import static rx.schedulers.Schedulers.computation;
 
 public class MultinodeQueueManagerTests {
@@ -37,7 +37,7 @@ public class MultinodeQueueManagerTests {
 		eventSubscriber = new TestSubscriber<>();
 		errorSubscriber = new TestSubscriber<>();
 
-		store = QueueStoreFactory.createInMemoryStore();
+		store = QueueStoreFactory.inMemoryQueueStore();
 	}
 
 	@Test

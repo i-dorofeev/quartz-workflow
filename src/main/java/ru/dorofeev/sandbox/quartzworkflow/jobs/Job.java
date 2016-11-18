@@ -2,50 +2,46 @@ package ru.dorofeev.sandbox.quartzworkflow.jobs;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
-import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
-import ru.dorofeev.sandbox.quartzworkflow.utils.JsonUtils;
 
 public class Job {
 
-	public enum Result {
-		CREATED, RUNNING, SUCCESS, FAILED
-	}
-
-	private final JobId jobId;
+	private final JobId id;
 	private final String queueName;
-	private final QueueingOption.ExecutionType executionType;
-
+	private final QueueingOptions.ExecutionType executionType;
+	private final Result result;
+	private final String exception;
 	private final JobKey jobKey;
 	private final SerializedObject args;
-	private Result result = Result.CREATED;
-	private Throwable exception;
 
-	Job(JobId jobId, String queueName, QueueingOption.ExecutionType executionType, JobKey jobKey, SerializedObject args) {
-		this.jobId = jobId;
+	public Job(JobId id, String queueName, QueueingOptions.ExecutionType executionType, Result result, String exception, JobKey jobKey, SerializedObject args) {
+		this.id = id;
 		this.queueName = queueName;
 		this.executionType = executionType;
+		this.result = result;
+		this.exception = exception;
 		this.jobKey = jobKey;
 		this.args = args;
 	}
 
 	public JobId getId() {
-		return jobId;
-	}
-
-	Result getResult() {
-		return result;
+		return id;
 	}
 
 	public String getQueueName() {
 		return queueName;
 	}
 
-	public QueueingOption.ExecutionType getExecutionType() {
+	public QueueingOptions.ExecutionType getExecutionType() {
 		return executionType;
 	}
 
-	public Throwable getException() {
+	public Job.Result getResult() {
+		return result;
+	}
+
+	public String getException() {
 		return exception;
 	}
 
@@ -57,17 +53,20 @@ public class Job {
 		return args;
 	}
 
-	void recordResult(Job.Result res, Throwable ex) {
-		result = res;
-		exception = ex;
-	}
-
-	public String prettyPrint() {
-		return JsonUtils.toPrettyJson(this);
-	}
-
 	@Override
 	public String toString() {
-		return "Job{" + jobId + "}";
+		return "Job{" +
+			"id=" + id +
+			", queueName='" + queueName + '\'' +
+			", executionType=" + executionType +
+			", result=" + result +
+			", exception='" + exception + '\'' +
+			", jobKey=" + jobKey +
+			", args=" + args +
+			'}';
+	}
+
+	public enum Result {
+		CREATED, RUNNING, SUCCESS, FAILED
 	}
 }

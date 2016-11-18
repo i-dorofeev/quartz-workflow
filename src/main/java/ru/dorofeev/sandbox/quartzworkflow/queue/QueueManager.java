@@ -7,7 +7,7 @@ public interface QueueManager {
 
 	String DEFAULT_QUEUE_NAME = "default";
 
-	QueueingOption.ExecutionType DEFAULT_EXECUTION_TYPE = QueueingOption.ExecutionType.PARALLEL;
+	QueueingOptions.ExecutionType DEFAULT_EXECUTION_TYPE = QueueingOptions.ExecutionType.PARALLEL;
 
 	Observable<Throwable> getErrors();
 
@@ -23,11 +23,11 @@ public interface QueueManager {
 		return new EnqueueCmd(DEFAULT_QUEUE_NAME, DEFAULT_EXECUTION_TYPE, jobId);
 	}
 
-	static EnqueueCmd enqueueCmd(QueueingOption.ExecutionType executionType, JobId jobId) {
+	static EnqueueCmd enqueueCmd(QueueingOptions.ExecutionType executionType, JobId jobId) {
 		return new EnqueueCmd(DEFAULT_QUEUE_NAME, executionType, jobId);
 	}
 
-	static EnqueueCmd enqueueCmd(String queueName, QueueingOption.ExecutionType executionType, JobId jobId) {
+	static EnqueueCmd enqueueCmd(String queueName, QueueingOptions.ExecutionType executionType, JobId jobId) {
 		return new EnqueueCmd(queueName, executionType, jobId);
 	}
 
@@ -46,10 +46,10 @@ public interface QueueManager {
 	class EnqueueCmd implements Cmd {
 
 		private final String queueName;
-		private final QueueingOption.ExecutionType executionType;
+		private final QueueingOptions.ExecutionType executionType;
 		private final JobId jobId;
 
-		EnqueueCmd(String queueName, QueueingOption.ExecutionType executionType, JobId jobId) {
+		EnqueueCmd(String queueName, QueueingOptions.ExecutionType executionType, JobId jobId) {
 			this.queueName = queueName;
 			this.executionType = executionType;
 			this.jobId = jobId;
@@ -60,7 +60,7 @@ public interface QueueManager {
 			return queueName;
 		}
 
-		QueueingOption.ExecutionType getExecutionType() {
+		QueueingOptions.ExecutionType getExecutionType() {
 			return executionType;
 		}
 

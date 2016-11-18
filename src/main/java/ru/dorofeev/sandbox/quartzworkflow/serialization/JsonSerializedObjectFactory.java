@@ -6,4 +6,9 @@ public class JsonSerializedObjectFactory implements SerializedObjectFactory {
 	public SerializedObject spawn() {
 		return new JsonSerializedObject();
 	}
+
+	@Override
+	public SerializedObject spawn(String src) {
+		return JsonSerializedObject.parse(src);
+	}
 }

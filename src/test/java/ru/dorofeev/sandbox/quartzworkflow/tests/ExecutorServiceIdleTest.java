@@ -38,7 +38,7 @@ public class ExecutorServiceIdleTest {
 	@Test
 	public void sanityTest() throws Exception {
 
-		ExecutorService executorService = ExecutorServiceFactory.createFixedThreaded(10, 10);
+		ExecutorService executorService = ExecutorServiceFactory.fixedThreadedExecutorService(10, 10);
 
 		Observable<Event> executorEvents = executorService.bind(cmdFlow)
 			.subscribeOn(io());

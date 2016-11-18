@@ -1,6 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.engine;
 
-import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 
 import java.util.List;
 
@@ -16,7 +16,7 @@ public abstract class TypedEventHandler<T extends Event> implements EventHandler
 	protected abstract List<Event> handle(T event);
 
 	@Override
-	public QueueingOption getQueueingOption(Event event) {
+	public QueueingOptions getQueueingOption(Event event) {
 		return null;
 	}
 }

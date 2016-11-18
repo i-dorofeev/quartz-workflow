@@ -30,7 +30,7 @@ class QueueSqlStore implements QueueStore {
 	}
 
 	@Override
-	public void insertQueueItem(JobId jobId, String queueName, QueueingOption.ExecutionType executionType) throws QueueStoreException {
+	public void insertQueueItem(JobId jobId, String queueName, QueueingOptions.ExecutionType executionType) throws QueueStoreException {
 		throw new UnsupportedOperationException("Not implemented yet");
 	}
 

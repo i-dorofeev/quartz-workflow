@@ -2,8 +2,8 @@ package ru.dorofeev.sandbox.quartzworkflow.engine;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
+import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
-import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
 
 import java.util.Optional;
 
@@ -27,7 +27,7 @@ class ExecuteEventHandlerJob implements Executable {
 			.forEach(e -> engine.submitEvent(jobId, e));
 	}
 
-	static class Args {
+	static class Args implements Serializable {
 
 		private final String eventHandlerUri;
 		private final Event event;
@@ -37,13 +37,10 @@ class ExecuteEventHandlerJob implements Executable {
 			this.event = event;
 		}
 
-		SerializedObject serialize(SerializedObjectFactory factory) {
-			SerializedObject serializedObject = factory.spawn();
-
+		@Override
+		public void serializeTo(SerializedObject serializedObject) {
 			serializedObject.addString("eventHandlerUri", eventHandlerUri);
 			serializedObject.addUntypedObject("event", event);
-
-			return serializedObject;
 		}
 
 		static Args deserializeFrom(SerializedObject serializedObject) {

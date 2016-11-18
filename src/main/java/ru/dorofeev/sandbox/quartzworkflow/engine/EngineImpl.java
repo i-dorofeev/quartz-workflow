@@ -3,10 +3,9 @@ package ru.dorofeev.sandbox.quartzworkflow.engine;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
-import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
-import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
 import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import rx.Observable;
 import rx.subjects.PublishSubject;
@@ -14,11 +13,9 @@ import rx.subjects.PublishSubject;
 import java.util.*;
 
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleJobCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.enqueueCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.giveMeMoreCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.notifyCompletedCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository.addJobCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository.completeJobCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.*;
 
 class EngineImpl implements Engine {
 
@@ -26,7 +23,6 @@ class EngineImpl implements Engine {
 	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
 
 	private final JobRepository jobRepository;
-	private final SerializedObjectFactory serializedObjectFactory;
 
 	private ErrorObservable errors = new ErrorObservable();
 
@@ -40,9 +36,8 @@ class EngineImpl implements Engine {
 	private final PublishSubject<ExecutorService.Cmd> executorServiceCmds = PublishSubject.create();
 
 
-	EngineImpl(JobRepository jobRepository, ExecutorService executorService, QueueManager queueManager, SerializedObjectFactory serializedObjectFactory) {
+	EngineImpl(JobRepository jobRepository, ExecutorService executorService, QueueManager queueManager) {
 		this.jobRepository = jobRepository;
-		this.serializedObjectFactory = serializedObjectFactory;
 
 		this.errors.subscribeTo(jobRepository.getErrors());
 		this.errors.subscribeTo(executorService.getErrors());
@@ -50,11 +45,11 @@ class EngineImpl implements Engine {
 
 		Observable<JobRepository.Event> jobRepositoryOutput = jobRepositoryCmds.compose(this.jobRepository::bind);
 		jobRepositoryOutput
-			.compose(errors.filterMapRetry(JobRepository.Event::isAdd, this::asEnqueueCmd))
+			.compose(errors.filterMapRetry(JobRepository.JobAddedEvent.class, this::asEnqueueCmd))
 			.subscribe(queueManagerCmds);
 
 		jobRepositoryOutput
-			.compose(errors.filterMapRetry(JobRepository.Event::isComplete, this::asNotifyCompletedCmd))
+			.compose(errors.filterMapRetry(JobRepository.JobCompletedEvent.class, this::asNotifyCompletedCmd))
 			.subscribe(queueManagerCmds);
 
 		Observable<QueueManager.Event> queueManagerOutput = queueManagerCmds.compose(queueManager::bind);
@@ -94,11 +89,11 @@ class EngineImpl implements Engine {
 		}
 	}
 
-	private QueueManager.NotifyCompletedCmd asNotifyCompletedCmd(JobRepository.Event event) {
-		return notifyCompletedCmd(event.getJob().getId());
+	private QueueManager.NotifyCompletedCmd asNotifyCompletedCmd(JobRepository.JobCompletedEvent event) {
+		return notifyCompletedCmd(event.getJobId());
 	}
 
-	private QueueManager.EnqueueCmd asEnqueueCmd(JobRepository.Event event) {
+	private QueueManager.EnqueueCmd asEnqueueCmd(JobRepository.JobAddedEvent event) {
 		return enqueueCmd(event.getJob().getQueueName(), event.getJob().getExecutionType(), event.getJob().getId());
 	}
 
@@ -123,7 +118,7 @@ class EngineImpl implements Engine {
 	Job submitEvent(JobId parentId, Event event) {
 		return jobRepository.addJob(
 			parentId, SCHEDULE_EVENT_HANDLERS_JOB,
-			new ScheduleEventHandlersJob.Args(event).serialize(serializedObjectFactory), /* queueingOption */ null);
+			new ScheduleEventHandlersJob.Args(event), /* queueingOption */ null);
 	}
 
 	@Override
@@ -162,7 +157,7 @@ class EngineImpl implements Engine {
 		jobRepositoryCmds.onNext(
 			addJobCmd(
 				parentId, EXECUTE_EVENT_HANDLER_JOB,
-				new ExecuteEventHandlerJob.Args(handlerUri, event).serialize(serializedObjectFactory),
+				new ExecuteEventHandlerJob.Args(handlerUri, event),
 				eventHandler.getQueueingOption(event)));
 	}
 

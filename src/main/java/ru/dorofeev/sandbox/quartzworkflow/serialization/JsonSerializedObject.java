@@ -1,14 +1,26 @@
 package ru.dorofeev.sandbox.quartzworkflow.serialization;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 
 class JsonSerializedObject implements SerializedObject {
 
-	private static Gson gson = new Gson();
+	private final static Gson gson = new Gson();
+	private final static JsonParser parser = new JsonParser();
 
-	private JsonObject jsonObject = new JsonObject();
+	static JsonSerializedObject parse(String src) {
+		JsonObject jsonObject = parser.parse(src).getAsJsonObject();
+		return new JsonSerializedObject(jsonObject);
+	}
+
+	private final JsonObject jsonObject;
+
+	private JsonSerializedObject(JsonObject jsonObject) {
+		this.jsonObject = jsonObject;
+	}
+
+	JsonSerializedObject() {
+		this.jsonObject = new JsonObject();
+	}
 
 	@Override
 	public void addString(String name, String value) {
@@ -22,11 +34,6 @@ class JsonSerializedObject implements SerializedObject {
 		jo.add("value", gson.toJsonTree(obj));
 
 		this.jsonObject.add(name, jo);
-	}
-
-	@Override
-	public void addTypedObject(String name, Object obj) {
-		jsonObject.add(name, gson.toJsonTree(obj));
 	}
 
 	@Override
@@ -54,9 +61,4 @@ class JsonSerializedObject implements SerializedObject {
 		}
 	}
 
-	@Override
-	public <T> T getTypedObject(String name, Class<T> type) {
-		JsonObject jo = jsonObject.getAsJsonObject(name);
-		return gson.fromJson(jo, type);
-	}
 }

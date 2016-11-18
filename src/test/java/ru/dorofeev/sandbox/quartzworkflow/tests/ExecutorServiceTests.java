@@ -23,7 +23,7 @@ public class ExecutorServiceTests {
 
 	@Before
 	public void beforeTest() {
-		ExecutorService executorService = ExecutorServiceFactory.createFixedThreaded(5, 50);
+		ExecutorService executorService = ExecutorServiceFactory.fixedThreadedExecutorService(5, 50);
 
 		cmdFlow = PublishSubject.create();
 		eventTestSubscriber = new TestSubscriber<>();

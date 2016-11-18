@@ -5,7 +5,7 @@ import ru.dorofeev.sandbox.quartzworkflow.Factory;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
-import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.H2Db;
 
 import java.util.List;
@@ -13,15 +13,17 @@ import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
 
-import static java.util.stream.Collectors.toList;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
-import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.CREATED;
-import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.RUNNING;
+import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory.fixedThreadedExecutorService;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.*;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.inMemoryJobStore;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.inMemoryQueueStore;
+import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory.jsonSerialization;
 
 public class QueueTest {
 
@@ -44,7 +46,7 @@ public class QueueTest {
 		H2Db h2Db = new H2Db("./build/test");
 		h2Db.deleteDb();
 
-		engine = Factory.createInMemory();
+		engine = Factory.spawn(jsonSerialization(), inMemoryJobStore(), inMemoryQueueStore(), fixedThreadedExecutorService(10, 1000));
 		engine.errors().subscribe(errors::add);
 		model = new Model();
 
@@ -66,7 +68,7 @@ public class QueueTest {
 		System.out.println("Model: " + model.v1 + "/" + model.v2 + "/" + model.v3);
 
 		assertThat(errors, is(empty()));
-		assertThat(engine.getJobRepository().traverseFailed().collect(toList()), is(empty()));
+		assertThat(engine.getJobRepository().traverse(FAILED).toList().toBlocking().single(), is(empty()));
 	}
 
 	@Test
@@ -108,8 +110,8 @@ public class QueueTest {
 		}
 
 		@Override
-		public QueueingOption getQueueingOption(Event event) {
-			return new QueueingOption("qqq", QueueingOption.ExecutionType.EXCLUSIVE);
+		public QueueingOptions getQueueingOption(Event event) {
+			return new QueueingOptions("qqq", QueueingOptions.ExecutionType.EXCLUSIVE);
 		}
 	}
 
@@ -140,8 +142,8 @@ public class QueueTest {
 		}
 
 		@Override
-		public QueueingOption getQueueingOption(Event event) {
-			return new QueueingOption("qqq", QueueingOption.ExecutionType.PARALLEL);
+		public QueueingOptions getQueueingOption(Event event) {
+			return new QueueingOptions("qqq", QueueingOptions.ExecutionType.PARALLEL);
 		}
 	}
 

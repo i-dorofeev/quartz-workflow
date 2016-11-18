@@ -9,9 +9,9 @@ import rx.subjects.PublishSubject;
 import static ru.dorofeev.sandbox.quartzworkflow.JobId.jobId;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.*;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManagerFactory.create;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.createInMemoryStore;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption.ExecutionType.EXCLUSIVE;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOption.ExecutionType.PARALLEL;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.inMemoryQueueStore;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
 
 public class QueueManagerTests {
 
@@ -25,7 +25,7 @@ public class QueueManagerTests {
 		eventSubscriber = new TestSubscriber<>();
 		errorSubscriber = new TestSubscriber<>();
 
-		QueueManager queueManager = create("QueueManagerTests", createInMemoryStore());
+		QueueManager queueManager = create("QueueManagerTests", inMemoryQueueStore());
 		queueManager.bind(cmdFlow).subscribe(eventSubscriber);
 		queueManager.getErrors().map(Throwable::getMessage).subscribe(errorSubscriber);
 	}

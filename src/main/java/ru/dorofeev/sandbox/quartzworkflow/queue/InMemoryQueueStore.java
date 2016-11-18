@@ -10,18 +10,18 @@ import java.util.function.Predicate;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 
-class QueueInMemoryStore implements QueueStore {
+class InMemoryQueueStore implements QueueStore {
 
 	private static class QueueItem {
 
 		final long ordinal;
 		final JobId jobId;
-		final QueueingOption.ExecutionType executionType;
+		final QueueingOptions.ExecutionType executionType;
 		final String queueName;
 
 		QueueItemStatus status;
 
-		QueueItem(long ordinal, JobId jobId, String queueName, QueueingOption.ExecutionType executionType) {
+		QueueItem(long ordinal, JobId jobId, String queueName, QueueingOptions.ExecutionType executionType) {
 			this.ordinal = ordinal;
 			this.jobId = jobId;
 			this.queueName = queueName;
@@ -38,7 +38,7 @@ class QueueInMemoryStore implements QueueStore {
 	private long ordinalSeq = 0;
 
 	@Override
-	public void insertQueueItem(JobId jobId, String queueName, QueueingOption.ExecutionType executionType) throws QueueStoreException {
+	public void insertQueueItem(JobId jobId, String queueName, QueueingOptions.ExecutionType executionType) throws QueueStoreException {
 		synchronized (sync) {
 			if (queue.stream().filter(qi -> qi.jobId.equals(jobId)).count() > 0)
 				throw new QueueStoreException(jobId + " is already enqueued");
@@ -49,7 +49,7 @@ class QueueInMemoryStore implements QueueStore {
 
 	private boolean anyExclusivePopped(String queueName) {
 		return queue.stream()
-			.filter(qi -> qi.status == QueueItemStatus.POPPED && qi.executionType == QueueingOption.ExecutionType.EXCLUSIVE && qi.queueName.equals(queueName))
+			.filter(qi -> qi.status == QueueItemStatus.POPPED && qi.executionType == QueueingOptions.ExecutionType.EXCLUSIVE && qi.queueName.equals(queueName))
 			.count() != 0;
 	}
 
@@ -69,11 +69,11 @@ class QueueInMemoryStore implements QueueStore {
 			Optional<QueueItem> nextItemOpt = getNextPending(queueName != null ? qn -> qn.equals(queueName) : qn -> true);
 
 			return nextItemOpt.flatMap(nextItem -> {
-				if (nextItem.executionType == QueueingOption.ExecutionType.PARALLEL && !anyExclusivePopped(queueName)) {
+				if (nextItem.executionType == QueueingOptions.ExecutionType.PARALLEL && !anyExclusivePopped(queueName)) {
 					nextItem.status = QueueItemStatus.POPPED;
 					return of(nextItem.jobId);
 
-				} else if (nextItem.executionType == QueueingOption.ExecutionType.EXCLUSIVE && !anyPopped(queueName)) {
+				} else if (nextItem.executionType == QueueingOptions.ExecutionType.EXCLUSIVE && !anyPopped(queueName)) {
 					nextItem.status = QueueItemStatus.POPPED;
 					return of(nextItem.jobId);
 

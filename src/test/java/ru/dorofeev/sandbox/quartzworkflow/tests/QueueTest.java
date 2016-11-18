@@ -28,7 +28,7 @@ import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFact
 public class QueueTest {
 
 	private static Engine engine;
-	private static List<Throwable> errors = new CopyOnWriteArrayList<>();
+	private static final List<Throwable> errors = new CopyOnWriteArrayList<>();
 	private static Model model;
 
 	private static class Model {

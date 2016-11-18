@@ -19,12 +19,12 @@ import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.*;
 
 class EngineImpl implements Engine {
 
-	private Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
-	private Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
+	private final Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
+	private final Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
 
 	private final JobRepository jobRepository;
 
-	private ErrorObservable errors = new ErrorObservable();
+	private final ErrorObservable errors = new ErrorObservable();
 
 	@SuppressWarnings("FieldCanBeLocal")
 	private final PublishSubject<JobRepository.Cmd> jobRepositoryCmds = PublishSubject.create();

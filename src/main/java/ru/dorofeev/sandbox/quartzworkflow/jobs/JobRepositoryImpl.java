@@ -71,7 +71,7 @@ class JobRepositoryImpl implements JobRepository {
 
 	@Override
 	public rx.Observable<Job> traverse(Job.Result result) {
-		return store.traverse(result);
+		return store.traverse(null, result);
 	}
 
 	@Override

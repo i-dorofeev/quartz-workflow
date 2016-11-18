@@ -7,7 +7,7 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
-import rx.Subscriber;
+import rx.*;
 import rx.functions.Func1;
 
 import java.util.*;
@@ -93,42 +93,40 @@ class InMemoryJobStore implements JobStore {
 		return new Job(id, queueName, executionType, result, exception, jobKey, args);
 	}
 
-	@Override
-	public rx.Observable<Job> traverse(Result result) {
-		synchronized (sync) {
-			return rx.Observable.<InMemoryJobRecord>create(s -> {
-
-				jobTable.values().forEach(s::onNext);
-
-				s.onCompleted();
-
-			}).map(this::toJob)
-			  .filter(job -> job.getResult() == result);
+	private rx.Observable<Job> traverse(JobId rootId, Func1<? super Job, Boolean> predicate) {
+		if (rootId != null) {
+			return rx.Observable.<Job>create(subscriber -> {
+				traverseByRoot(rootId.toString(), subscriber);
+				subscriber.onCompleted();
+			}).filter(predicate);
+		} else {
+			return traverseAll(predicate);
 		}
 	}
 
-	private rx.Observable<Job> traverse(JobId rootId, Func1<? super Job, Boolean> predicate) {
-		return rx.Observable.<Job>create(subscriber -> {
-			traverse(rootId.toString(), subscriber);
-			subscriber.onCompleted();
-		}).filter(predicate);
+	private rx.Observable<Job> traverseAll(Func1<? super Job, Boolean> predicate) {
+		return rx.Observable.from(jobTable.values())
+			.map(this::toJob)
+			.filter(predicate);
 	}
 
-	private void traverse(String rootId, Subscriber<? super Job> subscriber) {
+	private void traverseByRoot(String rootId, Subscriber<? super Job> subscriber) {
 		InMemoryJobRecord record = jobTable.get(rootId);
 		if (record == null)
 			subscriber.onError(new JobRepositoryException("Couldn't find job[id=" + rootId + "]"));
 		else {
 			subscriber.onNext(toJob(record));
 			ofNullable(childrenIndex.get(record.getJobId()))
-				.ifPresent(children -> children.forEach(id -> traverse(id, subscriber)));
+				.ifPresent(children -> children.forEach(id -> traverseByRoot(id, subscriber)));
 		}
 	}
 
 	@Override
 	public rx.Observable<Job> traverse(JobId rootId, Result result) {
 		synchronized (sync) {
-			return traverse(rootId, job -> job.getResult().equals(result));
+
+			Func1<? super Job, Boolean> jobFilter = result != null ? (Job job) -> result.equals(job.getResult()) : (Job job) -> true;
+			return traverse(rootId, jobFilter);
 		}
 	}
 

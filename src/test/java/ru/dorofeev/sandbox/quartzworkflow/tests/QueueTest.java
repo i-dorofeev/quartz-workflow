@@ -80,6 +80,7 @@ public class QueueTest {
 
 		await("starting").until(() -> engine.getJobRepository().traverse(CREATED).count().toBlocking().single(), is(equalTo(0)));
 		await("completing").until(() -> engine.getJobRepository().traverse(RUNNING).count().toBlocking().single(), is(equalTo(0)));
+		await("finishing").until(() -> engine.getJobRepository().traverse(SUCCESS).count().toBlocking().single(), is(equalTo(100)));
 	}
 
 	private static class IncrementCmdEvent extends Event { }

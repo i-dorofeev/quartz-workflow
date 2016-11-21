@@ -61,4 +61,26 @@ class JsonSerializedObject implements SerializedObject {
 		}
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		JsonSerializedObject that = (JsonSerializedObject) o;
+
+		return jsonObject != null ? jsonObject.equals(that.jsonObject) : that.jsonObject == null;
+
+	}
+
+	@Override
+	public int hashCode() {
+		return jsonObject != null ? jsonObject.hashCode() : 0;
+	}
+
+	@Override
+	public String toString() {
+		return "JsonSerializedObject{" +
+			"jsonObject=" + jsonObject +
+			'}';
+	}
 }

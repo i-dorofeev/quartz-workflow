@@ -14,6 +14,7 @@ import java.util.*;
 
 import static java.lang.Enum.valueOf;
 import static java.util.Optional.ofNullable;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.CREATED;
 
 class InMemoryJobStore implements JobStore {
 
@@ -65,7 +66,7 @@ class InMemoryJobStore implements JobStore {
 
 			InMemoryJobRecord job = new InMemoryJobRecord();
 			job.setJobId(jobId);
-			job.setResult(null);
+			job.setResult(CREATED.toString());
 			job.setException(null);
 			job.setExecutionType(executionType.toString());
 			job.setJobKey(jobKey.toString());

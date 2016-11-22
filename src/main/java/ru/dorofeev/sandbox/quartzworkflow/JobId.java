@@ -9,6 +9,9 @@ public class JobId {
 	private final String value;
 
 	public JobId(String value) {
+		if (value == null)
+			throw new IllegalArgumentException("value must be non null");
+
 		this.value = value;
 	}
 

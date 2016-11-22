@@ -15,5 +15,9 @@ public interface JobStore {
 
 	Job saveNewJob(JobId parentId, String queueName, QueueingOptions.ExecutionType executionType, JobKey jobKey, Serializable args);
 
-	rx.Observable<Job> traverse(JobId rootId, Job.Result result);
+	rx.Observable<Job> traverseSubTree(JobId rootId, Job.Result result);
+
+	rx.Observable<Job> traverseAll(Job.Result result);
+
+	rx.Observable<Job> traverseRoots();
 }

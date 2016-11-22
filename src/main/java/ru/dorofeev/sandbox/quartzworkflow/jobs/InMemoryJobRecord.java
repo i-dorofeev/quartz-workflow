@@ -3,6 +3,7 @@ package ru.dorofeev.sandbox.quartzworkflow.jobs;
 class InMemoryJobRecord {
 
 	private String jobId;
+	private String parentId;
 	private String queueName;
 	private String executionType;
 	private String jobKey;
@@ -16,6 +17,14 @@ class InMemoryJobRecord {
 
 	void setJobId(String jobId) {
 		this.jobId = jobId;
+	}
+
+	public String getParentId() {
+		return parentId;
+	}
+
+	public void setParentId(String parentId) {
+		this.parentId = parentId;
 	}
 
 	String getQueueName() {

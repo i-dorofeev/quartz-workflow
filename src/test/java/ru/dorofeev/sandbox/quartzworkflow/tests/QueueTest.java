@@ -68,7 +68,7 @@ public class QueueTest {
 		System.out.println("Model: " + model.v1 + "/" + model.v2 + "/" + model.v3);
 
 		assertThat(errors, is(empty()));
-		assertThat(engine.getJobRepository().traverse(FAILED).toList().toBlocking().single(), is(empty()));
+		assertThat(engine.getJobRepository().traverseAll(FAILED).toList().toBlocking().single(), is(empty()));
 	}
 
 	@Test
@@ -78,9 +78,9 @@ public class QueueTest {
 			.mapToObj(i -> (random.nextInt(3) == 0) ? new IncrementCmdEvent() : new VerifyCmdEvent())
 			.forEach(e -> engine.submitEvent(e));
 
-		await("starting").until(() -> engine.getJobRepository().traverse(CREATED).count().toBlocking().single(), is(equalTo(0)));
-		await("completing").until(() -> engine.getJobRepository().traverse(RUNNING).count().toBlocking().single(), is(equalTo(0)));
-		await("finishing").until(() -> engine.getJobRepository().traverse(SUCCESS).count().toBlocking().single(), is(equalTo(100)));
+		await("starting").until(() -> engine.getJobRepository().traverseAll(CREATED).count().toBlocking().single(), is(equalTo(0)));
+		await("completing").until(() -> engine.getJobRepository().traverseAll(RUNNING).count().toBlocking().single(), is(equalTo(0)));
+		await("finishing").until(() -> engine.getJobRepository().traverseAll(SUCCESS).count().toBlocking().single(), is(equalTo(100)));
 	}
 
 	private static class IncrementCmdEvent extends Event { }

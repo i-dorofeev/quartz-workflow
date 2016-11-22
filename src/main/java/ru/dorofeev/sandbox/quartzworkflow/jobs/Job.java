@@ -5,9 +5,14 @@ import ru.dorofeev.sandbox.quartzworkflow.JobKey;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 
+import java.util.Optional;
+
+import static java.util.Optional.ofNullable;
+
 public class Job {
 
 	private final JobId id;
+	private final JobId parentId;
 	private final String queueName;
 	private final QueueingOptions.ExecutionType executionType;
 	private final Result result;
@@ -15,8 +20,9 @@ public class Job {
 	private final JobKey jobKey;
 	private final SerializedObject args;
 
-	public Job(JobId id, String queueName, QueueingOptions.ExecutionType executionType, Result result, String exception, JobKey jobKey, SerializedObject args) {
+	public Job(JobId id, JobId parentId, String queueName, QueueingOptions.ExecutionType executionType, Result result, String exception, JobKey jobKey, SerializedObject args) {
 		this.id = id;
+		this.parentId = parentId;
 		this.queueName = queueName;
 		this.executionType = executionType;
 		this.result = result;
@@ -27,6 +33,10 @@ public class Job {
 
 	public JobId getId() {
 		return id;
+	}
+
+	public Optional<JobId> getParentId() {
+		return ofNullable(parentId);
 	}
 
 	public String getQueueName() {
@@ -41,8 +51,8 @@ public class Job {
 		return result;
 	}
 
-	public String getException() {
-		return exception;
+	public Optional<String> getException() {
+		return ofNullable(exception);
 	}
 
 	public JobKey getJobKey() {

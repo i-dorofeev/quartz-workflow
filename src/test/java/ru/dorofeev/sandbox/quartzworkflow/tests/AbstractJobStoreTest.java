@@ -6,6 +6,7 @@ import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobStore;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
@@ -14,13 +15,15 @@ import rx.Observable;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.*;
 import static org.junit.runners.MethodSorters.NAME_ASCENDING;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.*;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.inMemoryJobStore;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory.jsonSerialization;
+import static rx.Observable.*;
 
 @FixMethodOrder(NAME_ASCENDING)
 public class AbstractJobStoreTest {
@@ -28,35 +31,105 @@ public class AbstractJobStoreTest {
 	private static final SerializedObjectFactory serialization = jsonSerialization();
 
 	private static final JobStore store = inMemoryJobStore().call(serialization);
+	private static final JobKey jobKey = new JobKey("jobKey");
+	private static final StubArgs args = new StubArgs("test");
 
 	private static JobId jobId;
 
 	@Test
-	public void test001_emptyStore() {
+	public void test010_emptyStore() {
 
-		Observable<Job> jobs = store.traverse(null, null);
+		Observable<Job> jobs = store.traverseAll(null);
 
 		assertTrue(jobs.isEmpty().toBlocking().single());
 	}
 
 	@Test
-	public void test002_addJob() {
+	public void test020_addJob() {
 
-		StubArgs args = new StubArgs("test");
+		Job newJob = store.saveNewJob(/* parentId */ null, "default", EXCLUSIVE, jobKey, args);
 
-		JobKey jobKey = new JobKey("jobKey");
-		store.saveNewJob(null, "default", EXCLUSIVE, jobKey, args);
+		jobId = newJob.getId();
 
-		Job expectedJob = new Job(new AnyNonNullJobId(), "default", EXCLUSIVE, CREATED, /* exception */ null, jobKey, serializedArgs(args));
+		assertJobsEqual(new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, CREATED, /* exception */ null, jobKey, serializedArgs(args)), newJob);
 
-		JobId jobId = assertTraverseSingle(null, null, expectedJob);
+		assertFindById(newJob.getId(), newJob);
 
-		assertTraverseSingle(null, CREATED, expectedJob);
-		assertTraverseNone(null, SUCCESS);
-		assertTraverseNone(null, FAILED);
-		assertTraverseNone(null, RUNNING);
+		assertTraverseSingle(null, newJob);
+		assertTraverseSingle(CREATED, newJob);
+		assertTraverseNone(SUCCESS);
+		assertTraverseNone(FAILED);
+		assertTraverseNone(RUNNING);
+	}
 
-		assertFindById(jobId, expectedJob);
+	@Test
+	public void test030_recordSuccess() {
+		store.recordJobResult(jobId, SUCCESS, null);
+
+		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, SUCCESS, /* exception */ null, jobKey, serializedArgs(args)));
+
+		assertTraverseSingle(null, job);
+		assertTraverseNone(CREATED);
+		assertTraverseSingle(SUCCESS, job);
+		assertTraverseNone(FAILED);
+		assertTraverseNone(RUNNING);
+	}
+
+	@Test
+	public void test040_recordFailed() {
+		store.recordJobResult(jobId, FAILED, new RuntimeException("stub exception"));
+
+		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, FAILED, "java.lang.RuntimeException: stub exception", jobKey, serializedArgs(args)));
+
+		assertTraverseSingle(null, job);
+		assertTraverseNone(CREATED);
+		assertTraverseNone(SUCCESS);
+		assertTraverseSingle(FAILED, job);
+		assertTraverseNone(RUNNING);
+	}
+
+	@Test
+	public void test050_recordRunning() {
+		store.recordJobResult(jobId, RUNNING, null);
+
+		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, RUNNING, /* exception */ null, jobKey, serializedArgs(args)));
+
+		assertTraverseSingle(null, job);
+		assertTraverseNone(CREATED);
+		assertTraverseNone(SUCCESS);
+		assertTraverseNone(FAILED);
+		assertTraverseSingle(RUNNING, job);
+	}
+
+	@Test
+	public void test060_traverse() {
+
+		// create subtree jobs
+		List<JobId> childJobs = range(1, 10)
+			.flatMap(i -> saveJobHierarchy(jobId, 3, "default", EXCLUSIVE, jobKey, args))
+			.toList().toBlocking().single();
+
+		// create root trees
+		range(1, 10)
+			.flatMap(i -> saveJobHierarchy(null, 3, "default", EXCLUSIVE, jobKey, args))
+			.toList().toBlocking().single();
+
+		Observable<JobId> actualChildJobs = store.traverseSubTree(jobId, null)
+			.map(Job::getId);
+
+		assertThat(actualChildJobs.filter(i -> !jobId.equals(i)).toList().toBlocking().single(), containsInAnyOrder(childJobs.toArray()));
+		assertThat(store.traverseRoots().count().toBlocking().single(), equalTo(11));
+
+	}
+
+	private Observable<JobId> saveJobHierarchy(JobId root, int depth, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args) {
+		if (depth == 0)
+			return Observable.empty();
+
+		Job job = store.saveNewJob(root, queueName, executionType, jobKey, args);
+		return merge(
+			just(job.getId()),
+			saveJobHierarchy(job.getId(), depth - 1, queueName, executionType, jobKey, args));
 	}
 
 	private SerializedObject serializedArgs(Serializable args) {
@@ -75,42 +148,25 @@ public class AbstractJobStoreTest {
 		assertEquals(job1.getResult(), job2.getResult());
 	}
 
-	private JobId assertTraverseSingle(JobId rootId, Job.Result result, Job expectedJob) {
-		Job job = store.traverse(rootId, result).toBlocking().single();
+	private void assertTraverseSingle(Job.Result result, Job expectedJob) {
+		Job job = store.traverseAll(result).toBlocking().single();
 		assertJobsEqual(expectedJob, job);
-		return job.getId();
 	}
 
-	private void assertTraverseNone(JobId rootId, Job.Result result) {
-		List<Job> jobs = store.traverse(rootId, result).toList().toBlocking().single();
+	private void assertTraverseNone(Job.Result result) {
+		List<Job> jobs = store.traverseAll(result).toList().toBlocking().single();
 
 		if (jobs.size() != 0)
 			throw new AssertionError("Expected no jobs but found " + jobs);
 	}
 
-	private void assertFindById(JobId jobId, Job expectedJob) {
+	private Job assertFindById(JobId jobId, Job expectedJob) {
 		Optional<Job> job = store.findJob(jobId);
 
 		assertTrue(job.isPresent());
 		assertJobsEqual(expectedJob, job.get());
-	}
 
-	private static class AnyNonNullJobId extends JobId {
-
-		AnyNonNullJobId() {
-			super(null);
-		}
-
-		@SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
-		@Override
-		public boolean equals(Object o) {
-			return o != null;
-		}
-
-		@Override
-		public int hashCode() {
-			return 0;
-		}
+		return job.get();
 	}
 
 	private static class StubArgs implements Serializable {
@@ -124,11 +180,6 @@ public class AbstractJobStoreTest {
 		@Override
 		public void serializeTo(SerializedObject serializedObject) {
 			serializedObject.addString("value", value);
-		}
-
-		static StubArgs deserializeFrom(SerializedObject serializedObject) {
-			String value = serializedObject.getString("value");
-			return new StubArgs(value);
 		}
 
 		@Override

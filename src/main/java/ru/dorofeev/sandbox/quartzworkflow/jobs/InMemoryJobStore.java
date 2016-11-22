@@ -9,6 +9,7 @@ import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
 import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
 import rx.*;
+import rx.Observable;
 import rx.functions.Func1;
 
 import java.util.*;
@@ -51,7 +52,9 @@ class InMemoryJobStore implements JobStore {
 			job.setResult(result.toString());
 
 			if (ex != null)
-				job.setException( ex.toString());
+				job.setException(ex.toString());
+			else
+				job.setException(null);
 		}
 	}
 
@@ -69,6 +72,7 @@ class InMemoryJobStore implements JobStore {
 
 			InMemoryJobRecord job = new InMemoryJobRecord();
 			job.setJobId(jobId);
+			job.setParentId(parentId != null ? parentId.toString() : null);
 			job.setResult(CREATED.toString());
 			job.setException(null);
 			job.setExecutionType(executionType.toString());
@@ -87,6 +91,7 @@ class InMemoryJobStore implements JobStore {
 
 	private Job toJob(InMemoryJobRecord record) {
 		JobId id = new JobId(record.getJobId());
+		JobId parentId = record.getParentId() != null ? new JobId(record.getParentId()) : null;
 		String queueName = record.getQueueName();
 		ExecutionType executionType = ofNullable(record.getExecutionType()).map(et -> valueOf(ExecutionType.class, et)).orElse(null);
 		Result result = ofNullable(record.getResult()).map(r -> valueOf(Result.class, r)).orElse(null);
@@ -94,24 +99,7 @@ class InMemoryJobStore implements JobStore {
 		JobKey jobKey = new JobKey(record.getJobKey());
 		SerializedObject args = serializedObjectFactory.spawn(record.getSerializedArgs());
 
-		return new Job(id, queueName, executionType, result, exception, jobKey, args);
-	}
-
-	private rx.Observable<Job> traverse(JobId rootId, Func1<? super Job, Boolean> predicate) {
-		if (rootId != null) {
-			return rx.Observable.<Job>create(subscriber -> {
-				traverseByRoot(rootId.toString(), subscriber);
-				subscriber.onCompleted();
-			}).filter(predicate);
-		} else {
-			return traverseAll(predicate);
-		}
-	}
-
-	private rx.Observable<Job> traverseAll(Func1<? super Job, Boolean> predicate) {
-		return rx.Observable.from(jobTable.values())
-			.map(this::toJob)
-			.filter(predicate);
+		return new Job(id, parentId, queueName, executionType, result, exception, jobKey, args);
 	}
 
 	private void traverseByRoot(String rootId, Subscriber<? super Job> subscriber) {
@@ -126,12 +114,35 @@ class InMemoryJobStore implements JobStore {
 	}
 
 	@Override
-	public rx.Observable<Job> traverse(JobId rootId, Result result) {
+	public rx.Observable<Job> traverseSubTree(JobId rootId, Result result) {
 		synchronized (sync) {
+			if (rootId == null)
+				throw new IllegalArgumentException("rootId must be non null");
 
 			Func1<? super Job, Boolean> jobFilter = result != null ? (Job job) -> result.equals(job.getResult()) : (Job job) -> true;
-			return traverse(rootId, jobFilter);
+
+			return rx.Observable.<Job>create(subscriber -> {
+				traverseByRoot(rootId.toString(), subscriber);
+				subscriber.onCompleted();
+			}).filter(jobFilter);
 		}
+	}
+
+	@Override
+	public rx.Observable<Job> traverseAll(Result result) {
+		synchronized (sync) {
+			Func1<? super Job, Boolean> jobFilter = result != null ? (Job job) -> result.equals(job.getResult()) : (Job job) -> true;
+
+			return rx.Observable.from(jobTable.values())
+				.map(this::toJob)
+				.filter(jobFilter);
+		}
+	}
+
+	@Override
+	public Observable<Job> traverseRoots() {
+		return traverseAll(null)
+			.filter(j -> !j.getParentId().isPresent());
 	}
 
 	private void indexChild(String parent, String child) {

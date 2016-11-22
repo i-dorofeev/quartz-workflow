@@ -70,12 +70,12 @@ class JobRepositoryImpl implements JobRepository {
 	}
 
 	@Override
-	public rx.Observable<Job> traverse(Job.Result result) {
-		return store.traverse(null, result);
+	public rx.Observable<Job> traverseAll(Job.Result result) {
+		return store.traverseAll(result);
 	}
 
 	@Override
-	public rx.Observable<Job> traverse(JobId rootId, Job.Result result) {
-		return store.traverse(rootId, result);
+	public rx.Observable<Job> traverseSubTree(JobId rootId, Job.Result result) {
+		return store.traverseSubTree(rootId, result);
 	}
 }

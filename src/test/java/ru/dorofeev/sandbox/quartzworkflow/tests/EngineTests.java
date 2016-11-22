@@ -49,7 +49,7 @@ public class EngineTests {
 	@After
 	public void afterTest() {
 		assertThat(errors, is(empty()));
-		assertThat(engine.getJobRepository().traverse(FAILED).toList().toBlocking().single(), is(empty()));
+		assertThat(engine.getJobRepository().traverseAll(FAILED).toList().toBlocking().single(), is(empty()));
 	}
 
 	@Test

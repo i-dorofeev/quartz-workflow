@@ -85,7 +85,7 @@ public class SimpleWorkflowTest {
 	@After
 	public void afterTest() {
 		assertThat(errors, is(empty()));
-		assertThat(engine.getJobRepository().traverse(FAILED).toList().toBlocking().single(), is(empty()));
+		assertThat(engine.getJobRepository().traverseAll(FAILED).toList().toBlocking().single(), is(empty()));
 	}
 
 	@Test
@@ -103,14 +103,14 @@ public class SimpleWorkflowTest {
 
 		Job t = engine.submitEvent(new AddPersonCmdEvent("james"));
 		await().until(() -> model.findPerson("james").isPresent(), is(true));
-		await().until(() -> engine.getJobRepository().traverse(t.getId(), FAILED), hasOnlyOneItem());
+		await().until(() -> engine.getJobRepository().traverseSubTree(t.getId(), FAILED), hasOnlyOneItem());
 
-		List<Job> failedJobs = engine.getJobRepository().traverse(t.getId(), FAILED).toList().toBlocking().single();
+		List<Job> failedJobs = engine.getJobRepository().traverseSubTree(t.getId(), FAILED).toList().toBlocking().single();
 		assertThat(failedJobs, hasSize(1));
 
 		Job failedJob = failedJobs.get(0);
 		System.out.println(failedJob.toString());
-		assertThat(failedJob.getException(), stringContainsInOrder(singletonList("AssignRoleCmdHandler failed")));
+		assertThat(failedJob.getException().orElse(""), stringContainsInOrder(singletonList("AssignRoleCmdHandler failed")));
 		assignRoleCmdHandler.setFail(false);
 		engine.retryExecution(failedJob.getId());
 

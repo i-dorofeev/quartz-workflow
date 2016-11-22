@@ -18,9 +18,9 @@ public interface JobRepository {
 
 	Optional<Job> findJob(JobId jobId);
 
-	rx.Observable<Job> traverse(Job.Result result);
+	rx.Observable<Job> traverseAll(Job.Result result);
 
-	rx.Observable<Job> traverse(JobId rootId, Job.Result result);
+	rx.Observable<Job> traverseSubTree(JobId rootId, Job.Result result);
 
 	interface Cmd { }
 

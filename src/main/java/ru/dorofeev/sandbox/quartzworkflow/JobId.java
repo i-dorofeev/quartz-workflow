@@ -1,15 +1,9 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
-import java.util.UUID;
-
 public class JobId {
 
 	public static JobId jobId(String id) {
 		return new JobId(id);
-	}
-
-	public static JobId createUniqueJobId() {
-		return new JobId(UUID.randomUUID().toString());
 	}
 
 	private final String value;

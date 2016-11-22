@@ -7,6 +7,7 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
+import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
 import rx.*;
 import rx.functions.Func1;
 
@@ -23,6 +24,8 @@ class InMemoryJobStore implements JobStore {
 	private final Map<String, InMemoryJobRecord> jobTable = new HashMap<>();
 	private final Map<String, Set<String>> childrenIndex = new HashMap<>();
 	private final Object sync = new Object();
+
+	private final UUIDGenerator uuidGenerator = new UUIDGenerator();
 
 	InMemoryJobStore(SerializedObjectFactory serializedObjectFactory) {
 		this.serializedObjectFactory = serializedObjectFactory;
@@ -142,9 +145,9 @@ class InMemoryJobStore implements JobStore {
 	}
 
 	private String nextJobId() {
-		String jobId = UUID.randomUUID().toString();
+		String jobId = uuidGenerator.newUuid();
 		while (jobTable.containsKey(jobId)) {
-			jobId = UUID.randomUUID().toString();
+			jobId = uuidGenerator.newUuid();
 		}
 		return jobId;
 	}

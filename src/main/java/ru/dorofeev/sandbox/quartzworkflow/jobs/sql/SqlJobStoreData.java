@@ -42,7 +42,8 @@ class SqlJobStoreData {
 		this.args = args;
 	}
 
-	String getId() {
+	@SuppressWarnings("WeakerAccess") // should be public as all the other getters so that BeanPropertySqlParameterSource could work
+	public String getId() {
 		return id;
 	}
 

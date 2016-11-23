@@ -56,7 +56,7 @@ public class SqlJobStore implements JobStore {
 
 	public void initialize() {
 		try {
-			SqlUtils.liquibaseUpdate(dataSource, "sqlJobStore.db.changelog.xml");
+			SqlUtils.liquibaseUpdate(dataSource, "sqlJobStore/sqlJobStore.db.changelog.xml");
 		} catch (SQLException | LiquibaseException e) {
 			throw new JobRepositoryException(e);
 		}

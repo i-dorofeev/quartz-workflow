@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+				   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+				   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+	<changeSet id="201611221823" author="UNKNOWN">
+		<createTable tableName="${tables.data.name}">
+			<column name="id" type="${jobid.datatype}" />
+			<column name="parent_id" type="${jobid.datatype}" />
+			<column name="queue_name" type="varchar(255)" />
+			<column name="execution_type" type="varchar(16)" />
+			<column name="result" type="varchar(16)" />
+			<column name="exception" type="varchar(16384)" />
+			<column name="job_key" type="varchar(255)" />
+			<column name="args" type="varchar(4096)" />
+		</createTable>
+
+		<addUniqueConstraint tableName="${tables.data.name}" columnNames="id" />
+	</changeSet>
+</databaseChangeLog>

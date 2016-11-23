@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+				   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+				   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.3.xsd">
+
+	<property name="tables.data.name" value="jobstore_data" />
+	<property name="tables.hierarchy.name" value="jobstore_hierarchy" />
+
+	<property name="jobid.datatype" value="varchar(37)" /> <!-- the size of UUID (1052e27a-869e-aefe-012e-ea091a7f9713) is 37 -->
+
+	<include file="data.tbl.changelog.xml" relativeToChangelogFile="true"/>
+	<include file="hierarchy.tbl.changelog.xml" relativeToChangelogFile="true"/>
+
+</databaseChangeLog>

@@ -1,8 +1,11 @@
-package ru.dorofeev.sandbox.quartzworkflow.jobs;
+package ru.dorofeev.sandbox.quartzworkflow.jobs.ram;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result;
+import ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepositoryException;
+import ru.dorofeev.sandbox.quartzworkflow.jobs.JobStore;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
@@ -18,7 +21,7 @@ import static java.lang.Enum.valueOf;
 import static java.util.Optional.ofNullable;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.CREATED;
 
-class InMemoryJobStore implements JobStore {
+public class InMemoryJobStore implements JobStore {
 
 	private final SerializedObjectFactory serializedObjectFactory;
 
@@ -28,7 +31,7 @@ class InMemoryJobStore implements JobStore {
 
 	private final UUIDGenerator uuidGenerator = new UUIDGenerator();
 
-	InMemoryJobStore(SerializedObjectFactory serializedObjectFactory) {
+	public InMemoryJobStore(SerializedObjectFactory serializedObjectFactory) {
 		this.serializedObjectFactory = serializedObjectFactory;
 	}
 

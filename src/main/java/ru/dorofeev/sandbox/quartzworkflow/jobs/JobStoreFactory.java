@@ -1,5 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.jobs;
 
+import ru.dorofeev.sandbox.quartzworkflow.jobs.ram.InMemoryJobStore;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStore;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
 import rx.functions.Func1;

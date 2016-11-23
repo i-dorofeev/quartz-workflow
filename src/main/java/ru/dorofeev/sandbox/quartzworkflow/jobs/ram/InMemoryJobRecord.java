@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow.jobs;
+package ru.dorofeev.sandbox.quartzworkflow.jobs.ram;
 
 class InMemoryJobRecord {
 

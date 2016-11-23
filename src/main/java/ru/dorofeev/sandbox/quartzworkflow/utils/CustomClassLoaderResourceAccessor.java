@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow.queue;
+package ru.dorofeev.sandbox.quartzworkflow.utils;
 
 import liquibase.resource.ClassLoaderResourceAccessor;
 
@@ -10,9 +10,9 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 
-class CustomClassLoaderResourceAccessor extends ClassLoaderResourceAccessor {
+public class CustomClassLoaderResourceAccessor extends ClassLoaderResourceAccessor {
 
-	CustomClassLoaderResourceAccessor(ClassLoader classLoader) {
+	public CustomClassLoaderResourceAccessor(ClassLoader classLoader) {
 		super(classLoader);
 	}
 

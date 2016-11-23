@@ -1,5 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.utils;
 
+import rx.functions.Func0;
+
 public class SqlBuilder {
 
 	private final StringBuilder sb = new StringBuilder();
@@ -25,7 +27,12 @@ public class SqlBuilder {
 	}
 
 	public SqlBuilder where(String condition) {
-		sb.append(" where (").append(condition).append(")");
+		return where(() -> true, condition);
+	}
+
+	public SqlBuilder where(Func0<Boolean> predicate, String condition) {
+		if (predicate.call())
+			sb.append(" where (").append(condition).append(")");
 		return this;
 	}
 
@@ -34,7 +41,7 @@ public class SqlBuilder {
 	}
 
 	public static String sqlEquals(String left, String right) {
-		return left + "=" + right;
+		return left + " = " + right;
 	}
 
 	private static String commaDelimited(String... items) {

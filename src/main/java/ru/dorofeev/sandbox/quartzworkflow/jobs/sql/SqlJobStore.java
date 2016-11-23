@@ -1,7 +1,9 @@
 package ru.dorofeev.sandbox.quartzworkflow.jobs.sql;
 
 import liquibase.exception.LiquibaseException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -19,16 +21,20 @@ import ru.dorofeev.sandbox.quartzworkflow.utils.SqlBuilder;
 import ru.dorofeev.sandbox.quartzworkflow.utils.SqlUtils;
 import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
 import rx.Observable;
+import rx.functions.Action1;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 
 import static java.lang.Enum.valueOf;
-import static java.util.Optional.ofNullable;
+import static java.util.Optional.*;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.CREATED;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.*;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreHierarchy.*;
 import static ru.dorofeev.sandbox.quartzworkflow.utils.SqlBuilder.sqlEquals;
+import static rx.Observable.from;
 
 public class SqlJobStore implements JobStore {
 
@@ -42,7 +48,7 @@ public class SqlJobStore implements JobStore {
 	public SqlJobStore(DataSource dataSource, SerializedObjectFactory serializedObjectFactory) {
 		this.dataSource = dataSource;
 		this.jdbcTemplate = new JdbcTemplate(dataSource);
-		this.insertJobStoreData = new SimpleJdbcInsert(jdbcTemplate).withTableName(SqlJobStoreData.TABLE_NAME);
+		this.insertJobStoreData = new SimpleJdbcInsert(jdbcTemplate).withTableName(TBL_JOB_STORE_DATA);
 		this.transactionTemplate = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
 		this.serializedObjectFactory = serializedObjectFactory;
 	}
@@ -57,7 +63,18 @@ public class SqlJobStore implements JobStore {
 
 	@Override
 	public Optional<Job> findJob(JobId jobId) {
-		throw new UnsupportedOperationException("Not implemented yet");
+		try {
+			SqlJobStoreData sqlJobStoreData = jdbcTemplate.queryForObject(new SqlBuilder()
+				.select("*")
+				.from(TBL_JOB_STORE_DATA)
+				.where(sqlEquals(CLMN_ID, "?"))
+				.sql(),
+				SqlJobStoreData.rowMapper(), jobId.toString());
+
+			return of(fromSqlJobStoreData(sqlJobStoreData));
+		} catch (EmptyResultDataAccessException e) {
+			return empty();
+		}
 	}
 
 	@Override
@@ -126,7 +143,27 @@ public class SqlJobStore implements JobStore {
 
 	@Override
 	public Observable<Job> traverseAll(Job.Result result) {
-		return Observable.empty();
+		if (result != null) {
+			return query(sql -> sql
+						.select("*")
+						.from(TBL_JOB_STORE_DATA)
+						.where(sqlEquals(CLMN_RESULT, "?")), SqlJobStoreData.rowMapper(), result.toString())
+				.map(this::fromSqlJobStoreData);
+		} else {
+			return query(sql -> sql
+						.select("*")
+						.from(TBL_JOB_STORE_DATA)
+						.sql(), SqlJobStoreData.rowMapper())
+				.map(this::fromSqlJobStoreData);
+		}
+	}
+
+	private <T> Observable<T> query(Action1<SqlBuilder> buildSql, RowMapper<T> rowMapper, Object... args) {
+		SqlBuilder sqlBuilder = new SqlBuilder();
+		buildSql.call(sqlBuilder);
+
+		List<T> results = jdbcTemplate.query(sqlBuilder.sql(), rowMapper, args);
+		return from(results);
 	}
 
 	@Override

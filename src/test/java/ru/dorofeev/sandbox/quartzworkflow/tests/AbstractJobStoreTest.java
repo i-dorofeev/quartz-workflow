@@ -29,6 +29,7 @@ public abstract class AbstractJobStoreTest {
 	private static final StubArgs args = new StubArgs("test");
 
 	private static JobId jobId;
+	private static List<JobId> childJobs;
 
 	protected abstract JobStore getStore();
 	protected abstract SerializedObjectFactory getSerializedObjectFactory();
@@ -102,7 +103,7 @@ public abstract class AbstractJobStoreTest {
 	public void test060_traverse() {
 
 		// create subtree jobs
-		List<JobId> childJobs = range(1, 10)
+		childJobs = range(1, 10)
 			.flatMap(i -> saveJobHierarchy(jobId, 3, "default", EXCLUSIVE, jobKey, args))
 			.toList().toBlocking().single();
 
@@ -116,6 +117,16 @@ public abstract class AbstractJobStoreTest {
 
 		assertThat(actualChildJobs.filter(i -> !jobId.equals(i)).toList().toBlocking().single(), containsInAnyOrder(childJobs.toArray()));
 		assertThat(getStore().traverseRoots().count().toBlocking().single(), equalTo(11));
+	}
+
+	@Test
+	public void test070_traverseByRootAndResult() {
+		getStore().recordJobResult(childJobs.get(13), FAILED, new RuntimeException("stub")); // 13 is some magic number between 0 and 30
+
+		Observable<JobId> failed = getStore().traverseSubTree(jobId, FAILED)
+			.map(Job::getId);
+
+		assertThat(failed.toBlocking().single(), equalTo(childJobs.get(13)));
 
 	}
 

@@ -1,9 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import ru.dorofeev.sandbox.quartzworkflow.Factory;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
@@ -27,7 +24,7 @@ import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.events;
 import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory.fixedThreadedExecutorService;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.FAILED;
-import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.inMemoryJobStore;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.sqlJobStore;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.inMemoryQueueStore;
 import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory.jsonSerialization;
 import static ru.dorofeev.sandbox.quartzworkflow.tests.utils.Matchers.hasOnlyOneItem;
@@ -35,6 +32,7 @@ import static ru.dorofeev.sandbox.quartzworkflow.tests.utils.Matchers.hasOnlyOne
 public class SimpleWorkflowTest {
 
 	private static Engine engine;
+	private static TestHSqlJobStore testHSqlJobStore;
 	private static final List<Throwable> errors = new CopyOnWriteArrayList<>();
 	private static Model model = new Model();
 
@@ -59,7 +57,8 @@ public class SimpleWorkflowTest {
 	@BeforeClass
 	public static void beforeClass() throws Exception {
 
-		engine = Factory.spawn(jsonSerialization(), inMemoryJobStore(), inMemoryQueueStore(), fixedThreadedExecutorService(10, 1000));
+		testHSqlJobStore = new TestHSqlJobStore();
+		engine = Factory.spawn(jsonSerialization(), sqlJobStore(testHSqlJobStore.getDataSource()), inMemoryQueueStore(), fixedThreadedExecutorService(10, 1000));
 		engine.errors().subscribe(System.out::println);
 
 		model = new Model();
@@ -86,6 +85,11 @@ public class SimpleWorkflowTest {
 	public void afterTest() {
 		assertThat(errors, is(empty()));
 		assertThat(engine.getJobRepository().traverseAll(FAILED).toList().toBlocking().single(), is(empty()));
+	}
+
+	@AfterClass
+	public static void afterClass() {
+		testHSqlJobStore.shutdown();
 	}
 
 	@Test

@@ -22,7 +22,7 @@ import ru.dorofeev.sandbox.quartzworkflow.utils.SqlBuilder;
 import ru.dorofeev.sandbox.quartzworkflow.utils.SqlUtils;
 import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
 import rx.Observable;
-import rx.functions.Action1;
+import rx.functions.Func0;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
@@ -34,7 +34,7 @@ import static java.util.Optional.*;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.CREATED;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.*;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreHierarchy.*;
-import static ru.dorofeev.sandbox.quartzworkflow.utils.SqlBuilder.sqlEquals;
+import static ru.dorofeev.sandbox.quartzworkflow.utils.SqlBuilder.*;
 import static rx.Observable.from;
 
 public class SqlJobStore implements JobStore {
@@ -65,11 +65,13 @@ public class SqlJobStore implements JobStore {
 	@Override
 	public Optional<Job> findJob(JobId jobId) {
 		try {
-			SqlJobStoreData sqlJobStoreData = jdbcTemplate.queryForObject(new SqlBuilder()
-				.select("*")
-				.from(TBL_JOB_STORE_DATA)
-				.where(sqlEquals(CLMN_ID, "?"))
-				.sql(),
+			SqlJobStoreData sqlJobStoreData = jdbcTemplate.queryForObject(
+
+				select("*")
+					.from(TBL_JOB_STORE_DATA)
+					.where(sqlEquals(CLMN_ID, "?"))
+					.sql(),
+
 				SqlJobStoreData.rowMapper(), jobId.toString());
 
 			return of(fromSqlJobStoreData(sqlJobStoreData));
@@ -82,8 +84,8 @@ public class SqlJobStore implements JobStore {
 	public void recordJobResult(JobId jobId, Job.Result result, Throwable ex) {
 		transactionTemplate.execute(status -> {
 
-			jdbcTemplate.update(new SqlBuilder()
-					.update(TBL_JOB_STORE_DATA)
+			jdbcTemplate.update(
+					update(TBL_JOB_STORE_DATA)
 					.set(sqlEquals(CLMN_RESULT, "?"), sqlEquals(CLMN_EXCEPTION, "?"))
 					.where(sqlEquals(CLMN_ID, "?"))
 				.sql(), result.toString(), ExceptionUtils.toString(ex), jobId.toString());
@@ -100,18 +102,18 @@ public class SqlJobStore implements JobStore {
 		return transactionTemplate.execute(status -> {
 			insertJobStoreData.execute(new BeanPropertySqlParameterSource(sqlJobStoreData));
 
-			jdbcTemplate.update(new SqlBuilder()
-				.insertInto(TBL_JOB_STORE_HIERARCHY)
+			jdbcTemplate.update(
+				insertInto(TBL_JOB_STORE_HIERARCHY)
 				.values("?", "?")
 				.sql(),
 				sqlJobStoreData.getId(), sqlJobStoreData.getParentId());
 
-			jdbcTemplate.update(new SqlBuilder()
-				.insertInto(TBL_JOB_STORE_HIERARCHY)
-					.select("?", CLMN_JOB_PARENT_ID)
-					.from(TBL_JOB_STORE_HIERARCHY)
-					.where(sqlEquals(CLMN_JOB_ID, "?"))
-				.sql(),
+			jdbcTemplate.update(
+				insertInto(TBL_JOB_STORE_HIERARCHY,
+					select("?", CLMN_JOB_PARENT_ID)
+						.from(TBL_JOB_STORE_HIERARCHY)
+						.where(sqlEquals(CLMN_JOB_ID, "?"))
+				).sql(),
 				sqlJobStoreData.getId(), sqlJobStoreData.getParentId());
 
 			return fromSqlJobStoreData(sqlJobStoreData);
@@ -148,36 +150,79 @@ public class SqlJobStore implements JobStore {
 
 	@Override
 	public Observable<Job> traverseSubTree(JobId rootId, Job.Result result) {
-		throw new UnsupportedOperationException("Not implemented yet");
+		return (result != null ?
+				traverseSubTreeByResult(rootId.toString(), result.toString()) :
+				traverseSubTree(rootId.toString()))
+			.map(this::fromSqlJobStoreData);
+	}
+
+	private Observable<SqlJobStoreData> traverseSubTreeByResult(String rootId, String result) {
+		return query(SqlJobStoreData.rowMapper(), () ->
+
+				select("d.*")
+					.from(TBL_JOB_STORE_DATA, "d")
+					.join(TBL_JOB_STORE_HIERARCHY, "h")
+					.on(sqlEquals("d."+CLMN_ID, "h."+CLMN_JOB_ID))
+					.where(
+						expr(
+							sqlEquals("h."+CLMN_JOB_PARENT_ID, "?").or(sqlEquals("d."+CLMN_ID, "?")))
+							.and(sqlEquals("d."+CLMN_RESULT, "?"))),
+
+			rootId, rootId, result);
+	}
+
+	private Observable<SqlJobStoreData> traverseSubTree(String rootId) {
+		return query(SqlJobStoreData.rowMapper(), () ->
+
+				select("d.*")
+					.from(TBL_JOB_STORE_DATA, "d")
+					.join(TBL_JOB_STORE_HIERARCHY, "h")
+					.on(sqlEquals("d."+CLMN_ID, "h."+CLMN_JOB_ID))
+					.where(
+						sqlEquals("h."+CLMN_JOB_PARENT_ID, "?")
+							.or(sqlEquals("d."+CLMN_ID, "?"))),
+
+			rootId, rootId);
 	}
 
 	@Override
 	public Observable<Job> traverseAll(Job.Result result) {
-		if (result != null) {
-			return query(sql -> sql
-						.select("*")
-						.from(TBL_JOB_STORE_DATA)
-						.where(sqlEquals(CLMN_RESULT, "?")), SqlJobStoreData.rowMapper(), result.toString())
-				.map(this::fromSqlJobStoreData);
-		} else {
-			return query(sql -> sql
-						.select("*")
-						.from(TBL_JOB_STORE_DATA)
-						.sql(), SqlJobStoreData.rowMapper())
-				.map(this::fromSqlJobStoreData);
-		}
+		return (result != null ?
+				traverseAllByResult(result) :
+				traverseAll())
+			.map(this::fromSqlJobStoreData);
 	}
 
-	private <T> Observable<T> query(Action1<SqlBuilder> buildSql, RowMapper<T> rowMapper, Object... args) {
-		SqlBuilder sqlBuilder = new SqlBuilder();
-		buildSql.call(sqlBuilder);
+	private Observable<SqlJobStoreData> traverseAllByResult(Job.Result result) {
+		return query(SqlJobStoreData.rowMapper(), () ->
 
-		List<T> results = jdbcTemplate.query(sqlBuilder.sql(), rowMapper, args);
+			select("*")
+				.from(TBL_JOB_STORE_DATA)
+				.where(sqlEquals(CLMN_RESULT, "?")), result.toString());
+	}
+
+	private Observable<SqlJobStoreData> traverseAll() {
+		return query(SqlJobStoreData.rowMapper(), () ->
+
+			select("*")
+				.from(TBL_JOB_STORE_DATA));
+	}
+
+	private <T> Observable<T> query(RowMapper<T> rowMapper, Func0<SqlBuilder> buildSql, Object... args) {
+		SqlBuilder sqlBuilder = buildSql.call();
+		String sql = sqlBuilder.sql();
+		List<T> results = jdbcTemplate.query(sql, rowMapper, args);
 		return from(results);
 	}
 
 	@Override
 	public Observable<Job> traverseRoots() {
-		throw new UnsupportedOperationException("Not implemented yet");
+		return query(SqlJobStoreData.rowMapper(), () ->
+			select("*")
+				.from(TBL_JOB_STORE_DATA)
+				.where(isNull(CLMN_PARENT_ID)))
+
+			.map(this::fromSqlJobStoreData);
+
 	}
 }

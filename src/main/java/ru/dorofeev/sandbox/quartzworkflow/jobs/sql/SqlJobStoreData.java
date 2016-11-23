@@ -7,7 +7,7 @@ public class SqlJobStoreData {
 	public static final String TBL_JOB_STORE_DATA = "jobstore_data";
 
 	public static final String CLMN_ID = "id";
-	private static final String CLMN_PARENT_ID = "parent_id";
+	static final String CLMN_PARENT_ID = "parent_id";
 	private static final String CLMN_QUEUE_NAME = "queue_name";
 	private static final String CLMN_EXECUTION_TYPE = "execution_type";
 	private static final String CLMN_JOB_KEY = "job_key";

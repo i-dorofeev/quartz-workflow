@@ -6,7 +6,6 @@ import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
-import ru.dorofeev.sandbox.quartzworkflow.tests.utils.H2Db;
 
 import java.util.List;
 import java.util.Random;
@@ -21,13 +20,14 @@ import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory.fixedThreadedExecutorService;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.*;
-import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.inMemoryJobStore;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.sqlJobStore;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.inMemoryQueueStore;
 import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory.jsonSerialization;
 
 public class QueueTest {
 
 	private static Engine engine;
+	private static TestHSqlJobStore testHSqlJobStore;
 	private static final List<Throwable> errors = new CopyOnWriteArrayList<>();
 	private static Model model;
 
@@ -43,10 +43,9 @@ public class QueueTest {
 
 	@BeforeClass
 	public static void beforeClass() {
-		H2Db h2Db = new H2Db("./build/test");
-		h2Db.deleteDb();
+		testHSqlJobStore = new TestHSqlJobStore();
 
-		engine = Factory.spawn(jsonSerialization(), inMemoryJobStore(), inMemoryQueueStore(), fixedThreadedExecutorService(10, 1000));
+		engine = Factory.spawn(jsonSerialization(), sqlJobStore(testHSqlJobStore.getDataSource()), inMemoryQueueStore(), fixedThreadedExecutorService(10, 1000));
 		engine.errors().subscribe(errors::add);
 		model = new Model();
 
@@ -56,6 +55,7 @@ public class QueueTest {
 
 	@AfterClass
 	public static void afterClass() {
+		testHSqlJobStore.shutdown();
 	}
 
 	@Before
@@ -99,9 +99,9 @@ public class QueueTest {
 		protected List<Event> handle(IncrementCmdEvent event) {
 			try {
 				model.v1++;
-				Thread.sleep(90);
+				Thread.sleep(45);
 				model.v2++;
-				Thread.sleep(110);
+				Thread.sleep(55);
 				model.v3++;
 
 				return noEvents();
@@ -128,9 +128,9 @@ public class QueueTest {
 		protected List<Event> handle(VerifyCmdEvent event) {
 			try {
 				int v1 = model.v1;
-				Thread.sleep(45);
+				Thread.sleep(22);
 				int v2 = model.v2;
-				Thread.sleep(55);
+				Thread.sleep(27);
 				int v3 = model.v3;
 
 				if (v1 != v2 || v1 != v3)

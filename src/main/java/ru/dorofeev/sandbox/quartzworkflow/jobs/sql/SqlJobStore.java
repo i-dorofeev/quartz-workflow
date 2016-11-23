@@ -17,6 +17,7 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
+import ru.dorofeev.sandbox.quartzworkflow.utils.ExceptionUtils;
 import ru.dorofeev.sandbox.quartzworkflow.utils.SqlBuilder;
 import ru.dorofeev.sandbox.quartzworkflow.utils.SqlUtils;
 import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
@@ -79,7 +80,16 @@ public class SqlJobStore implements JobStore {
 
 	@Override
 	public void recordJobResult(JobId jobId, Job.Result result, Throwable ex) {
-		throw new UnsupportedOperationException("Not implemented yet");
+		transactionTemplate.execute(status -> {
+
+			jdbcTemplate.update(new SqlBuilder()
+					.update(TBL_JOB_STORE_DATA)
+					.set(sqlEquals(CLMN_RESULT, "?"), sqlEquals(CLMN_EXCEPTION, "?"))
+					.where(sqlEquals(CLMN_ID, "?"))
+				.sql(), result.toString(), ExceptionUtils.toString(ex), jobId.toString());
+
+			return null;
+		});
 	}
 
 	@Override

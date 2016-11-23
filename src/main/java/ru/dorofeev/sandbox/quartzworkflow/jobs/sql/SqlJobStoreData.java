@@ -11,7 +11,7 @@ public class SqlJobStoreData {
 	private static final String CLMN_QUEUE_NAME = "queue_name";
 	private static final String CLMN_EXECUTION_TYPE = "execution_type";
 	private static final String CLMN_JOB_KEY = "job_key";
-	private static final String CLMN_EXCEPTION = "exception";
+	static final String CLMN_EXCEPTION = "exception";
 	public static final String CLMN_RESULT = "result";
 	private static final String CLMN_ARGS = "args";
 

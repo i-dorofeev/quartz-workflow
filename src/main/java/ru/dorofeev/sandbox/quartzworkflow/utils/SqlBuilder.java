@@ -36,6 +36,16 @@ public class SqlBuilder {
 		return this;
 	}
 
+	public SqlBuilder update(String tableName) {
+		sb.append(" update ").append(tableName);
+		return this;
+	}
+
+	public SqlBuilder set(String... assignments) {
+		sb.append(" set ").append(commaDelimited(assignments));
+		return this;
+	}
+
 	public String sql() {
 		return sb.toString();
 	}

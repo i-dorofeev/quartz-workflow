@@ -15,8 +15,7 @@ import rx.Observable;
 import java.util.List;
 import java.util.Optional;
 
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 import static org.junit.runners.MethodSorters.NAME_ASCENDING;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.*;
@@ -142,7 +141,7 @@ public abstract class AbstractJobStoreTest {
 		assertEquals(job1.getQueueName(), job2.getQueueName());
 		assertEquals(job1.getArgs(), job2.getArgs());
 		assertEquals(job1.getExecutionType(), job2.getExecutionType());
-		assertEquals(job1.getException(), job2.getException());
+		assertThat(job2.getException().orElse(""), containsString(job1.getException().orElse("")));
 		assertEquals(job1.getResult(), job2.getResult());
 	}
 

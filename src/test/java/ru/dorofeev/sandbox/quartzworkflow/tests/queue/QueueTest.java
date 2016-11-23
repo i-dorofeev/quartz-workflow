@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow.tests;
+package ru.dorofeev.sandbox.quartzworkflow.tests.queue;
 
 import org.junit.*;
 import ru.dorofeev.sandbox.quartzworkflow.Factory;
@@ -6,6 +6,7 @@ import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestHSqlJobStore;
 
 import java.util.List;
 import java.util.Random;

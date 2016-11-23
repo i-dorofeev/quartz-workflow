@@ -5,6 +5,7 @@ import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.EventHandler;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestHSqlJobStore;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.Utils;
 
 import java.util.List;

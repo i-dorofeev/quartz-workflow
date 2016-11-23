@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow.tests;
+package ru.dorofeev.sandbox.quartzworkflow.tests.utils;
 
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabase;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
@@ -7,11 +7,11 @@ import javax.sql.DataSource;
 
 import static org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType.HSQL;
 
-class TestHSqlJobStore {
+public class TestHSqlJobStore {
 
 	private final EmbeddedDatabase db;
 
-	TestHSqlJobStore() {
+	public TestHSqlJobStore() {
 
 		db = new EmbeddedDatabaseBuilder()
 			.generateUniqueName(true)
@@ -19,11 +19,11 @@ class TestHSqlJobStore {
 			.build();
 	}
 
-	void shutdown() {
+	public void shutdown() {
 		db.shutdown();
 	}
 
-	DataSource getDataSource() {
+	public DataSource getDataSource() {
 		return db;
 	}
 }

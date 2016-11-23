@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow.tests;
+package ru.dorofeev.sandbox.quartzworkflow.tests.jobstore;
 
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobStore;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;

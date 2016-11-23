@@ -6,6 +6,7 @@ import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestHSqlJobStore;
 
 import java.util.HashMap;
 import java.util.List;

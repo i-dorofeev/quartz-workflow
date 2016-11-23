@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow.tests;
+package ru.dorofeev.sandbox.quartzworkflow.tests.jobstore;
 
 import org.junit.FixMethodOrder;
 import org.junit.Test;

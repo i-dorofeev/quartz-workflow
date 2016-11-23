@@ -1,9 +1,10 @@
-package ru.dorofeev.sandbox.quartzworkflow.tests;
+package ru.dorofeev.sandbox.quartzworkflow.tests.jobstore;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobStore;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestHSqlJobStore;
 
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.sqlJobStore;
 import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory.jsonSerialization;

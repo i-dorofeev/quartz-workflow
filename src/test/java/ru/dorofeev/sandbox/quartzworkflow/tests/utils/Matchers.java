@@ -13,6 +13,7 @@ public class Matchers {
 		return hasOnlyOneItem(null, item -> true);
 	}
 
+	@SuppressWarnings("WeakerAccess")
 	public static <T> org.hamcrest.Matcher<Observable<T>> hasOnlyOneItem(String descr, Func1<? super T, Boolean> predicate) {
 		return new BaseMatcher<Observable<T>>() {
 			@Override

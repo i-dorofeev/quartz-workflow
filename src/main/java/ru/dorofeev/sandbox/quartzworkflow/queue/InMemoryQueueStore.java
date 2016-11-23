@@ -7,6 +7,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Predicate;
 
+import static java.util.Comparator.comparingLong;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 
@@ -33,7 +34,7 @@ class InMemoryQueueStore implements QueueStore {
 	private enum QueueItemStatus { PENDING, POPPED }
 
 	private final Object sync = new Object();
-	private final SortedSet<QueueItem> queue = new TreeSet<>((o1, o2) -> Long.compare(o1.ordinal, o2.ordinal));
+	private final SortedSet<QueueItem> queue = new TreeSet<>(comparingLong(o -> o.ordinal));
 
 	private long ordinalSeq = 0;
 

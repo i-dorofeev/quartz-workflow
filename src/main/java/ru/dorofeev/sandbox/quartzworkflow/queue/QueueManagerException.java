@@ -1,6 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.queue;
 
-@SuppressWarnings("WeakerAccess")
+@SuppressWarnings({"WeakerAccess", "unused"})
 public class QueueManagerException extends RuntimeException {
 
 	QueueManagerException(String msg) {

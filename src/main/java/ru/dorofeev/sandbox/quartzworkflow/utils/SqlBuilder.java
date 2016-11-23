@@ -4,6 +4,7 @@ import rx.functions.Func0;
 
 import static java.util.Arrays.stream;
 
+@SuppressWarnings("WeakerAccess")
 public class SqlBuilder {
 
 	private final StringBuilder sb;
@@ -118,7 +119,7 @@ public class SqlBuilder {
 
 	public static SqlBuilder sqlEquals(String left, String right) {
 		SqlBuilder sqlBuilder = new SqlBuilder();
-		sqlBuilder.sb.append(left + " = " + right);
+		sqlBuilder.sb.append(left).append(" = ").append(right);
 		return sqlBuilder;
 	}
 

@@ -27,12 +27,12 @@ public class JobId {
 
 		JobId jobId = (JobId) o;
 
-		return value != null ? value.equals(jobId.value) : jobId.value == null;
+		return value.equals(jobId.value);
 
 	}
 
 	@Override
 	public int hashCode() {
-		return value != null ? value.hashCode() : 0;
+		return value.hashCode();
 	}
 }

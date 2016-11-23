@@ -34,12 +34,6 @@ public class ErrorObservable {
 				.compose(mapRetry(func));
 	}
 
-	public <I, O> Observable.Transformer<I, O> filterMapRetry(Func1<I, Boolean> filter, Func1<I, O> func) {
-		return observable ->
-			observable.filter(filter)
-				.compose(mapRetry(func));
-	}
-
 	public <I> Observable.Transformer<I, I> doOnNextRetry(Action1<? super I> onNext) {
 		return iObservable ->
 			iObservable.doOnNext(onNext)

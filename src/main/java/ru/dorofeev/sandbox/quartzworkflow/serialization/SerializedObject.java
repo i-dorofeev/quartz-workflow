@@ -6,7 +6,7 @@ public interface SerializedObject {
 	String getString(String eventHandlerUri);
 
 	void addUntypedObject(String name, Object obj);
-	<T> T getUntypedObject(String name, Class<T> type);
+	<T> T getUntypedObject(String name, @SuppressWarnings("unused") Class<T> type);
 
 	String build();
 }

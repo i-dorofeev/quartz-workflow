@@ -168,6 +168,7 @@ public abstract class AbstractJobStoreTest {
 			throw new AssertionError("Expected no jobs but found " + jobs);
 	}
 
+	@SuppressWarnings("OptionalGetWithoutIsPresent")
 	private Job assertFindById(JobId jobId, Job expectedJob) {
 		Optional<Job> job = getStore().findJob(jobId);
 

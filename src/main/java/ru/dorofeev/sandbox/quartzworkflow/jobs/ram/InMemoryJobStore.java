@@ -149,13 +149,7 @@ public class InMemoryJobStore implements JobStore {
 	}
 
 	private void indexChild(String parent, String child) {
-		Set<String> children = childrenIndex.get(parent);
-		if (children == null) {
-			children = new HashSet<>();
-			childrenIndex.put(parent, children);
-		}
-
-		children.add(child);
+		childrenIndex.computeIfAbsent(parent, k -> new HashSet<>()).add(child);
 	}
 
 	private String nextJobId() {

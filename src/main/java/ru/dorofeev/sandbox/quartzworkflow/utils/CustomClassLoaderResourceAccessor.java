@@ -10,9 +10,9 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 
-public class CustomClassLoaderResourceAccessor extends ClassLoaderResourceAccessor {
+class CustomClassLoaderResourceAccessor extends ClassLoaderResourceAccessor {
 
-	public CustomClassLoaderResourceAccessor(ClassLoader classLoader) {
+	CustomClassLoaderResourceAccessor(ClassLoader classLoader) {
 		super(classLoader);
 	}
 

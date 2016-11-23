@@ -2,18 +2,22 @@ package ru.dorofeev.sandbox.quartzworkflow.jobs.sql;
 
 import org.springframework.jdbc.core.RowMapper;
 
-public class SqlJobStoreData {
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.Columns.*;
 
-	public static final String TBL_JOB_STORE_DATA = "jobstore_data";
+class SqlJobStoreData {
 
-	public static final String CLMN_ID = "id";
-	static final String CLMN_PARENT_ID = "parent_id";
-	private static final String CLMN_QUEUE_NAME = "queue_name";
-	private static final String CLMN_EXECUTION_TYPE = "execution_type";
-	private static final String CLMN_JOB_KEY = "job_key";
-	static final String CLMN_EXCEPTION = "exception";
-	public static final String CLMN_RESULT = "result";
-	private static final String CLMN_ARGS = "args";
+	static final String TBL_JOB_STORE_DATA = "jobstore_data";
+
+	static class Columns {
+		static final String CLMN_ID = "id";
+		static final String CLMN_PARENT_ID = "parent_id";
+		static final String CLMN_QUEUE_NAME = "queue_name";
+		static final String CLMN_EXECUTION_TYPE = "execution_type";
+		static final String CLMN_JOB_KEY = "job_key";
+		static final String CLMN_EXCEPTION = "exception";
+		static final String CLMN_RESULT = "result";
+		static final String CLMN_ARGS = "args";
+	}
 
 	private String id;
 	private String parentId;
@@ -24,10 +28,10 @@ public class SqlJobStoreData {
 	private String jobKey;
 	private String args;
 
-	public SqlJobStoreData() {
+	private SqlJobStoreData() {
 	}
 
-	public SqlJobStoreData(String id, String parentId, String queueName, String executionType, String result, String exception, String jobKey, String args) {
+	SqlJobStoreData(String id, String parentId, String queueName, String executionType, String result, String exception, String jobKey, String args) {
 		this.id = id;
 		this.parentId = parentId;
 		this.queueName = queueName;
@@ -38,11 +42,11 @@ public class SqlJobStoreData {
 		this.args = args;
 	}
 
-	public String getId() {
+	String getId() {
 		return id;
 	}
 
-	public void setId(String id) {
+	private void setId(String id) {
 		this.id = id;
 	}
 
@@ -50,7 +54,7 @@ public class SqlJobStoreData {
 		return parentId;
 	}
 
-	public void setParentId(String parentId) {
+	private void setParentId(String parentId) {
 		this.parentId = parentId;
 	}
 
@@ -58,7 +62,7 @@ public class SqlJobStoreData {
 		return queueName;
 	}
 
-	public void setQueueName(String queueName) {
+	private void setQueueName(String queueName) {
 		this.queueName = queueName;
 	}
 
@@ -66,7 +70,7 @@ public class SqlJobStoreData {
 		return executionType;
 	}
 
-	public void setExecutionType(String executionType) {
+	private void setExecutionType(String executionType) {
 		this.executionType = executionType;
 	}
 
@@ -74,7 +78,7 @@ public class SqlJobStoreData {
 		return result;
 	}
 
-	public void setResult(String result) {
+	private void setResult(String result) {
 		this.result = result;
 	}
 
@@ -82,7 +86,7 @@ public class SqlJobStoreData {
 		return exception;
 	}
 
-	public void setException(String exception) {
+	private void setException(String exception) {
 		this.exception = exception;
 	}
 
@@ -90,7 +94,7 @@ public class SqlJobStoreData {
 		return jobKey;
 	}
 
-	public void setJobKey(String jobKey) {
+	private void setJobKey(String jobKey) {
 		this.jobKey = jobKey;
 	}
 
@@ -98,11 +102,11 @@ public class SqlJobStoreData {
 		return args;
 	}
 
-	public void setArgs(String args) {
+	private void setArgs(String args) {
 		this.args = args;
 	}
 
-	public static RowMapper<SqlJobStoreData> rowMapper() {
+	static RowMapper<SqlJobStoreData> rowMapper() {
 		return (rs, rowNum) -> {
 			SqlJobStoreData data = new SqlJobStoreData();
 

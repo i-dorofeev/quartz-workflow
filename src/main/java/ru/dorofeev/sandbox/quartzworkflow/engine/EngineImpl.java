@@ -63,7 +63,7 @@ class EngineImpl implements Engine {
 			.subscribe(jobRepositoryCmds);
 
 		executorServiceOutput
-			.compose(errors.filterMapRetry(ExecutorService.IdleEvent.class, this::asGiveMeMoreCmd))
+			.compose(errors.filterMapRetry(ExecutorService.IdleEvent.class, e -> giveMeMoreCmd()))
 			.subscribe(queueManagerCmds);
 	}
 
@@ -95,10 +95,6 @@ class EngineImpl implements Engine {
 
 	private QueueManager.EnqueueCmd asEnqueueCmd(JobRepository.JobAddedEvent event) {
 		return enqueueCmd(event.getJob().getQueueName(), event.getJob().getExecutionType(), event.getJob().getId());
-	}
-
-	private QueueManager.Cmd asGiveMeMoreCmd(ExecutorService.Event event) {
-		return giveMeMoreCmd();
 	}
 
 	@Override
@@ -135,13 +131,7 @@ class EngineImpl implements Engine {
 
 	@Override
 	public void registerEventHandler(Class<? extends Event> eventType, String handlerUri) {
-		Set<String> handlersForEventType = eventHandlers.get(eventType);
-		if (handlersForEventType == null) {
-			handlersForEventType = new HashSet<>();
-			eventHandlers.put(eventType, handlersForEventType);
-		}
-
-		handlersForEventType.add(handlerUri);
+		eventHandlers.computeIfAbsent(eventType, k -> new HashSet<>()).add(handlerUri);
 	}
 
 	@Override

@@ -55,6 +55,8 @@ class JsonSerializedObject implements SerializedObject {
 			JsonObject valueJo = jo.getAsJsonObject("value");
 
 			Class<?> klass = Class.forName(typeStr);
+
+			//noinspection unchecked
 			return (T)gson.fromJson(valueJo, klass);
 		} catch (ClassNotFoundException e) {
 			throw new SerializerException(e);

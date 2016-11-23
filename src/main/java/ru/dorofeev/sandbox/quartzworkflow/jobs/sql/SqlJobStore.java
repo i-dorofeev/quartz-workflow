@@ -33,6 +33,7 @@ import static java.lang.Enum.valueOf;
 import static java.util.Optional.*;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.CREATED;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.*;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.Columns.*;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreHierarchy.*;
 import static ru.dorofeev.sandbox.quartzworkflow.utils.SqlBuilder.*;
 import static rx.Observable.from;

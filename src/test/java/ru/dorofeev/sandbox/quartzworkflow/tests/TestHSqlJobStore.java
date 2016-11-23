@@ -7,11 +7,11 @@ import javax.sql.DataSource;
 
 import static org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType.HSQL;
 
-public class TestHSqlJobStore {
+class TestHSqlJobStore {
 
 	private final EmbeddedDatabase db;
 
-	public TestHSqlJobStore() {
+	TestHSqlJobStore() {
 
 		db = new EmbeddedDatabaseBuilder()
 			.generateUniqueName(true)
@@ -19,11 +19,11 @@ public class TestHSqlJobStore {
 			.build();
 	}
 
-	public void shutdown() {
+	void shutdown() {
 		db.shutdown();
 	}
 
-	public DataSource getDataSource() {
+	DataSource getDataSource() {
 		return db;
 	}
 }

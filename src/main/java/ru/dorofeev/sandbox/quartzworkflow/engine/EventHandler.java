@@ -8,6 +8,6 @@ public interface EventHandler {
 
 	List<Event> handleEvent(Event event);
 
-	QueueingOptions getQueueingOption(Event event);
+	QueueingOptions getQueueingOption(@SuppressWarnings("unused") Event event);
 
 }

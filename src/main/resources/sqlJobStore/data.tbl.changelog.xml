@@ -16,6 +16,6 @@
 			<column name="args" type="varchar(4096)" />
 		</createTable>
 
-		<addUniqueConstraint tableName="${tables.data.name}" columnNames="id" />
+		<addPrimaryKey tableName="${tables.data.name}" columnNames="id" />
 	</changeSet>
 </databaseChangeLog>

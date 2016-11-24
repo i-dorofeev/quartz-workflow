@@ -9,6 +9,7 @@ import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestHSqlJobStore;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.sqlJobStore;
 import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory.jsonSerialization;
 
+@SuppressWarnings("unused")
 public class SqlJobStoreTest extends AbstractJobStoreTest {
 
 	private static SerializedObjectFactory serialization;

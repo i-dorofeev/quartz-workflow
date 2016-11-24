@@ -1,6 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.jobs.sql;
 
 import liquibase.exception.LiquibaseException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -17,10 +18,7 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
-import ru.dorofeev.sandbox.quartzworkflow.utils.ExceptionUtils;
-import ru.dorofeev.sandbox.quartzworkflow.utils.SqlBuilder;
-import ru.dorofeev.sandbox.quartzworkflow.utils.SqlUtils;
-import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
+import ru.dorofeev.sandbox.quartzworkflow.utils.*;
 import rx.Observable;
 import rx.functions.Func0;
 
@@ -99,10 +97,8 @@ public class SqlJobStore implements JobStore {
 	@Override
 	public Job saveNewJob(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args) {
 
-		SqlJobStoreData sqlJobStoreData = newJobData(parentId, queueName, executionType, jobKey, args);
-
 		return transactionTemplate.execute(status -> {
-			insertJobStoreData.execute(new BeanPropertySqlParameterSource(sqlJobStoreData));
+			SqlJobStoreData sqlJobStoreData = insertNewJobStoreData(parentId, queueName, executionType, jobKey, args);
 
 			jdbcTemplate.update(
 				insertInto(TBL_JOB_STORE_HIERARCHY)
@@ -120,6 +116,21 @@ public class SqlJobStore implements JobStore {
 
 			return fromSqlJobStoreData(sqlJobStoreData);
 		});
+	}
+
+	private SqlJobStoreData insertNewJobStoreData(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args) {
+		int attempts = 100;
+		while (attempts > 0) {
+			try {
+				SqlJobStoreData sqlJobStoreData = newJobData(parentId, queueName, executionType, jobKey, args);
+				insertJobStoreData.execute(new BeanPropertySqlParameterSource(sqlJobStoreData));
+				return sqlJobStoreData;
+			} catch (DuplicateKeyException e) {
+				attempts--;
+			}
+		}
+
+		throw new JobRepositoryException("Couldn't find unique jobId in " + attempts + " attempts. Seems that we've run out of ids.");
 	}
 
 	private Job fromSqlJobStoreData(SqlJobStoreData record) {

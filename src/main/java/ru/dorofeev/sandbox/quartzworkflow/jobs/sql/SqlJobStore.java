@@ -45,9 +45,10 @@ public class SqlJobStore implements JobStore {
 	private final SimpleJdbcInsert insertJobStoreData;
 	private final TransactionTemplate transactionTemplate;
 	private final DataSource dataSource;
-	private final UUIDGenerator uuidGenerator = new UUIDGenerator();
+	private final UUIDGenerator uuidGenerator;
 
-	public SqlJobStore(DataSource dataSource, SerializedObjectFactory serializedObjectFactory) {
+	public SqlJobStore(DataSource dataSource, UUIDGenerator uuidGenerator, SerializedObjectFactory serializedObjectFactory) {
+		this.uuidGenerator = uuidGenerator;
 		this.dataSource = dataSource;
 		this.jdbcTemplate = new JdbcTemplate(dataSource);
 		this.insertJobStoreData = new SimpleJdbcInsert(jdbcTemplate).withTableName(TBL_JOB_STORE_DATA);

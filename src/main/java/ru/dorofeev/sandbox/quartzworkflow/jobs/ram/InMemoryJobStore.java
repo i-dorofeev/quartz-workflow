@@ -10,7 +10,7 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
-import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
+import ru.dorofeev.sandbox.quartzworkflow.utils.RandomUUIDGenerator;
 import rx.*;
 import rx.Observable;
 import rx.functions.Func1;
@@ -29,7 +29,7 @@ public class InMemoryJobStore implements JobStore {
 	private final Map<String, Set<String>> childrenIndex = new HashMap<>();
 	private final Object sync = new Object();
 
-	private final UUIDGenerator uuidGenerator = new UUIDGenerator();
+	private final RandomUUIDGenerator uuidGenerator = new RandomUUIDGenerator();
 
 	public InMemoryJobStore(SerializedObjectFactory serializedObjectFactory) {
 		this.serializedObjectFactory = serializedObjectFactory;

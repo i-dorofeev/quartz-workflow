@@ -8,9 +8,11 @@ import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobStore;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestHSqlJobStore;
+import ru.dorofeev.sandbox.quartzworkflow.utils.RandomUUIDGenerator;
 import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
 
 import java.util.ArrayDeque;
+import java.util.HashSet;
 import java.util.Queue;
 
 import static org.hamcrest.Matchers.equalTo;
@@ -47,6 +49,23 @@ public class SqlJobStoreEnsureUniqueIdsTest {
 		uuidGenerator.pushUuid("00000000-0000-0000-0000-000000000002");
 		Job job2 = jobStore.saveNewJob(null, "default", QueueingOptions.ExecutionType.PARALLEL, new JobKey("jobKey"), new StubArgs("value"));
 		assertThat(job2.getId(), is(equalTo(new JobId("00000000-0000-0000-0000-000000000002"))));
+	}
+
+	//@Test
+	public void uuidUniquenessTest() {
+
+		// my machine ran out of memory before the first duplicate was found
+		// I don't know how many attempts were taken to get there
+
+		HashSet<String> uuids = new HashSet<>();
+		RandomUUIDGenerator randomUUIDGenerator = new RandomUUIDGenerator();
+
+		long attempt = 1;
+		while (true) {
+			boolean isNew = uuids.add(randomUUIDGenerator.newUuid());
+			assertThat("attempt #" + attempt , isNew, is(true));
+			attempt++;
+		}
 	}
 
 	private static class TestUUIDGenerator implements UUIDGenerator {

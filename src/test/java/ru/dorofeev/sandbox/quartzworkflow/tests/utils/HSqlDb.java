@@ -7,14 +7,22 @@ import javax.sql.DataSource;
 
 import static org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType.HSQL;
 
-public class TestHSqlJobStore {
+public class HSqlDb {
 
 	private final EmbeddedDatabase db;
 
-	public TestHSqlJobStore() {
+	public HSqlDb() {
 
 		db = new EmbeddedDatabaseBuilder()
 			.generateUniqueName(true)
+			.setType(HSQL)
+			.build();
+	}
+
+	public HSqlDb(String name) {
+
+		db = new EmbeddedDatabaseBuilder()
+			.setName(name)
 			.setType(HSQL)
 			.build();
 	}

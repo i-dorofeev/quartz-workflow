@@ -6,7 +6,7 @@ import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
-import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestHSqlJobStore;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlDb;
 
 import java.util.List;
 import java.util.Random;
@@ -28,7 +28,7 @@ import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFact
 public class QueueTest {
 
 	private static Engine engine;
-	private static TestHSqlJobStore testHSqlJobStore;
+	private static HSqlDb HSqlDb;
 	private static final List<Throwable> errors = new CopyOnWriteArrayList<>();
 	private static Model model;
 
@@ -44,9 +44,9 @@ public class QueueTest {
 
 	@BeforeClass
 	public static void beforeClass() {
-		testHSqlJobStore = new TestHSqlJobStore();
+		HSqlDb = new HSqlDb();
 
-		engine = Factory.spawn(jsonSerialization(), sqlJobStore(testHSqlJobStore.getDataSource()), inMemoryQueueStore(), fixedThreadedExecutorService(10, 1000));
+		engine = Factory.spawn(jsonSerialization(), sqlJobStore(HSqlDb.getDataSource()), inMemoryQueueStore(), fixedThreadedExecutorService(10, 1000));
 		engine.errors().subscribe(errors::add);
 		model = new Model();
 
@@ -56,7 +56,7 @@ public class QueueTest {
 
 	@AfterClass
 	public static void afterClass() {
-		testHSqlJobStore.shutdown();
+		HSqlDb.shutdown();
 	}
 
 	@Before

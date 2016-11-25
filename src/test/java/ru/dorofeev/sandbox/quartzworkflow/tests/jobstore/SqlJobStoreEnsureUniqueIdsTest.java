@@ -7,7 +7,7 @@ import ru.dorofeev.sandbox.quartzworkflow.JobKey;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobStore;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
-import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestHSqlJobStore;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlDb;
 import ru.dorofeev.sandbox.quartzworkflow.utils.RandomUUIDGenerator;
 import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
 
@@ -23,11 +23,11 @@ import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFact
 
 public class SqlJobStoreEnsureUniqueIdsTest {
 
-	private static TestHSqlJobStore hsql;
+	private static HSqlDb hsql;
 
 	@BeforeClass
 	public static void beforeClass() {
-		hsql = new TestHSqlJobStore();
+		hsql = new HSqlDb();
 	}
 
 	public static void afterClass() {

@@ -61,11 +61,14 @@ class InMemoryQueueStore implements QueueStore {
 	}
 
 	private Optional<QueueItem> getNextPending(Predicate<String> queueNamePredicate) {
-		return queue.stream().filter(qi -> queueNamePredicate.test(qi.queueName) && qi.status == QueueItemStatus.PENDING).findFirst();
+		return queue.stream()
+			.filter(qi -> queueNamePredicate.test(qi.queueName))
+			.filter(qi -> qi.status == QueueItemStatus.PENDING)
+			.findFirst();
 	}
 
 	@Override
-	public Optional<JobId> getNextPendingQueueItem(String queueName) {
+	public Optional<JobId> popNextPendingQueueItem(String queueName) {
 		synchronized (sync) {
 			Optional<QueueItem> nextItemOpt = getNextPending(queueName != null ? qn -> qn.equals(queueName) : qn -> true);
 

@@ -59,7 +59,7 @@ class QueueManagerImpl implements QueueManager {
 	}
 
 	private void tryPushNext(String queueName) {
-		Optional<JobId> nextOpt = queueStore.getNextPendingQueueItem(queueName);
+		Optional<JobId> nextOpt = queueStore.popNextPendingQueueItem(queueName);
 		nextOpt
 			.map(JobPoppedEvent::new)
 			.ifPresent(tpe -> {

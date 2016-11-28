@@ -9,7 +9,6 @@ import org.junit.FixMethodOrder;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlDb;
 import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
-import rx.Observable;
 
 import java.util.List;
 
@@ -19,6 +18,8 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.Is.is;
 import static org.junit.runners.MethodSorters.NAME_ASCENDING;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
@@ -103,23 +104,20 @@ public class QueueHibernateTests {
 
 		queueStore.enqueueItems(queueItems);
 
-		TransactionScope tx1 = new TransactionScope(queueStore.getSessionFactory());
-		Observable<QueueItem> nextTx1 = queueStore.popNext(tx1, 5);
+		SqlQueueStore.PopNextOperation op1 = queueStore.newPopNextOperation();
+		op1.query(5);
 
-		List<QueueItem> qiTx1 = nextTx1.take(2).toList().toBlocking().single();
-		System.out.println("qiTx1 = " + qiTx1);
+		SqlQueueStore.PopNextOperation op2 = queueStore.newPopNextOperation();
+		op2.query(5);
 
-		TransactionScope tx2 = new TransactionScope(queueStore.getSessionFactory());
-		Observable<QueueItem> nextTx2 = queueStore.popNext(tx2, 5);
+		List<QueueItem> queueItems1 = op1.getQueueItems();
+		List<QueueItem> queueItems2 = op2.getQueueItems();
 
-		List<QueueItem> qiTx2 = nextTx2.toList().toBlocking().single();
-		System.out.println("q1Tx2 = " + qiTx2);
+		op1.close();
+		op2.close();
 
-		tx1.transaction.commit();
-		tx1.close();
-
-		tx2.transaction.commit();
-		tx2.close();
+		assertThat(queueItems1, hasSize(4));
+		assertThat(queueItems2, is(empty()));
 	}
 
 	private void popNext(int maxResults, List<Integer> expectedItems) {

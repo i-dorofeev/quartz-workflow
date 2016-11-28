@@ -1,4 +1,4 @@
-package ru.dorofeev.sandbox.quartzworkflow.tests.sandbox.queue.hibernate;
+package ru.dorofeev.sandbox.quartzworkflow.queue.sql;
 
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;

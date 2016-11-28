@@ -1,36 +1,49 @@
-package ru.dorofeev.sandbox.quartzworkflow.tests.sandbox.queue.hibernate;
+package ru.dorofeev.sandbox.quartzworkflow.queue.sql;
 
 import org.hibernate.SessionFactory;
 import org.hibernate.StaleStateException;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.dialect.Dialect;
+import ru.dorofeev.sandbox.quartzworkflow.JobId;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItem;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItemStatus;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueStore;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreException;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
 import rx.Observable;
 
 import javax.sql.DataSource;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static java.util.Collections.emptyList;
+import static java.util.Optional.*;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
-import static ru.dorofeev.sandbox.quartzworkflow.tests.sandbox.queue.hibernate.QueueItemStatus.PENDING;
-import static ru.dorofeev.sandbox.quartzworkflow.tests.sandbox.queue.hibernate.QueueItemStatus.POPPED;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueItemStatus.PENDING;
 
 @SuppressWarnings("JpaQlInspection")
-class SqlQueueStore {
+public class SqlQueueStore implements QueueStore {
 
 	private final SessionFactory sessionFactory;
+	private final Queue<JobId> localQueue = new ConcurrentLinkedQueue<>();
 
-	SqlQueueStore(DataSource dataSource, Class<? extends Dialect> dialect, String extraHibernateCfg) {
+	private final int fetchSize;
+
+	public SqlQueueStore(DataSource dataSource, Class<? extends Dialect> dialect, String extraHibernateCfg, int fetchSize) {
+		this.fetchSize = fetchSize;
+
 		//noinspection deprecation
 		sessionFactory = new Configuration()
 
 			.addProperties(buildProperties(dataSource, dialect))
 
-			.addAnnotatedClass(QueueItem.class)
+			.addAnnotatedClass(SqlQueueItem.class)
 
-			.configure("/sqlQueueStore.cfg.xml")
+			.configure("/sqlQueueStore/sqlQueueStore.cfg.xml")
 			.configure(extraHibernateCfg)
 
 			.buildSessionFactory();
@@ -43,17 +56,7 @@ class SqlQueueStore {
 		return properties;
 	}
 
-	void enqueueItems(List<QueueItem> items) {
-		try (TransactionScope tx = new TransactionScope(sessionFactory)) {
-
-			for (QueueItem item: items)
-				tx.session.save(item);
-
-			tx.transaction.commit();
-		}
-	}
-
-	List<QueueItem> popNext(int maxResults) {
+	private List<SqlQueueItem> popNext(int maxResults) {
 
 		try (PopNextOperation op = newPopNextOperation()) {
 
@@ -62,39 +65,74 @@ class SqlQueueStore {
 		}
 	}
 
-	PopNextOperation newPopNextOperation() {
+	// "public" for testing purpose
+	public PopNextOperation newPopNextOperation() {
 		return new PopNextOperation();
 	}
 
-	void remove(int ordinal) {
+	@Override
+	public QueueItem insertQueueItem(JobId jobId, String queueName, ExecutionType executionType) throws QueueStoreException {
 
 		try (TransactionScope tx = new TransactionScope(sessionFactory)) {
 
-			tx.session
-				.createQuery("delete QueueItem where ordinal=:ordinal")
-				.setParameter("ordinal", ordinal)
-				.executeUpdate();
+			SqlQueueItem queueItem = new SqlQueueItem(jobId.toString(), executionType, PENDING);
+			tx.session.save(queueItem);
 
 			tx.transaction.commit();
+
+			return queueItem;
 		}
 	}
 
+	@Override
+	public Optional<JobId> popNextPendingQueueItem(String queueName) {
+
+		synchronized (localQueue) {
+			JobId nextJobId = localQueue.poll();
+			if (nextJobId != null)
+				return of(nextJobId);
+
+			popNext(fetchSize).stream()
+				.map(QueueItem::getJobId)
+				.forEach(localQueue::add);
+
+			return ofNullable(localQueue.poll());
+		}
+	}
+
+	@Override
+	public Optional<String> removeQueueItem(JobId jobId) {
+		try (TransactionScope tx = new TransactionScope(sessionFactory)) {
+
+			tx.session
+				.createQuery("delete SqlQueueItem where jobId=:jobId")
+				.setParameter("jobId", jobId.toString())
+				.executeUpdate();
+
+			tx.transaction.commit();
+
+			return empty();
+		}
+	}
+
+	// PopNext operation is extracted into a seperate class in order to test a scenario
+	// of a simultaneous claiming of queue items
 	public class PopNextOperation implements AutoCloseable {
 
 		private final TransactionScope tx;
 
-		private List<QueueItem> results;
+		private List<SqlQueueItem> results;
 
 		PopNextOperation() {
 			this.tx = new TransactionScope(sessionFactory);
 		}
 
-		void query(int maxResults) {
+		public void query(int maxResults) {
 			results = popNext(tx, maxResults)
 				.toList().toBlocking().single();
 		}
 
-		List<QueueItem> getQueueItems() {
+		public List<SqlQueueItem> getQueueItems() {
 			if (results == null)
 				throw new IllegalStateException("Invoke query() first.");
 
@@ -103,21 +141,21 @@ class SqlQueueStore {
 				return results;
 			} catch (StaleStateException e) {
 				// someone's already acquired queue items in a parallel transaction
-				// (implemented using hibernate optimistic locking feature (QueueItem.version column))
+				// (implemented using hibernate optimistic locking feature (SqlQueueItem.version column))
 				return emptyList();
 			}
 		}
 
-		Observable<QueueItem> popNext(TransactionScope tx, int maxResults) {
+		private Observable<SqlQueueItem> popNext(TransactionScope tx, int maxResults) {
 
-			return Observable.<QueueItem>create(subscriber -> {
-				List<QueueItem> nextItems = fetchNextPendingQueueItems(tx, maxResults);
+			return Observable.<SqlQueueItem>create(subscriber -> {
+				List<SqlQueueItem> nextItems = fetchNextPendingQueueItems(tx, maxResults);
 				System.out.println(nextItems);
 
 				ExecutionType executionType = fetchCurrentExecutionType(tx);
 				System.out.println("Current execution type = " + executionType);
 
-				for (QueueItem qi: nextItems) {
+				for (SqlQueueItem qi: nextItems) {
 					if (PARALLEL.equals(qi.getExecutionType()) && executionType == null) {
 						subscriber.onNext(qi);
 						executionType = qi.getExecutionType();
@@ -138,13 +176,13 @@ class SqlQueueStore {
 
 				subscriber.onCompleted();
 
-			}).doOnNext(qi -> qi.setStatus(POPPED));
+			}).doOnNext(qi -> qi.setStatus(QueueItemStatus.POPPED));
 		}
 
-		private List<QueueItem> fetchNextPendingQueueItems(TransactionScope tx, int maxResults) {
+		private List<SqlQueueItem> fetchNextPendingQueueItems(TransactionScope tx, int maxResults) {
 			//noinspection unchecked
 			return tx.session
-				.createQuery("from QueueItem qi where status=:status order by qi.ordinal")
+				.createQuery("from SqlQueueItem qi where status=:status order by qi.ordinal")
 				.setParameter("status", PENDING)
 				.setMaxResults(maxResults)
 				.list();
@@ -153,8 +191,8 @@ class SqlQueueStore {
 		private ExecutionType fetchCurrentExecutionType(TransactionScope tx) {
 
 			List currentExecutionStatus = tx.session
-				.createQuery("select distinct qi.executionType from QueueItem qi where status=:status")
-				.setParameter("status", POPPED)
+				.createQuery("select distinct qi.executionType from SqlQueueItem qi where status=:status")
+				.setParameter("status", QueueItemStatus.POPPED)
 				.list();
 
 			if (currentExecutionStatus.isEmpty())

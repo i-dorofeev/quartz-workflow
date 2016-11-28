@@ -13,7 +13,7 @@ import static java.util.Optional.of;
 
 class InMemoryQueueStore implements QueueStore {
 
-	private static class QueueItem {
+	private static class InMemoryQueueItem implements QueueItem {
 
 		final long ordinal;
 		final JobId jobId;
@@ -22,29 +22,49 @@ class InMemoryQueueStore implements QueueStore {
 
 		QueueItemStatus status;
 
-		QueueItem(long ordinal, JobId jobId, String queueName, QueueingOptions.ExecutionType executionType) {
+		InMemoryQueueItem(long ordinal, JobId jobId, String queueName, QueueingOptions.ExecutionType executionType) {
 			this.ordinal = ordinal;
 			this.jobId = jobId;
 			this.queueName = queueName;
 			this.executionType = executionType;
 			this.status = QueueItemStatus.PENDING;
 		}
+
+		@Override
+		public JobId getJobId() {
+			return jobId;
+		}
+
+		@Override
+		public Long getOrdinal() {
+			return ordinal;
+		}
+
+		@Override
+		public QueueingOptions.ExecutionType getExecutionType() {
+			return executionType;
+		}
+
+		@Override
+		public QueueItemStatus getStatus() {
+			return status;
+		}
 	}
 
-	private enum QueueItemStatus { PENDING, POPPED }
-
 	private final Object sync = new Object();
-	private final SortedSet<QueueItem> queue = new TreeSet<>(comparingLong(o -> o.ordinal));
+	private final SortedSet<InMemoryQueueItem> queue = new TreeSet<>(comparingLong(o -> o.ordinal));
 
 	private long ordinalSeq = 0;
 
 	@Override
-	public void insertQueueItem(JobId jobId, String queueName, QueueingOptions.ExecutionType executionType) throws QueueStoreException {
+	public QueueItem insertQueueItem(JobId jobId, String queueName, QueueingOptions.ExecutionType executionType) throws QueueStoreException {
 		synchronized (sync) {
 			if (queue.stream().filter(qi -> qi.jobId.equals(jobId)).count() > 0)
 				throw new QueueStoreException(jobId + " is already enqueued");
 
-			queue.add(new QueueItem(ordinalSeq++, jobId, queueName, executionType));
+			InMemoryQueueItem inMemoryQueueItem = new InMemoryQueueItem(ordinalSeq++, jobId, queueName, executionType);
+			queue.add(inMemoryQueueItem);
+			return inMemoryQueueItem;
 		}
 	}
 
@@ -60,7 +80,7 @@ class InMemoryQueueStore implements QueueStore {
 			.count() != 0;
 	}
 
-	private Optional<QueueItem> getNextPending(Predicate<String> queueNamePredicate) {
+	private Optional<InMemoryQueueItem> getNextPending(Predicate<String> queueNamePredicate) {
 		return queue.stream()
 			.filter(qi -> queueNamePredicate.test(qi.queueName))
 			.filter(qi -> qi.status == QueueItemStatus.PENDING)
@@ -70,7 +90,7 @@ class InMemoryQueueStore implements QueueStore {
 	@Override
 	public Optional<JobId> popNextPendingQueueItem(String queueName) {
 		synchronized (sync) {
-			Optional<QueueItem> nextItemOpt = getNextPending(queueName != null ? qn -> qn.equals(queueName) : qn -> true);
+			Optional<InMemoryQueueItem> nextItemOpt = getNextPending(queueName != null ? qn -> qn.equals(queueName) : qn -> true);
 
 			return nextItemOpt.flatMap(nextItem -> {
 				if (nextItem.executionType == QueueingOptions.ExecutionType.PARALLEL && !anyExclusivePopped(queueName)) {
@@ -91,7 +111,7 @@ class InMemoryQueueStore implements QueueStore {
 	@Override
 	public Optional<String> removeQueueItem(JobId jobId) {
 		synchronized (sync) {
-			Optional<QueueItem> queueItem = queue.stream().filter(qi -> qi.jobId.equals(jobId)).findFirst();
+			Optional<InMemoryQueueItem> queueItem = queue.stream().filter(qi -> qi.jobId.equals(jobId)).findFirst();
 			if (queueItem.isPresent()) {
 				queue.remove(queueItem.get());
 				return of(queueItem.get().queueName);

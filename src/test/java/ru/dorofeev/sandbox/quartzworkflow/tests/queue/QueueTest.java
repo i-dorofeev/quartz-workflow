@@ -79,9 +79,9 @@ public class QueueTest {
 			.mapToObj(i -> (random.nextInt(3) == 0) ? new IncrementCmdEvent() : new VerifyCmdEvent())
 			.forEach(e -> engine.submitEvent(e));
 
-		await("starting").until(() -> engine.getJobRepository().traverseAll(CREATED).count().toBlocking().single(), is(equalTo(0)));
-		await("completing").until(() -> engine.getJobRepository().traverseAll(RUNNING).count().toBlocking().single(), is(equalTo(0)));
-		await("finishing").until(() -> engine.getJobRepository().traverseAll(SUCCESS).count().toBlocking().single(), is(equalTo(100)));
+		await("creation").until(() -> engine.getJobRepository().traverseAll(CREATED).count().toBlocking().single(), is(equalTo(0)));
+		await("launch").until(() -> engine.getJobRepository().traverseAll(RUNNING).count().toBlocking().single(), is(equalTo(0)));
+		await("completion").until(() -> engine.getJobRepository().traverseAll(SUCCESS).count().toBlocking().single(), is(equalTo(100)));
 	}
 
 	private static class IncrementCmdEvent extends Event { }

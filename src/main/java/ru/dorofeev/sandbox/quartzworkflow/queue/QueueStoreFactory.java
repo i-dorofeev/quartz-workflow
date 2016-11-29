@@ -15,7 +15,7 @@ public class QueueStoreFactory {
 	}
 
 	@API
-	public static QueueStore sqlQueueStore(DataSource dataSource, Class<? extends Dialect> hibernateDialect, String extraHibernateCfg) {
-		return new SqlQueueStore(dataSource, hibernateDialect, extraHibernateCfg, 5);
+	public static QueueStore sqlQueueStore(DataSource dataSource, Class<? extends Dialect> hibernateDialect, String extraHibernateCfg, int fetchSize) {
+		return new SqlQueueStore(dataSource, hibernateDialect, extraHibernateCfg, fetchSize);
 	}
 }

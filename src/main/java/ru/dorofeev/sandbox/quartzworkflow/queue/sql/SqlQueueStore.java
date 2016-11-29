@@ -4,6 +4,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.StaleStateException;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.exception.ConstraintViolationException;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItem;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItemStatus;
@@ -24,6 +25,7 @@ import static java.util.Optional.*;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueItemStatus.PENDING;
+import static ru.dorofeev.sandbox.quartzworkflow.utils.SqlUtils.identifiersEqual;
 
 @SuppressWarnings("JpaQlInspection")
 public class SqlQueueStore implements QueueStore {
@@ -80,6 +82,11 @@ public class SqlQueueStore implements QueueStore {
 			tx.transaction.commit();
 
 			return queueItem;
+		} catch (ConstraintViolationException e) {
+			if (identifiersEqual(e.getConstraintName(), SqlQueueItem.UK_QUEUE_JOBID_CONSTRAINT))
+				throw new QueueStoreException(jobId + " is already enqueued", e);
+			else
+				throw new QueueStoreException("Couldn't insert queue item due to an external error.", e);
 		}
 	}
 

@@ -9,17 +9,21 @@ import ru.dorofeev.sandbox.quartzworkflow.utils.entrypoint.Hibernate;
 import javax.persistence.*;
 
 import static javax.persistence.EnumType.STRING;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.sql.SqlQueueItem.UK_QUEUE_JOBID_CONSTRAINT;
 
 @Entity
-@Table(name = "queue")
+@Table(name = "queue",
+       uniqueConstraints = @UniqueConstraint(columnNames = "jobId", name = UK_QUEUE_JOBID_CONSTRAINT))
 public class SqlQueueItem implements QueueItem {
 
+	public static final String UK_QUEUE_JOBID_CONSTRAINT = "UK_QUEUE_JOBID";
+
 	@Id
-	@Column(name = "ordinal", nullable = false, unique = true)
+	@Column(name = "ordinal", nullable = false)
 	@GeneratedValue
 	private Long ordinal;
 
-	@Column(name = "jobId", nullable = false, unique = true)
+	@Column(name = "jobId", nullable = false)
 	private String jobIdStr;
 
 	@Column(name = "executionType", nullable = false)

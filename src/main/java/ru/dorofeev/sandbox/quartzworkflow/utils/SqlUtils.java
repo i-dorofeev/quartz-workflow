@@ -27,4 +27,8 @@ public class SqlUtils {
 				db.close();
 		}
 	}
+
+	public static boolean identifiersEqual(String id1, String id2) {
+		return id1.toUpperCase().equals(id2.toUpperCase());
+	}
 }

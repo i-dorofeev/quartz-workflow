@@ -69,7 +69,7 @@ public class MultinodeQueueManagerTests {
 			.forEach(cmd -> cmdFlow1.onNext(cmd));
 
 		List<QueueManager.Event> expectedEvents = IntStream.range(0, 10)
-			.mapToObj(i -> JobPoppedEvent(jobId("job" + i)))
+			.mapToObj(i -> jobPoppedEvent(jobId("job" + i)))
 			.collect(toList());
 
 		eventSubscriber.awaitValueCount(10, 1, SECONDS);

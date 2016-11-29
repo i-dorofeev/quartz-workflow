@@ -34,7 +34,7 @@ public class QueueManagerTests {
 	public void sanityTest() {
 
 		cmdFlow.onNext(enqueueCmd(jobId("job")));
-		eventSubscriber.assertValuesAndClear(JobPoppedEvent(jobId("job")));
+		eventSubscriber.assertValuesAndClear(jobPoppedEvent(jobId("job")));
 		errorSubscriber.assertNoValues();
 
 		cmdFlow.onNext(giveMeMoreCmd());
@@ -48,7 +48,7 @@ public class QueueManagerTests {
 		cmdFlow.onNext(enqueueCmd(PARALLEL, jobId("job1")));
 		cmdFlow.onNext(enqueueCmd(PARALLEL, jobId("job2")));
 
-		eventSubscriber.assertValuesAndClear(JobPoppedEvent(jobId("job1")), JobPoppedEvent(jobId("job2")));
+		eventSubscriber.assertValuesAndClear(jobPoppedEvent(jobId("job1")), jobPoppedEvent(jobId("job2")));
 		errorSubscriber.assertNoValues();
 	}
 
@@ -58,11 +58,11 @@ public class QueueManagerTests {
 		cmdFlow.onNext(enqueueCmd(EXCLUSIVE, jobId("job1")));
 		cmdFlow.onNext(enqueueCmd(EXCLUSIVE, jobId("job2")));
 
-		eventSubscriber.assertValuesAndClear(JobPoppedEvent(jobId("job1")));
+		eventSubscriber.assertValuesAndClear(jobPoppedEvent(jobId("job1")));
 
 		cmdFlow.onNext(notifyCompletedCmd(jobId("job1")));
 
-		eventSubscriber.assertValuesAndClear(JobPoppedEvent(jobId("job2")));
+		eventSubscriber.assertValuesAndClear(jobPoppedEvent(jobId("job2")));
 
 		errorSubscriber.assertNoValues();
 	}
@@ -73,7 +73,7 @@ public class QueueManagerTests {
 		cmdFlow.onNext(enqueueCmd(PARALLEL, jobId("job1")));
 		cmdFlow.onNext(enqueueCmd(PARALLEL, jobId("job1")));
 
-		eventSubscriber.assertValuesAndClear(JobPoppedEvent(jobId("job1")));
+		eventSubscriber.assertValuesAndClear(jobPoppedEvent(jobId("job1")));
 		errorSubscriber.assertValuesAndClear("job1 is already enqueued");
 	}
 }

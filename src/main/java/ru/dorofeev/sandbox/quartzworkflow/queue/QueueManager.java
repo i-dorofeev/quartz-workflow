@@ -35,7 +35,7 @@ public interface QueueManager {
 		return new NotifyCompletedCmd(jobId);
 	}
 
-	static JobPoppedEvent JobPoppedEvent(JobId jobId) {
+	static JobPoppedEvent jobPoppedEvent(JobId jobId) {
 		return new JobPoppedEvent(jobId);
 	}
 

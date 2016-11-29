@@ -1,23 +1,38 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests.queue;
 
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
+import ru.dorofeev.sandbox.quartzworkflow.queue.sql.SqlQueueStore;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlServices;
 import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
 
 import static ru.dorofeev.sandbox.quartzworkflow.JobId.jobId;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.*;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManagerFactory.create;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.inMemoryQueueStore;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
 
 public class QueueManagerTests {
 
+	private static HSqlServices hSqlServices;
+
 	private PublishSubject<QueueManager.Cmd> cmdFlow;
 	private TestSubscriber<QueueManager.Event> eventSubscriber;
 	private TestSubscriber<String> errorSubscriber;
+
+	@BeforeClass
+	public static void beforeClass() {
+		hSqlServices = new HSqlServices();
+	}
+
+	@AfterClass
+	public static void afterClass() {
+		hSqlServices.shutdown();
+	}
 
 	@Before
 	public void beforeTest() {
@@ -25,7 +40,10 @@ public class QueueManagerTests {
 		eventSubscriber = new TestSubscriber<>();
 		errorSubscriber = new TestSubscriber<>();
 
-		QueueManager queueManager = create("QueueManagerTests", inMemoryQueueStore());
+		SqlQueueStore sqlQueueStore = hSqlServices.queueStore();
+		sqlQueueStore.clear();
+
+		QueueManager queueManager = create("QueueManagerTests", sqlQueueStore);
 		queueManager.bind(cmdFlow).subscribe(eventSubscriber);
 		queueManager.getErrors().map(Throwable::getMessage).subscribe(errorSubscriber);
 	}

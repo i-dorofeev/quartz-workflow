@@ -121,6 +121,16 @@ public class SqlQueueStore implements QueueStore {
 		}
 	}
 
+	public void clear() {
+		try (TransactionScope tx = new TransactionScope(sessionFactory)) {
+			tx.session
+				.createQuery("delete SqlQueueItem")
+				.executeUpdate();
+
+			tx.transaction.commit();
+		}
+	}
+
 	// PopNext operation is extracted into a seperate class in order to test a scenario
 	// of a simultaneous claiming of queue items
 	public class PopNextOperation implements AutoCloseable {

@@ -43,6 +43,9 @@ class EngineImpl implements Engine {
 		this.errors.subscribeTo(executorService.getErrors());
 		this.errors.subscribeTo(queueManager.getErrors());
 
+		// the data flow configuration is showed in the diagram
+		// https://docs.google.com/drawings/d/1U-37n2b_m1ZcEjf91W21Ws5t4BuSQXSkVHGSO7rL0MQ/edit?usp=sharing
+
 		Observable<JobRepository.Event> jobRepositoryOutput = jobRepositoryCmds.compose(this.jobRepository::bind);
 		jobRepositoryOutput
 			.compose(errors.filterMapRetry(JobRepository.JobAddedEvent.class, this::asEnqueueCmd))

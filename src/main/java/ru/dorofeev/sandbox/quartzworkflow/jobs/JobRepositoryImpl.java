@@ -11,6 +11,7 @@ import rx.subjects.PublishSubject;
 import java.util.Optional;
 
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
+import static rx.schedulers.Schedulers.io;
 
 class JobRepositoryImpl implements JobRepository {
 
@@ -25,8 +26,12 @@ class JobRepositoryImpl implements JobRepository {
 	@Override
 	public rx.Observable<Event> bind(Observable<Cmd> input) {
 
+		// we push output events asynchronously in order to
+		// decrease time of getting a response by a client
+		// (see .observeOn(io()) statements)
 		input.ofType(AddJobCmd.class)
 			.compose(errors.mapRetry(cmd -> addJobInternal(cmd.getParentId(), cmd.getJobKey(), cmd.getArgs(), cmd.getQueueingOptions())))
+			.observeOn(io())
 			.subscribe(this.events);
 
 		input.ofType(CompleteJobCmd.class)
@@ -38,6 +43,7 @@ class JobRepositoryImpl implements JobRepository {
 
 				return new JobCompletedEvent(cmd.getJobId());
 			}))
+			.observeOn(io())
 			.subscribe(events);
 
 		return events;

@@ -57,24 +57,10 @@ public abstract class AbstractJobStoreTest {
 		assertTraverseSingle(CREATED, newJob);
 		assertTraverseNone(SUCCESS);
 		assertTraverseNone(FAILED);
-		assertTraverseNone(RUNNING);
 	}
 
 	@Test
-	public void test030_recordSuccess() {
-		getStore().recordJobResult(jobId, SUCCESS, null);
-
-		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, SUCCESS, /* exception */ null, jobKey, serializedArgs(args)));
-
-		assertTraverseSingle(null, job);
-		assertTraverseNone(CREATED);
-		assertTraverseSingle(SUCCESS, job);
-		assertTraverseNone(FAILED);
-		assertTraverseNone(RUNNING);
-	}
-
-	@Test
-	public void test040_recordFailed() {
+	public void test030_recordFailed() {
 		getStore().recordJobResult(jobId, FAILED, new RuntimeException("stub exception"));
 
 		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, FAILED, "java.lang.RuntimeException: stub exception", jobKey, serializedArgs(args)));
@@ -83,20 +69,18 @@ public abstract class AbstractJobStoreTest {
 		assertTraverseNone(CREATED);
 		assertTraverseNone(SUCCESS);
 		assertTraverseSingle(FAILED, job);
-		assertTraverseNone(RUNNING);
 	}
 
 	@Test
-	public void test050_recordRunning() {
-		getStore().recordJobResult(jobId, RUNNING, null);
+	public void test040_recordSuccess() {
+		getStore().recordJobResult(jobId, SUCCESS, null);
 
-		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, RUNNING, /* exception */ null, jobKey, serializedArgs(args)));
+		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, SUCCESS, /* exception */ null, jobKey, serializedArgs(args)));
 
 		assertTraverseSingle(null, job);
 		assertTraverseNone(CREATED);
-		assertTraverseNone(SUCCESS);
+		assertTraverseSingle(SUCCESS, job);
 		assertTraverseNone(FAILED);
-		assertTraverseSingle(RUNNING, job);
 	}
 
 	@Test

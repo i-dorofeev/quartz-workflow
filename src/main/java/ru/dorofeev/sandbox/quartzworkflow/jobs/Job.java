@@ -77,6 +77,6 @@ public class Job {
 	}
 
 	public enum Result {
-		CREATED, RUNNING, SUCCESS, FAILED
+		CREATED, SUCCESS, FAILED
 	}
 }

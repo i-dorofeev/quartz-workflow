@@ -1,13 +1,12 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests.queue;
 
-import org.hibernate.dialect.HSQLDialect;
 import org.junit.*;
 import ru.dorofeev.sandbox.quartzworkflow.Factory;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
-import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlDb;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlServices;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -21,14 +20,12 @@ import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory.fixedThreadedExecutorService;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.*;
-import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.sqlJobStore;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.sqlQueueStore;
 import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory.jsonSerialization;
 
 public class QueueTest {
 
 	private static Engine engine;
-	private static HSqlDb HSqlDb;
+	private static HSqlServices hSqlServices;
 	private static final List<Throwable> errors = new CopyOnWriteArrayList<>();
 	private static Model model;
 
@@ -44,12 +41,12 @@ public class QueueTest {
 
 	@BeforeClass
 	public static void beforeClass() {
-		HSqlDb = new HSqlDb();
+		hSqlServices = new HSqlServices();
 
 		engine = Factory.spawn(
 			jsonSerialization(),
-			sqlJobStore(HSqlDb.getDataSource()),
-			sqlQueueStore(HSqlDb.getDataSource(), HSQLDialect.class, "/queueHibernateTests.cfg.xml", 10),
+			hSqlServices.jobStoreFactory(),
+			hSqlServices.queueStore(),
 			fixedThreadedExecutorService(10, 1000));
 		engine.errors().subscribe(errors::add);
 		model = new Model();
@@ -60,7 +57,7 @@ public class QueueTest {
 
 	@AfterClass
 	public static void afterClass() {
-		HSqlDb.shutdown();
+		hSqlServices.shutdown();
 	}
 
 	@Before

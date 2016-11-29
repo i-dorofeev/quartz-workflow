@@ -36,17 +36,16 @@ public class SqlQueueStore implements QueueStore {
 	public SqlQueueStore(DataSource dataSource, Class<? extends Dialect> dialect, String extraHibernateCfg, int fetchSize) {
 		this.fetchSize = fetchSize;
 
-		//noinspection deprecation
-		sessionFactory = new Configuration()
-
+		Configuration configuration = new Configuration()
 			.addProperties(buildProperties(dataSource, dialect))
-
 			.addAnnotatedClass(SqlQueueItem.class)
+			.configure("/sqlQueueStore/sqlQueueStore.cfg.xml");
 
-			.configure("/sqlQueueStore/sqlQueueStore.cfg.xml")
-			.configure(extraHibernateCfg)
+		if (extraHibernateCfg != null)
+			configuration.configure(extraHibernateCfg);
 
-			.buildSessionFactory();
+		//noinspection deprecation
+		this.sessionFactory = configuration.buildSessionFactory();
 	}
 
 	private Properties buildProperties(DataSource ds, Class<? extends Dialect> dialect) {

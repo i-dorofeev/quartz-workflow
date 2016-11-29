@@ -1,5 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests.queue;
 
+import org.hibernate.dialect.HSQLDialect;
 import org.junit.*;
 import ru.dorofeev.sandbox.quartzworkflow.Factory;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
@@ -9,7 +10,6 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlDb;
 
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
 
@@ -22,7 +22,7 @@ import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory.fixedThreadedExecutorService;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.*;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.sqlJobStore;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.inMemoryQueueStore;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.sqlQueueStore;
 import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory.jsonSerialization;
 
 public class QueueTest {
@@ -46,7 +46,11 @@ public class QueueTest {
 	public static void beforeClass() {
 		HSqlDb = new HSqlDb();
 
-		engine = Factory.spawn(jsonSerialization(), sqlJobStore(HSqlDb.getDataSource()), inMemoryQueueStore(), fixedThreadedExecutorService(10, 1000));
+		engine = Factory.spawn(
+			jsonSerialization(),
+			sqlJobStore(HSqlDb.getDataSource()),
+			sqlQueueStore(HSqlDb.getDataSource(), HSQLDialect.class, "/queueHibernateTests.cfg.xml", 10),
+			fixedThreadedExecutorService(10, 1000));
 		engine.errors().subscribe(errors::add);
 		model = new Model();
 
@@ -74,14 +78,13 @@ public class QueueTest {
 
 	@Test
 	public void sanityTest() {
-		Random random = new Random();
-		IntStream.range(0, 50)
-			.mapToObj(i -> (random.nextInt(3) == 0) ? new IncrementCmdEvent() : new VerifyCmdEvent())
+		IntStream.range(1, 51)
+			.mapToObj(i -> ((i % 10) == 0) ? new IncrementCmdEvent() : new VerifyCmdEvent())
 			.forEach(e -> engine.submitEvent(e));
 
-		await("creation").until(() -> engine.getJobRepository().traverseAll(CREATED).count().toBlocking().single(), is(equalTo(0)));
-		await("launch").until(() -> engine.getJobRepository().traverseAll(RUNNING).count().toBlocking().single(), is(equalTo(0)));
-		await("completion").until(() -> engine.getJobRepository().traverseAll(SUCCESS).count().toBlocking().single(), is(equalTo(100)));
+		await("start all").until(() -> engine.getJobRepository().traverseAll(CREATED).count().toBlocking().single(), is(equalTo(0)));
+		//await("completion").until(() -> engine.getJobRepository().traverseAll(RUNNING).count().toBlocking().single(), is(equalTo(0)));
+		await("success").until(() -> engine.getJobRepository().traverseAll(SUCCESS).count().toBlocking().single(), is(equalTo(100)));
 	}
 
 	private static class IncrementCmdEvent extends Event { }

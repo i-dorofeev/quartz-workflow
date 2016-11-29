@@ -148,28 +148,23 @@ public class SqlQueueStore implements QueueStore {
 		private Observable<SqlQueueItem> popNext(TransactionScope tx, int maxResults) {
 
 			return Observable.<SqlQueueItem>create(subscriber -> {
-				List<SqlQueueItem> nextItems = fetchNextPendingQueueItems(tx, maxResults);
-				System.out.println(nextItems);
-
 				ExecutionType executionType = fetchCurrentExecutionType(tx);
-				System.out.println("Current execution type = " + executionType);
+				if (!EXCLUSIVE.equals(executionType)) {
+					List<SqlQueueItem> nextItems = fetchNextPendingQueueItems(tx, maxResults);
 
-				for (SqlQueueItem qi: nextItems) {
-					if (PARALLEL.equals(qi.getExecutionType()) && executionType == null) {
-						subscriber.onNext(qi);
-						executionType = qi.getExecutionType();
-					} else if (EXCLUSIVE.equals(qi.getExecutionType()) && executionType == null) {
-						subscriber.onNext(qi);
-						executionType = qi.getExecutionType();
-					} else if (PARALLEL.equals(qi.getExecutionType()) && PARALLEL.equals(executionType)) {
-						subscriber.onNext(qi);
-						executionType = qi.getExecutionType();
-					} else if (EXCLUSIVE.equals(qi.getExecutionType()) && PARALLEL.equals(executionType)) {
-						break;
-					} else if (PARALLEL.equals(qi.getExecutionType()) && EXCLUSIVE.equals(executionType)) {
-						break;
-					} else if (EXCLUSIVE.equals(qi.getExecutionType()) && EXCLUSIVE.equals(executionType)) {
-						break;
+					for (SqlQueueItem qi : nextItems) {
+						if (PARALLEL.equals(qi.getExecutionType()) && executionType == null) {
+							subscriber.onNext(qi);
+							executionType = qi.getExecutionType();
+						} else if (EXCLUSIVE.equals(qi.getExecutionType()) && executionType == null) {
+							subscriber.onNext(qi);
+							executionType = qi.getExecutionType();
+						} else if (PARALLEL.equals(qi.getExecutionType()) && PARALLEL.equals(executionType)) {
+							subscriber.onNext(qi);
+							executionType = qi.getExecutionType();
+						} else if (EXCLUSIVE.equals(qi.getExecutionType()) && PARALLEL.equals(executionType)) {
+							break;
+						}
 					}
 				}
 

@@ -10,6 +10,7 @@ import java.util.function.Predicate;
 import static java.util.Comparator.comparingLong;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+import static java.util.Optional.ofNullable;
 
 class InMemoryQueueStore implements QueueStore {
 
@@ -62,7 +63,7 @@ class InMemoryQueueStore implements QueueStore {
 			if (queue.stream().filter(qi -> qi.jobId.equals(jobId)).count() > 0)
 				throw new QueueStoreException(jobId + " is already enqueued");
 
-			InMemoryQueueItem inMemoryQueueItem = new InMemoryQueueItem(ordinalSeq++, jobId, queueName, executionType);
+			InMemoryQueueItem inMemoryQueueItem = new InMemoryQueueItem(++ordinalSeq, jobId, queueName, executionType);
 			queue.add(inMemoryQueueItem);
 			return inMemoryQueueItem;
 		}
@@ -114,7 +115,7 @@ class InMemoryQueueStore implements QueueStore {
 			Optional<InMemoryQueueItem> queueItem = queue.stream().filter(qi -> qi.jobId.equals(jobId)).findFirst();
 			if (queueItem.isPresent()) {
 				queue.remove(queueItem.get());
-				return of(queueItem.get().queueName);
+				return ofNullable(queueItem.get().queueName);
 			} else {
 				return empty();
 			}

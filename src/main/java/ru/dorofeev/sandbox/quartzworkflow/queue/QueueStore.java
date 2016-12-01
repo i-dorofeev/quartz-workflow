@@ -8,5 +8,5 @@ public interface QueueStore {
 
 	QueueItem insertQueueItem(JobId jobId, String queueName, QueueingOptions.ExecutionType executionType) throws QueueStoreException;
 	Optional<JobId> popNextPendingQueueItem(String queueName);
-	Optional<String> removeQueueItem(JobId jobId);
+	Optional<String> releaseQueueItem(JobId jobId);
 }

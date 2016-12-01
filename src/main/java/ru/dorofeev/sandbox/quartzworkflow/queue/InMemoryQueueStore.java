@@ -110,7 +110,7 @@ class InMemoryQueueStore implements QueueStore {
 	}
 
 	@Override
-	public Optional<String> removeQueueItem(JobId jobId) {
+	public Optional<String> releaseQueueItem(JobId jobId) {
 		synchronized (sync) {
 			Optional<InMemoryQueueItem> queueItem = queue.stream().filter(qi -> qi.jobId.equals(jobId)).findFirst();
 			if (queueItem.isPresent()) {

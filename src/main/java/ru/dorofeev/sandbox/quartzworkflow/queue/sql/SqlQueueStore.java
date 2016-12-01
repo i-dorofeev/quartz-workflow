@@ -107,7 +107,7 @@ public class SqlQueueStore implements QueueStore {
 	}
 
 	@Override
-	public Optional<String> removeQueueItem(JobId jobId) {
+	public Optional<String> releaseQueueItem(JobId jobId) {
 		try (TransactionScope tx = new TransactionScope(sessionFactory)) {
 
 			tx.session

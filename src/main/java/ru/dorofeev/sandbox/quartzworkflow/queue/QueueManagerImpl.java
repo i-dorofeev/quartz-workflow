@@ -47,7 +47,7 @@ class QueueManagerImpl implements QueueManager {
 	}
 
 	private void notifyCompleted(NotifyCompletedCmd cmd) {
-		Optional<String> queueName = queueStore.removeQueueItem(cmd.getJobId());
+		Optional<String> queueName = queueStore.releaseQueueItem(cmd.getJobId());
 		queueName.ifPresent(this::tryPushNext);
 	}
 

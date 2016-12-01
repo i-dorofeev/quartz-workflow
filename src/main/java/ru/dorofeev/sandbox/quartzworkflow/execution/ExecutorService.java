@@ -4,18 +4,20 @@ import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import rx.Observable;
 
+import java.util.Date;
+
 public interface ExecutorService {
 
 	static ScheduleJobCmd scheduleJobCmd(JobId jobId, SerializedObject args, Executable runnable) {
 		return new ScheduleJobCmd(jobId, args, runnable);
 	}
 
-	static JobCompletedEvent jobSuccessfullyCompletedEvent(JobId jobId) {
-		return new JobCompletedEvent(jobId, null);
+	static JobCompletedEvent jobSuccessfullyCompletedEvent(JobId jobId, long executionDuration, Date completed) {
+		return new JobCompletedEvent(jobId, null, executionDuration, completed);
 	}
 
-	static JobCompletedEvent jobFailedEvent(JobId jobId, Throwable e) {
-		return new JobCompletedEvent(jobId, e);
+	static JobCompletedEvent jobFailedEvent(JobId jobId, Throwable e, long executionDuration, Date completed) {
+		return new JobCompletedEvent(jobId, e, executionDuration, completed);
 	}
 
 	rx.Observable<Event> bind(rx.Observable<Cmd> input);
@@ -59,10 +61,14 @@ public interface ExecutorService {
 
 		private final JobId jobId;
 		private final Throwable exception;
+		private final long executionDuration;
+		private final Date completed;
 
-		JobCompletedEvent(JobId jobId, Throwable exception) {
+		JobCompletedEvent(JobId jobId, Throwable exception, long executionDuration, Date completed) {
 			this.jobId = jobId;
 			this.exception = exception;
+			this.executionDuration = executionDuration;
+			this.completed = completed;
 		}
 
 		public JobId getJobId() {
@@ -71,6 +77,14 @@ public interface ExecutorService {
 
 		public Throwable getException() {
 			return exception;
+		}
+
+		public long getExecutionDuration() {
+			return executionDuration;
+		}
+
+		public Date getCompleted() {
+			return completed;
 		}
 
 		@Override

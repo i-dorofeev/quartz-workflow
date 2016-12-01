@@ -1,11 +1,14 @@
 package ru.dorofeev.sandbox.quartzworkflow.execution;
 
 import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
+import ru.dorofeev.sandbox.quartzworkflow.utils.Stopwatch;
+import ru.dorofeev.sandbox.quartzworkflow.utils.StopwatchFactory;
 import rx.Observable;
 import rx.Subscription;
 import rx.schedulers.Schedulers;
 import rx.subjects.PublishSubject;
 
+import java.util.Date;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -19,11 +22,13 @@ class FixedThreadedExecutorService implements ExecutorService {
 	private final ErrorObservable errors = new ErrorObservable();
 	private final Executor executor;
 	private final IdleMonitor idleMonitor;
+	private final StopwatchFactory stopwatchFactory;
 
 	private boolean suspended = true;
 
-	FixedThreadedExecutorService(int nThreads, long idleInterval) {
+	FixedThreadedExecutorService(int nThreads, long idleInterval, StopwatchFactory stopwatchFactory) {
 		this.executor = Executors.newFixedThreadPool(nThreads);
+		this.stopwatchFactory = stopwatchFactory;
 
 		this.idleMonitor = new IdleMonitor(nThreads, idleInterval);
 		this.idleMonitor.idleEvents().subscribe(events);
@@ -36,18 +41,21 @@ class FixedThreadedExecutorService implements ExecutorService {
 			.compose(errors.doOnNextRetry(cmd -> { if (suspended) throw new IllegalStateException("Executor service is in suspended state."); } ))
 			.compose(errors.doOnNextRetry(cmd -> idleMonitor.threadAcquired()))
 			.observeOn(Schedulers.from(executor))
-			.compose(errors.mapRetry(cmd -> {
-					try {
-						cmd.getExecutable().execute(cmd.getJobId(), cmd.getArgs());
-						return new JobCompletedEvent(cmd.getJobId(), null);
-					} catch (Throwable e) {
-						return new JobCompletedEvent(cmd.getJobId(), e);
-					}
-				}))
+			.compose(errors.mapRetry(this::execute))
 			.compose(errors.doOnNextRetry(event -> idleMonitor.threadReleased()))
 			.subscribe(events);
 
 		return events;
+	}
+
+	private JobCompletedEvent execute(ScheduleJobCmd cmd) {
+		Stopwatch stopwatch = stopwatchFactory.newStopwatch();
+		try {
+			cmd.getExecutable().execute(cmd.getJobId(), cmd.getArgs());
+			return new JobCompletedEvent(cmd.getJobId(), null, stopwatch.elapsed(), new Date());
+		} catch (Throwable e) {
+			return new JobCompletedEvent(cmd.getJobId(), e, stopwatch.elapsed(), new Date());
+		}
 	}
 
 	@Override

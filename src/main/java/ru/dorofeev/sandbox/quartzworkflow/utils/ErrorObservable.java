@@ -34,6 +34,9 @@ public class ErrorObservable {
 				.compose(mapRetry(func));
 	}
 
+	/**
+	 * Chains doOnNext operation and resubscribes in case of an error in doOnNext handler.
+	 */
 	public <I> Observable.Transformer<I, I> doOnNextRetry(Action1<? super I> onNext) {
 		return iObservable ->
 			iObservable.doOnNext(onNext)

@@ -7,6 +7,7 @@ import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlServices;
+import ru.dorofeev.sandbox.quartzworkflow.utils.RealtimeStopwatchFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -57,7 +58,11 @@ public class SimpleWorkflowTest {
 	public static void beforeClass() throws Exception {
 
 		hSqlServices = new HSqlServices();
-		engine = Factory.spawn(jsonSerialization(), hSqlServices.jobStoreFactory(), hSqlServices.queueStore(), fixedThreadedExecutorService(10, 1000));
+		engine = Factory.spawn(
+			jsonSerialization(),
+			hSqlServices.jobStoreFactory(),
+			hSqlServices.queueStore(),
+			fixedThreadedExecutorService(10, 1000, new RealtimeStopwatchFactory()));
 		engine.errors().subscribe(System.out::println);
 
 		model = new Model();

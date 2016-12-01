@@ -8,6 +8,8 @@ import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.Cmd;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.Event;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestExecutable;
+import ru.dorofeev.sandbox.quartzworkflow.utils.Stopwatch;
+import ru.dorofeev.sandbox.quartzworkflow.utils.StopwatchFactory;
 import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
 
@@ -23,10 +25,12 @@ public class ExecutorServiceTests {
 	private TestSubscriber<Event> eventTestSubscriber;
 
 	private ExecutorService executorService;
+	private StubStopwatchFactory stopwatchFactory;
 
 	@Before
 	public void beforeTest() {
-		executorService = ExecutorServiceFactory.fixedThreadedExecutorService(5, 50);
+		stopwatchFactory = new StubStopwatchFactory();
+		executorService = ExecutorServiceFactory.fixedThreadedExecutorService(5, 50, stopwatchFactory);
 
 		cmdFlow = PublishSubject.create();
 		eventTestSubscriber = new TestSubscriber<>();
@@ -48,10 +52,11 @@ public class ExecutorServiceTests {
 
 		TestExecutable testExecutable = new TestExecutable();
 
+		stopwatchFactory.setExpectedElapsed(1000L);
 		cmdFlow.onNext(scheduleJobCmd(jobId("job0"), null, testExecutable));
 
 		eventTestSubscriber.awaitValueCount(1, 500, MILLISECONDS);
-		eventTestSubscriber.assertValuesAndClear(jobSuccessfullyCompletedEvent(jobId("job0")));
+		eventTestSubscriber.assertValuesAndClear(jobSuccessfullyCompletedEvent(jobId("job0"), stopwatchFactory.getExpectedElapsed(), null));
 		testExecutable.assertInvoked();
 	}
 
@@ -61,10 +66,29 @@ public class ExecutorServiceTests {
 		RuntimeException exception = new RuntimeException("Error!");
 		TestExecutable testRunnable = new TestExecutable().throwsException(exception);
 
+		stopwatchFactory.setExpectedElapsed(2000L);
 		cmdFlow.onNext(scheduleJobCmd(jobId("job0"), null, testRunnable));
 
 		eventTestSubscriber.awaitValueCount(1, 500, MILLISECONDS);
-		eventTestSubscriber.assertValuesAndClear(jobFailedEvent(jobId("job0"), exception));
+		eventTestSubscriber.assertValuesAndClear(jobFailedEvent(jobId("job0"), exception, stopwatchFactory.getExpectedElapsed(), null));
 		testRunnable.assertInvoked();
+	}
+
+	private static class StubStopwatchFactory implements StopwatchFactory {
+
+		private long expectedElapsed;
+
+		void setExpectedElapsed(long expectedElapsed) {
+			this.expectedElapsed = expectedElapsed;
+		}
+
+		long getExpectedElapsed() {
+			return expectedElapsed;
+		}
+
+		@Override
+		public Stopwatch newStopwatch() {
+			return () -> expectedElapsed;
+		}
 	}
 }

@@ -22,6 +22,10 @@ public interface ExecutorService {
 
 	Observable<Throwable> getErrors();
 
+	void start();
+
+	void shutdown();
+
 	interface Cmd { }
 
 	interface Event { }

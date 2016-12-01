@@ -39,6 +39,7 @@ public class ExecutorServiceIdleTest {
 	public void sanityTest() throws Exception {
 
 		ExecutorService executorService = ExecutorServiceFactory.fixedThreadedExecutorService(10, 10);
+		executorService.start();
 
 		Observable<Event> executorEvents = executorService.bind(cmdFlow)
 			.subscribeOn(io());
@@ -71,5 +72,7 @@ public class ExecutorServiceIdleTest {
 		eventStorage.assertNextItemsOfTypeMin(IdleEvent.class, 10);
 		eventStorage.assertNextItemsOfTypeExact(ExecutorService.JobCompletedEvent.class, 50);
 		eventStorage.assertNextItemsOfTypeMin(IdleEvent.class, 10);
+
+		executorService.shutdown();
 	}
 }

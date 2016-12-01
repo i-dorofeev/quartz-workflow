@@ -20,6 +20,8 @@ class FixedThreadedExecutorService implements ExecutorService {
 	private final Executor executor;
 	private final IdleMonitor idleMonitor;
 
+	private boolean suspended = true;
+
 	FixedThreadedExecutorService(int nThreads, long idleInterval) {
 		this.executor = Executors.newFixedThreadPool(nThreads);
 
@@ -31,6 +33,7 @@ class FixedThreadedExecutorService implements ExecutorService {
 	public rx.Observable<Event> bind(rx.Observable<Cmd> input) {
 
 		input.ofType(ScheduleJobCmd.class)
+			.compose(errors.doOnNextRetry(cmd -> { if (suspended) throw new IllegalStateException("Executor service is in suspended state."); } ))
 			.compose(errors.doOnNextRetry(cmd -> idleMonitor.threadAcquired()))
 			.observeOn(Schedulers.from(executor))
 			.compose(errors.mapRetry(cmd -> {
@@ -52,6 +55,18 @@ class FixedThreadedExecutorService implements ExecutorService {
 		return errors.asObservable();
 	}
 
+	@Override
+	public void start() {
+		suspended = false;
+		idleMonitor.release();
+	}
+
+	@Override
+	public void shutdown() {
+		suspended = true;
+		idleMonitor.suspend();
+	}
+
 	private static class IdleMonitor {
 
 		private final AtomicInteger executingJobs = new AtomicInteger(0);
@@ -60,6 +75,9 @@ class FixedThreadedExecutorService implements ExecutorService {
 
 		private final int nThreads;
 		private final long idleInterval;
+
+		private boolean suspended = true;
+		private final Object suspendedSync = new Object();
 
 		private IdleMonitor(int nThreads, long idleInterval) {
 			this.nThreads = nThreads;
@@ -85,9 +103,14 @@ class FixedThreadedExecutorService implements ExecutorService {
 		}
 
 		private void emitIdleEvent() {
-			int freeThreadsCount = nThreads - executingJobs.intValue();
-			if (freeThreadsCount > 0)
-				idleEvents.onNext(new IdleEvent(freeThreadsCount));
+			synchronized (suspendedSync) {
+				if (suspended)
+					return;
+
+				int freeThreadsCount = nThreads - executingJobs.intValue();
+				if (freeThreadsCount > 0)
+					idleEvents.onNext(new IdleEvent(freeThreadsCount));
+			}
 		}
 
 		void threadAcquired() {
@@ -98,6 +121,18 @@ class FixedThreadedExecutorService implements ExecutorService {
 		void threadReleased() {
 			int load = executingJobs.decrementAndGet();
 			adjustIdleTicks(load);
+		}
+
+		void suspend() {
+			synchronized (suspendedSync) {		// ensures that after this block no idle event will be emitted
+				this.suspended = true;
+			}
+		}
+
+		void release() {
+			synchronized (suspendedSync) {
+				this.suspended = false;
+			}
 		}
 	}
 }

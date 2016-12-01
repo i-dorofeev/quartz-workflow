@@ -73,6 +73,8 @@ public class SimpleWorkflowTest {
 		engine.registerEventHandler(AssignAccountCmdEvent.class, assignAccountCmdHandler, handlerUri("assignAccountCmd"));
 		engine.registerEventHandler(PersonAddedEvent.class, assignBaseRolesOnPersonAddedEventHandler, handlerUri("assignBaseRolesOnPersonAddedEvent"));
 		engine.registerEventHandler(RoleAssignedEvent.class, processRoleAssignmentOnRoleAssignedEventHandler, handlerUri("processRoleAssignmentOnRoleAssignedEvent"));
+
+		engine.start();
 	}
 
 	@Before
@@ -88,6 +90,7 @@ public class SimpleWorkflowTest {
 
 	@AfterClass
 	public static void afterClass() {
+		engine.shutdown();
 
 		hSqlServices.shutdown();
 	}

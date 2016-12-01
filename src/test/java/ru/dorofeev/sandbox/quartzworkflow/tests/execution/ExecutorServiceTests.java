@@ -1,5 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests.execution;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
@@ -21,9 +22,11 @@ public class ExecutorServiceTests {
 	private PublishSubject<Cmd> cmdFlow;
 	private TestSubscriber<Event> eventTestSubscriber;
 
+	private ExecutorService executorService;
+
 	@Before
 	public void beforeTest() {
-		ExecutorService executorService = ExecutorServiceFactory.fixedThreadedExecutorService(5, 50);
+		executorService = ExecutorServiceFactory.fixedThreadedExecutorService(5, 50);
 
 		cmdFlow = PublishSubject.create();
 		eventTestSubscriber = new TestSubscriber<>();
@@ -31,6 +34,13 @@ public class ExecutorServiceTests {
 		executorService.bind(cmdFlow)
 			.filter(e -> !(e instanceof ExecutorService.IdleEvent))
 			.subscribe(eventTestSubscriber);
+
+		executorService.start();
+	}
+
+	@After
+	public void afterTest() {
+		executorService.shutdown();
 	}
 
 	@Test

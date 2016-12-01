@@ -13,6 +13,10 @@ public interface Engine {
 
 	JobRepository getJobRepository();
 
+	void start();
+
+	void shutdown();
+
 	Job submitEvent(Event event);
 
 	void retryExecution(JobId jobId);

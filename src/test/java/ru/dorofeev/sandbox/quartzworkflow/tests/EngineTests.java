@@ -33,10 +33,13 @@ public class EngineTests {
 
 		engine = spawn(jsonSerialization(), hSqlServices.jobStoreFactory(), hSqlServices.queueStore(), fixedThreadedExecutorService(10, 1000));
 		engine.errors().map(Utils::exceptionToString).subscribe(errors::add);
+
+		engine.start();
 	}
 
 	@AfterClass
 	public static void afterClass() throws Exception {
+		engine.shutdown();
 		hSqlServices.shutdown();
 	}
 

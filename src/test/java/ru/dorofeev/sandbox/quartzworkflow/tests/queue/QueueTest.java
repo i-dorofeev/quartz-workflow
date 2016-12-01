@@ -53,10 +53,13 @@ public class QueueTest {
 
 		engine.registerEventHandler(IncrementCmdEvent.class, new IncrementCmdHandler(model), handlerUri("incrementCmd"));
 		engine.registerEventHandler(VerifyCmdEvent.class, new VerifyCmdHandler(model), handlerUri("verifyCmd"));
+
+		engine.start();
 	}
 
 	@AfterClass
 	public static void afterClass() {
+		engine.shutdown();
 		hSqlServices.shutdown();
 	}
 

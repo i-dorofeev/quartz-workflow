@@ -23,6 +23,7 @@ class EngineImpl implements Engine {
 	private final Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
 
 	private final JobRepository jobRepository;
+	private final ExecutorService executorService;
 
 	private final ErrorObservable errors = new ErrorObservable();
 
@@ -38,6 +39,7 @@ class EngineImpl implements Engine {
 
 	EngineImpl(JobRepository jobRepository, ExecutorService executorService, QueueManager queueManager) {
 		this.jobRepository = jobRepository;
+		this.executorService = executorService;
 
 		this.errors.subscribeTo(jobRepository.getErrors());
 		this.errors.subscribeTo(executorService.getErrors());
@@ -107,6 +109,16 @@ class EngineImpl implements Engine {
 
 	public JobRepository getJobRepository() {
 		return jobRepository;
+	}
+
+	@Override
+	public void start() {
+		executorService.start();
+	}
+
+	@Override
+	public void shutdown() {
+		executorService.shutdown();
 	}
 
 	@Override

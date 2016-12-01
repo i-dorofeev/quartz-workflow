@@ -164,7 +164,7 @@ public class SqlJobStore implements JobStore {
 			null,
 			jobKey.toString(),
 			serializedArgs.build(),
-			created);
+			new java.sql.Timestamp(created.getTime()));
 	}
 
 	@Override

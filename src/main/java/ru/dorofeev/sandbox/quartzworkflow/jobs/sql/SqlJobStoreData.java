@@ -2,7 +2,7 @@ package ru.dorofeev.sandbox.quartzworkflow.jobs.sql;
 
 import org.springframework.jdbc.core.RowMapper;
 
-import java.util.Date;
+import java.sql.Timestamp;
 
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.Columns.*;
 
@@ -30,12 +30,12 @@ class SqlJobStoreData {
 	private String exception;
 	private String jobKey;
 	private String args;
-	private Date created;
+	private Timestamp created;
 
 	private SqlJobStoreData() {
 	}
 
-	SqlJobStoreData(String id, String parentId, String queueName, String executionType, String result, String exception, String jobKey, String args, Date created) {
+	SqlJobStoreData(String id, String parentId, String queueName, String executionType, String result, String exception, String jobKey, String args, Timestamp created) {
 		this.id = id;
 		this.parentId = parentId;
 		this.queueName = queueName;
@@ -112,11 +112,11 @@ class SqlJobStoreData {
 		this.args = args;
 	}
 
-	public Date getCreated() {
+	public Timestamp getCreated() {
 		return created;
 	}
 
-	public void setCreated(Date created) {
+	public void setCreated(Timestamp created) {
 		this.created = created;
 	}
 
@@ -132,7 +132,7 @@ class SqlJobStoreData {
 			data.setException(rs.getString(CLMN_EXCEPTION));
 			data.setResult(rs.getString(CLMN_RESULT));
 			data.setArgs(rs.getString(CLMN_ARGS));
-			data.setCreated(rs.getDate(CLMN_CREATED));
+			data.setCreated(rs.getTimestamp(CLMN_CREATED));
 
 			return data;
 		};

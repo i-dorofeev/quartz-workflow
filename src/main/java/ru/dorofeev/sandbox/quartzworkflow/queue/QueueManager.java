@@ -13,6 +13,10 @@ public interface QueueManager {
 
 	rx.Observable<Event> bind(rx.Observable<Cmd> input);
 
+	void suspend();
+
+	void resume();
+
 	interface Cmd { }
 
 	interface Event {

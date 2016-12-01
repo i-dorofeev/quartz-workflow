@@ -15,6 +15,8 @@ class QueueManagerImpl implements QueueManager {
 	private final String name;
 	private final QueueStore queueStore;
 
+	private boolean suspended;
+
 	QueueManagerImpl(String name, QueueStore queueStore) {
 		this.name = name;
 		this.queueStore = queueStore;
@@ -59,6 +61,9 @@ class QueueManagerImpl implements QueueManager {
 	}
 
 	private void tryPushNext(String queueName) {
+		if (suspended)
+			return;
+
 		Optional<JobId> nextOpt = queueStore.popNextPendingQueueItem(queueName);
 		nextOpt
 			.map(JobPoppedEvent::new)
@@ -66,6 +71,16 @@ class QueueManagerImpl implements QueueManager {
 				events.onNext(tpe);
 				tryPushNext(queueName);
 			});
+	}
+
+	@Override
+	public void suspend() {
+		this.suspended = true;
+	}
+
+	@Override
+	public void resume() {
+		this.suspended = false;
 	}
 
 	@Override

@@ -42,6 +42,11 @@ class InMemoryQueueStore implements QueueStore {
 		}
 
 		@Override
+		public String getQueueName() {
+			return queueName;
+		}
+
+		@Override
 		public QueueingOptions.ExecutionType getExecutionType() {
 			return executionType;
 		}
@@ -71,13 +76,15 @@ class InMemoryQueueStore implements QueueStore {
 
 	private boolean anyExclusivePopped(String queueName) {
 		return queue.stream()
-			.filter(qi -> qi.status == QueueItemStatus.POPPED && qi.executionType == QueueingOptions.ExecutionType.EXCLUSIVE && qi.queueName.equals(queueName))
+			.filter(qi -> qi.queueName.equals(queueName))
+			.filter(qi -> qi.status == QueueItemStatus.POPPED && qi.executionType == QueueingOptions.ExecutionType.EXCLUSIVE)
 			.count() != 0;
 	}
 
 	private boolean anyPopped(String queueName) {
 		return queue.stream()
-			.filter(qi -> qi.status == QueueItemStatus.POPPED && qi.queueName.equals(queueName))
+			.filter(qi -> qi.queueName.equals(queueName))
+			.filter(qi -> qi.status == QueueItemStatus.POPPED)
 			.count() != 0;
 	}
 
@@ -91,14 +98,14 @@ class InMemoryQueueStore implements QueueStore {
 	@Override
 	public Optional<JobId> popNextPendingQueueItem(String queueName) {
 		synchronized (sync) {
-			Optional<InMemoryQueueItem> nextItemOpt = getNextPending(queueName != null ? qn -> qn.equals(queueName) : qn -> true);
+			Optional<InMemoryQueueItem> nextItemOpt = getNextPending(queueName != null ? queueName::equals : qn -> true);
 
 			return nextItemOpt.flatMap(nextItem -> {
-				if (nextItem.executionType == QueueingOptions.ExecutionType.PARALLEL && !anyExclusivePopped(queueName)) {
+				if (nextItem.executionType == QueueingOptions.ExecutionType.PARALLEL && !anyExclusivePopped(nextItem.queueName)) {
 					nextItem.status = QueueItemStatus.POPPED;
 					return of(nextItem.jobId);
 
-				} else if (nextItem.executionType == QueueingOptions.ExecutionType.EXCLUSIVE && !anyPopped(queueName)) {
+				} else if (nextItem.executionType == QueueingOptions.ExecutionType.EXCLUSIVE && !anyPopped(nextItem.queueName)) {
 					nextItem.status = QueueItemStatus.POPPED;
 					return of(nextItem.jobId);
 

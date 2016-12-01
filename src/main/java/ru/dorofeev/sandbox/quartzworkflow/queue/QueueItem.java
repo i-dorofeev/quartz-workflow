@@ -13,6 +13,9 @@ public interface QueueItem {
 	Long getOrdinal();
 
 	@API
+	String getQueueName();
+
+	@API
 	QueueingOptions.ExecutionType getExecutionType();
 
 	@API

@@ -26,6 +26,9 @@ public class SqlQueueItem implements QueueItem {
 	@Column(name = "jobId", nullable = false)
 	private String jobIdStr;
 
+	@Column(name = "queueName", nullable = false)
+	private String queueName;
+
 	@Column(name = "executionType", nullable = false)
 	@Enumerated(STRING)
 	private ExecutionType executionType;
@@ -41,8 +44,9 @@ public class SqlQueueItem implements QueueItem {
 	public SqlQueueItem() {
 	}
 
-	public SqlQueueItem(String jobIdStr, ExecutionType executionType, QueueItemStatus status) {
+	public SqlQueueItem(String jobIdStr, String queueName, ExecutionType executionType, QueueItemStatus status) {
 		this.jobIdStr = jobIdStr;
+		this.queueName = queueName;
 		this.executionType = executionType;
 		this.status = status;
 	}
@@ -71,6 +75,17 @@ public class SqlQueueItem implements QueueItem {
 	@Hibernate
 	public void setOrdinal(Long ordinal) {
 		this.ordinal = ordinal;
+	}
+
+	@Override
+	@Hibernate
+	public String getQueueName() {
+		return queueName;
+	}
+
+	@Hibernate
+	public void setQueueName(String queueName) {
+		this.queueName = queueName;
 	}
 
 	@Override

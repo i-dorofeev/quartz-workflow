@@ -1,5 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests.queue;
 
+import org.hamcrest.Matcher;
 import org.junit.FixMethodOrder;
 import org.junit.Rule;
 import org.junit.Test;
@@ -14,8 +15,9 @@ import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
 import java.util.*;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -23,13 +25,12 @@ import static org.hamcrest.core.Is.is;
 import static org.junit.runners.MethodSorters.NAME_ASCENDING;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
-import static rx.Observable.from;
 
 @FixMethodOrder(NAME_ASCENDING)
 public abstract class AbstractQueueStoreTest {
 
-	protected static final QueueTracker queueTracker = new QueueTracker();
-	protected static final UUIDGenerator uuidGenerator = new SimpleUUIDGenerator();
+	private static final QueueTracker queueTracker = new QueueTracker();
+	private static final UUIDGenerator uuidGenerator = new SimpleUUIDGenerator();
 
 	@Rule
 	public final ExpectedException expectedException = ExpectedException.none();
@@ -37,66 +38,85 @@ public abstract class AbstractQueueStoreTest {
 	protected abstract QueueStore queueStore();
 
 	@Test
-	public void test010_initialData() {
-		from(new QueueingOptions.ExecutionType[] {
-			PARALLEL,
-			PARALLEL,
-			PARALLEL,
-			PARALLEL,
-			EXCLUSIVE,
-			EXCLUSIVE,
-			PARALLEL,
-			PARALLEL,
-			PARALLEL })
-			.map(et -> queueStore().insertQueueItem(new JobId(uuidGenerator.newUuid()), null, et))
-			.forEach(queueTracker::add);
+	public void test050_initialData() {
+		insertQueueItem("q1", PARALLEL);	// 1
+		insertQueueItem("q1", PARALLEL);	// 2
+		insertQueueItem("q2", PARALLEL);	// 3
+		insertQueueItem("q2", PARALLEL);	// 4
+		insertQueueItem("q1", EXCLUSIVE);	// 5
+		insertQueueItem("q2", EXCLUSIVE);	// 6
+
+		insertQueueItem("q3", PARALLEL);	// 7
+		insertQueueItem("q3", PARALLEL);	// 8
+		insertQueueItem("q4", PARALLEL);	// 9
+		insertQueueItem("q4", PARALLEL);	// 10
+		insertQueueItem("q3", EXCLUSIVE);	// 11
+		insertQueueItem("q4", EXCLUSIVE);	// 12
 	}
 
 	@Test
-	public void test020_popNext() {
-
-		popNext(asList(1L, 2L, 3L, 4L));
-		popNext(emptyList());
-	}
-
-	@Test
-	public void test030_removeCompleted() {
-
-		queueStore().removeQueueItem(queueTracker.byOrdinal(1L).getJobId());
-		queueStore().removeQueueItem(queueTracker.byOrdinal(2L).getJobId());
-		queueStore().removeQueueItem(queueTracker.byOrdinal(3L).getJobId());
-		queueStore().removeQueueItem(queueTracker.byOrdinal(4L).getJobId());
-
-		popNext(singletonList(5L));
-
-		queueStore().removeQueueItem(queueTracker.byOrdinal(5L).getJobId());
-
-		popNext(singletonList(6L));
-
-		queueStore().removeQueueItem(queueTracker.byOrdinal(6L).getJobId());
-
-		popNext(asList(7L, 8L, 9L));
-	}
-
-	@Test
-	public void test040_cannotEnqueueSameJobTwice() {
+	public void test060_cannotEnqueueSameJobTwice() {
 		expectedException.expect(QueueStoreException.class);
 		expectedException.expectMessage(containsString("is already enqueued"));
 
-		QueueItem queueItem = queueTracker.lastAdded().orElseThrow(() -> new AssertionError("No queue item found in queue tracker"));
-		queueStore().insertQueueItem(queueItem.getJobId(), null, PARALLEL);
+		queueStore().insertQueueItem(queueTracker.lastAdded().getJobId(), "q9", PARALLEL);
 	}
 
-	private void popNext(List<Long> expectedItems) {
+	@Test
+	public void test070_popParallel() {
+
+		popNext("q1", asList(1L, 2L));
+		popNext("q2", asList(3L, 4L));
+	}
+
+	@Test
+	public void test080_releasePoppedAndPopExclusive() {
+		release(1L, 2L);
+		popNext("q1", singletonList(5L));
+
+		release(3L, 4L);
+		popNext("q2", singletonList(6L));
+	}
+
+	@Test
+	public void test090_popParallelAllQueues() {
+		release(5L, 6L);
+		popNext(null, asList(7L, 8L, 9L, 10L));
+	}
+
+	@Test
+	public void test100_releasePoppedAndPopExclusive_allQueues() {
+		release(7L, 8L, 9L, 10L);
+		popNext(null, asList(11L, 12L));
+	}
+
+	private void insertQueueItem(String queueName, QueueingOptions.ExecutionType executionType) {
+		queueTracker.add(queueStore().insertQueueItem(newJobId(), queueName, executionType));
+	}
+
+	private JobId newJobId() {
+		return new JobId(uuidGenerator.newUuid());
+	}
+
+	private void popNext(String queueName, List<Long> expectedItems) {
 		System.out.println("Getting next " + expectedItems.size() + " queue items...");
-		for (int i = 0; i < expectedItems.size(); i++) {
-			Optional<JobId> jobIdOptional = queueStore().popNextPendingQueueItem(null);
-			System.out.println(i + ": " + jobIdOptional);
 
-			JobId jobId = jobIdOptional.orElseThrow(() -> new AssertionError("Unexpected empty jobId"));
+		for (Long expectedItem : expectedItems)
+			popNext(queueName, is(equalTo(of(expectedItem))));
 
-			assertThat(queueTracker.byJobId(jobId).getOrdinal(), is(equalTo(expectedItems.get(i))));
-		}
+		popNext(queueName, is(equalTo(empty())));
+	}
+
+	private void popNext(String queueName, Matcher<Optional<Long>> ordinalMatcher) {
+		Optional<JobId> jobIdOptional = queueStore().popNextPendingQueueItem(queueName);
+		System.out.println(jobIdOptional);
+
+		assertThat(jobIdOptional.map(jobId -> queueTracker.byJobId(jobId).getOrdinal()), ordinalMatcher);
+	}
+
+	private void release(Long... items) {
+		for (Long itemOrdinal: items)
+			queueStore().releaseQueueItem(queueTracker.byOrdinal(itemOrdinal).getJobId());
 	}
 
 	private static class SimpleUUIDGenerator implements UUIDGenerator {
@@ -129,9 +149,8 @@ public abstract class AbstractQueueStoreTest {
 			return itemsByOrdinal.get(ordinal);
 		}
 
-		Optional<QueueItem> lastAdded() {
-			return itemsByOrdinal.values().stream().findFirst();
+		QueueItem lastAdded() {
+			return itemsByOrdinal.values().stream().findFirst().orElseThrow(() -> new AssertionError("No queue item found in queue tracker"));
 		}
-
 	}
 }

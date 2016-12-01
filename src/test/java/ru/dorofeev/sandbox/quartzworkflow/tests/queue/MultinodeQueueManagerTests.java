@@ -22,16 +22,18 @@ import static rx.schedulers.Schedulers.computation;
 
 public class MultinodeQueueManagerTests {
 
-	private PublishSubject<QueueManager.Cmd> cmdFlow1;
-	private PublishSubject<QueueManager.Cmd> cmdFlow2;
+	private static final int EVENT_COUNT = 100;
+
+	private PublishSubject<QueueManager.Cmd> qm1Cmds;
+	private PublishSubject<QueueManager.Cmd> qm2Cmds;
 	private TestSubscriber<QueueManager.Event> eventSubscriber;
 	private TestSubscriber<String> errorSubscriber;
 	private HSqlServices hSqlServices;
 
 	@Before
 	public void beforeTest() {
-		cmdFlow1 = PublishSubject.create();
-		cmdFlow2 = PublishSubject.create();
+		qm1Cmds = PublishSubject.create();
+		qm2Cmds = PublishSubject.create();
 		eventSubscriber = new TestSubscriber<>();
 		errorSubscriber = new TestSubscriber<>();
 
@@ -48,11 +50,11 @@ public class MultinodeQueueManagerTests {
 
 		// configure
 		QueueManager queueManager1 = QueueManagerFactory.create("qm1", hSqlServices.queueStore());
-		Observable<QueueManager.Event> qm1Events = queueManager1.bind(cmdFlow1);
+		Observable<QueueManager.Event> qm1Events = queueManager1.bind(qm1Cmds);
 		Observable<String> qm1Errors = queueManager1.getErrors().map(Throwable::getMessage);
 
 		QueueManager queueManager2 = QueueManagerFactory.create("qm2", hSqlServices.queueStore());
-		Observable<QueueManager.Event> qm2Events = queueManager2.bind(cmdFlow2);
+		Observable<QueueManager.Event> qm2Events = queueManager2.bind(qm2Cmds);
 		Observable<String> qm2Errors = queueManager2.getErrors().map(Throwable::getMessage);
 
 		qm1Errors.mergeWith(qm2Errors).subscribe(errorSubscriber);
@@ -60,23 +62,30 @@ public class MultinodeQueueManagerTests {
 
 		qm1Events.observeOn(computation()).subscribe(event -> {
 			QueueManager.JobPoppedEvent tpe = (QueueManager.JobPoppedEvent) event;
-			cmdFlow2.onNext(notifyCompletedCmd(tpe.getJobId()));
+			qm2Cmds.onNext(notifyCompletedCmd(tpe.getJobId()));
 		});
 
 		qm2Events.observeOn(computation()).subscribe(event -> {
 			QueueManager.JobPoppedEvent tpe = (QueueManager.JobPoppedEvent) event;
-			cmdFlow1.onNext(notifyCompletedCmd(tpe.getJobId()));
+			qm1Cmds.onNext(notifyCompletedCmd(tpe.getJobId()));
 		});
 
 		// when
-		IntStream.range(0, 10)
-			.mapToObj(i -> enqueueCmd(EXCLUSIVE, jobId("job" + i)))
-			.forEach(cmd -> cmdFlow1.onNext(cmd));
+		queueManager1.suspend();
+		queueManager2.suspend();
 
-		eventSubscriber.awaitValueCount(10, 2, SECONDS);
+		IntStream.range(0, EVENT_COUNT)
+			.mapToObj(i -> enqueueCmd(EXCLUSIVE, jobId("job" + i)))
+			.forEach(cmd -> qm1Cmds.onNext(cmd));
+
+		queueManager1.resume();
+		queueManager2.resume();
+		qm1Cmds.onNext(giveMeMoreCmd());
+
+		eventSubscriber.awaitValueCount(EVENT_COUNT, 7, SECONDS);
 
 		// then
-		List<QueueManager.Event> expectedEvents = IntStream.range(0, 10)
+		List<QueueManager.Event> expectedEvents = IntStream.range(0, EVENT_COUNT)
 			.mapToObj(i -> jobPoppedEvent(jobId("job" + i)))
 			.collect(toList());
 

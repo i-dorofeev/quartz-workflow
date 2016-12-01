@@ -6,7 +6,7 @@ import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
-import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlDb;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlServices;
 
 import java.util.HashMap;
 import java.util.List;
@@ -25,15 +25,13 @@ import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.events;
 import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory.fixedThreadedExecutorService;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.FAILED;
-import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.sqlJobStore;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.inMemoryQueueStore;
 import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory.jsonSerialization;
 import static ru.dorofeev.sandbox.quartzworkflow.tests.utils.Matchers.hasOnlyOneItem;
 
 public class SimpleWorkflowTest {
 
 	private static Engine engine;
-	private static HSqlDb HSqlDb;
+	private static HSqlServices hSqlServices;
 	private static final List<Throwable> errors = new CopyOnWriteArrayList<>();
 	private static Model model = new Model();
 
@@ -58,8 +56,8 @@ public class SimpleWorkflowTest {
 	@BeforeClass
 	public static void beforeClass() throws Exception {
 
-		HSqlDb = new HSqlDb();
-		engine = Factory.spawn(jsonSerialization(), sqlJobStore(HSqlDb.getDataSource()), inMemoryQueueStore(), fixedThreadedExecutorService(10, 1000));
+		hSqlServices = new HSqlServices();
+		engine = Factory.spawn(jsonSerialization(), hSqlServices.jobStoreFactory(), hSqlServices.queueStore(), fixedThreadedExecutorService(10, 1000));
 		engine.errors().subscribe(System.out::println);
 
 		model = new Model();
@@ -90,7 +88,8 @@ public class SimpleWorkflowTest {
 
 	@AfterClass
 	public static void afterClass() {
-		HSqlDb.shutdown();
+
+		hSqlServices.shutdown();
 	}
 
 	@Test

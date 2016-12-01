@@ -5,7 +5,7 @@ import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.EventHandler;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
-import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlDb;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlServices;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.Utils;
 
 import java.util.List;
@@ -19,27 +19,25 @@ import static ru.dorofeev.sandbox.quartzworkflow.Factory.spawn;
 import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory.fixedThreadedExecutorService;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.FAILED;
-import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory.sqlJobStore;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.inMemoryQueueStore;
 import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory.jsonSerialization;
 
 public class EngineTests {
 
 	private static Engine engine;
-	private static HSqlDb HSqlDb;
+	private static HSqlServices hSqlServices;
 	private static final List<String> errors = new CopyOnWriteArrayList<>();
 
 	@BeforeClass
 	public static void beforeClass() throws Exception {
-		HSqlDb = new HSqlDb();
+		hSqlServices = new HSqlServices();
 
-		engine = spawn(jsonSerialization(), sqlJobStore(HSqlDb.getDataSource()), inMemoryQueueStore(), fixedThreadedExecutorService(10, 1000));
+		engine = spawn(jsonSerialization(), hSqlServices.jobStoreFactory(), hSqlServices.queueStore(), fixedThreadedExecutorService(10, 1000));
 		engine.errors().map(Utils::exceptionToString).subscribe(errors::add);
 	}
 
 	@AfterClass
 	public static void afterClass() throws Exception {
-		HSqlDb.shutdown();
+		hSqlServices.shutdown();
 	}
 
 	@Before

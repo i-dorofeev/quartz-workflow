@@ -7,10 +7,12 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManagerFactory;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlServices;
 import rx.Observable;
+import rx.Scheduler;
 import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
 
 import java.util.List;
+import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -18,7 +20,7 @@ import static java.util.stream.Collectors.toList;
 import static ru.dorofeev.sandbox.quartzworkflow.JobId.jobId;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.*;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
-import static rx.schedulers.Schedulers.computation;
+import static rx.schedulers.Schedulers.from;
 
 public class MultinodeQueueManagerTests {
 
@@ -60,12 +62,15 @@ public class MultinodeQueueManagerTests {
 		qm1Errors.mergeWith(qm2Errors).subscribe(errorSubscriber);
 		qm1Events.mergeWith(qm2Events).subscribe(eventSubscriber);
 
-		qm1Events.observeOn(computation()).subscribe(event -> {
+		// observe on a seperate thread in order to avoid StackOverflowException
+		Scheduler singleThread = from(Executors.newFixedThreadPool(1));
+
+		qm1Events.observeOn(singleThread).subscribe(event -> {
 			QueueManager.JobPoppedEvent tpe = (QueueManager.JobPoppedEvent) event;
 			qm2Cmds.onNext(notifyCompletedCmd(tpe.getJobId()));
 		});
 
-		qm2Events.observeOn(computation()).subscribe(event -> {
+		qm2Events.observeOn(singleThread).subscribe(event -> {
 			QueueManager.JobPoppedEvent tpe = (QueueManager.JobPoppedEvent) event;
 			qm1Cmds.onNext(notifyCompletedCmd(tpe.getJobId()));
 		});

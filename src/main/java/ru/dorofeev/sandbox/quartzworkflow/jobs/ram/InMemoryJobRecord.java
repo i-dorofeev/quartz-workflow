@@ -13,6 +13,8 @@ class InMemoryJobRecord {
 	private String result;
 	private String exception;
 	private Date created;
+	private Long executionDuration;
+	private Date completed;
 
 	String getJobId() {
 		return jobId;
@@ -78,11 +80,27 @@ class InMemoryJobRecord {
 		this.exception = exception;
 	}
 
-	public Date getCreated() {
+	Date getCreated() {
 		return created;
 	}
 
-	public void setCreated(Date created) {
+	void setCreated(Date created) {
 		this.created = created;
+	}
+
+	public Long getExecutionDuration() {
+		return executionDuration;
+	}
+
+	public void setExecutionDuration(Long executionDuration) {
+		this.executionDuration = executionDuration;
+	}
+
+	public Date getCompleted() {
+		return completed;
+	}
+
+	public void setCompleted(Date completed) {
+		this.completed = completed;
 	}
 }

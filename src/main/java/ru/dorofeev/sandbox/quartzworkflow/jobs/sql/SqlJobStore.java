@@ -27,6 +27,7 @@ import rx.functions.Func0;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -85,14 +86,24 @@ public class SqlJobStore implements JobStore {
 	}
 
 	@Override
-	public void recordJobResult(JobId jobId, Job.Result result, Throwable ex) {
+	public void recordJobResult(JobId jobId, Job.Result result, Throwable ex, long executionDuration, Date completed) {
 		transactionTemplate.execute(status -> {
 
 			jdbcTemplate.update(
 					update(TBL_JOB_STORE_DATA)
-					.set(sqlEquals(CLMN_RESULT, "?"), sqlEquals(CLMN_EXCEPTION, "?"))
+					.set(sqlEquals(CLMN_RESULT, "?"), sqlEquals(CLMN_EXCEPTION, "?"), sqlEquals(CLMN_EXECUTION_DURATION, "?"), sqlEquals(CLMN_COMPLETED, "?"))
 					.where(sqlEquals(CLMN_ID, "?"))
-				.sql(), result.toString(), ExceptionUtils.toString(ex), jobId.toString());
+				.sql(),
+
+				// set
+				result.toString(),
+				ExceptionUtils.toString(ex),
+				executionDuration,
+				new Timestamp(completed.getTime()),
+
+				// where
+				jobId.toString()
+			);
 
 			return null;
 		});
@@ -146,9 +157,14 @@ public class SqlJobStore implements JobStore {
 		String exception = record.getException();
 		JobKey jobKey = new JobKey(record.getJobKey());
 		SerializedObject args = serializedObjectFactory.spawn(record.getArgs());
-		Date created = record.getCreated();
+		Timestamp created = record.getCreated();
+		Optional<Long> executionDuration = ofNullable(record.getExecutionDuration());
+		Optional<Timestamp> completed = ofNullable(record.getCompleted());
 
-		return new Job(id, parentId, queueName, executionType, result, exception, jobKey, args, created, null, null);
+		return new Job(id, parentId, queueName, executionType, result, exception, jobKey, args,
+			new Date(created.getTime()),
+			executionDuration.orElse(null),
+			completed.map(v -> new Date(v.getTime())).orElse(null));
 	}
 
 	private SqlJobStoreData newJobData(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created) {
@@ -164,7 +180,9 @@ public class SqlJobStore implements JobStore {
 			null,
 			jobKey.toString(),
 			serializedArgs.build(),
-			new java.sql.Timestamp(created.getTime()));
+			new java.sql.Timestamp(created.getTime()),
+			null,
+			null);
 	}
 
 	@Override

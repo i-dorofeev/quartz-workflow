@@ -2,6 +2,8 @@ package ru.dorofeev.sandbox.quartzworkflow.jobs.sql;
 
 import org.springframework.jdbc.core.RowMapper;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.Columns.*;
@@ -20,6 +22,8 @@ class SqlJobStoreData {
 		static final String CLMN_RESULT = "result";
 		static final String CLMN_ARGS = "args";
 		static final String CLMN_CREATED = "created";
+		static final String CLMN_EXECUTION_DURATION = "execution_duration";
+		static final String CLMN_COMPLETED = "completed";
 	}
 
 	private String id;
@@ -31,11 +35,13 @@ class SqlJobStoreData {
 	private String jobKey;
 	private String args;
 	private Timestamp created;
+	private Long executionDuration;
+	private Timestamp completed;
 
 	private SqlJobStoreData() {
 	}
 
-	SqlJobStoreData(String id, String parentId, String queueName, String executionType, String result, String exception, String jobKey, String args, Timestamp created) {
+	SqlJobStoreData(String id, String parentId, String queueName, String executionType, String result, String exception, String jobKey, String args, Timestamp created, Long executionDuration, Timestamp completed) {
 		this.id = id;
 		this.parentId = parentId;
 		this.queueName = queueName;
@@ -45,6 +51,8 @@ class SqlJobStoreData {
 		this.jobKey = jobKey;
 		this.args = args;
 		this.created = created;
+		this.executionDuration = executionDuration;
+		this.completed = completed;
 	}
 
 	@SuppressWarnings("WeakerAccess") // should be public like all the other getters so that BeanPropertySqlParameterSource could work
@@ -120,6 +128,22 @@ class SqlJobStoreData {
 		this.created = created;
 	}
 
+	public Long getExecutionDuration() {
+		return executionDuration;
+	}
+
+	public void setExecutionDuration(Long executionDuration) {
+		this.executionDuration = executionDuration;
+	}
+
+	public Timestamp getCompleted() {
+		return completed;
+	}
+
+	public void setCompleted(Timestamp completed) {
+		this.completed = completed;
+	}
+
 	static RowMapper<SqlJobStoreData> rowMapper() {
 		return (rs, rowNum) -> {
 			SqlJobStoreData data = new SqlJobStoreData();
@@ -133,8 +157,15 @@ class SqlJobStoreData {
 			data.setResult(rs.getString(CLMN_RESULT));
 			data.setArgs(rs.getString(CLMN_ARGS));
 			data.setCreated(rs.getTimestamp(CLMN_CREATED));
+			data.setExecutionDuration(getNullableLong(rs, CLMN_EXECUTION_DURATION));
+			data.setCompleted(rs.getTimestamp(CLMN_COMPLETED));
 
 			return data;
 		};
+	}
+
+	private static Long getNullableLong(ResultSet rs, String column) throws SQLException {
+		long value = rs.getLong(column);
+		return rs.wasNull() ? null : value;
 	}
 }

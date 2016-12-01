@@ -12,7 +12,7 @@ public interface JobStore {
 
 	Optional<Job> findJob(JobId jobId);
 
-	void recordJobResult(JobId jobId, Job.Result result, Throwable ex);
+	void recordJobResult(JobId jobId, Job.Result result, Throwable ex, long executionDuration, Date completed);
 
 	Job saveNewJob(JobId parentId, String queueName, QueueingOptions.ExecutionType executionType, JobKey jobKey, Serializable args, Date created);
 

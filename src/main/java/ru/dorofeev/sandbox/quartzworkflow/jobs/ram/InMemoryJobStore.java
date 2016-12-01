@@ -47,12 +47,14 @@ public class InMemoryJobStore implements JobStore {
 	}
 
 	@Override
-	public void recordJobResult(JobId jobId, Result result, Throwable ex) {
+	public void recordJobResult(JobId jobId, Result result, Throwable ex, long executionDuration, Date completed) {
 		synchronized (sync) {
 			InMemoryJobRecord job = getById(jobId)
 				.orElseThrow(() -> new JobRepositoryException("Couldn't find job[id=" + jobId + "]"));
 
 			job.setResult(result.toString());
+			job.setExecutionDuration(executionDuration);
+			job.setCompleted(completed);
 
 			if (ex != null)
 				job.setException(ex.toString());
@@ -103,8 +105,10 @@ public class InMemoryJobStore implements JobStore {
 		JobKey jobKey = new JobKey(record.getJobKey());
 		SerializedObject args = serializedObjectFactory.spawn(record.getSerializedArgs());
 		Date created = record.getCreated();
+		Long executionDuration = record.getExecutionDuration();
+		Date completed = record.getCompleted();
 
-		return new Job(id, parentId, queueName, executionType, result, exception, jobKey, args, created, null, null);
+		return new Job(id, parentId, queueName, executionType, result, exception, jobKey, args, created, executionDuration, completed);
 	}
 
 	private void traverseByRoot(String rootId, Subscriber<? super Job> subscriber) {

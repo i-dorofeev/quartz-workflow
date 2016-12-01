@@ -65,9 +65,12 @@ public abstract class AbstractJobStoreTest {
 
 	@Test
 	public void test030_recordFailed() {
-		getStore().recordJobResult(jobId, FAILED, new RuntimeException("stub exception"));
 
-		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, FAILED, "java.lang.RuntimeException: stub exception", jobKey, serializedArgs(args), created, null, null));
+		long executionDuration = 1000L;
+		Date completed = new Date();
+		getStore().recordJobResult(jobId, FAILED, new RuntimeException("stub exception"), executionDuration, completed);
+
+		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, FAILED, "java.lang.RuntimeException: stub exception", jobKey, serializedArgs(args), created, executionDuration, completed));
 
 		assertTraverseSingle(null, job);
 		assertTraverseNone(CREATED);
@@ -77,9 +80,12 @@ public abstract class AbstractJobStoreTest {
 
 	@Test
 	public void test040_recordSuccess() {
-		getStore().recordJobResult(jobId, SUCCESS, null);
 
-		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, SUCCESS, /* exception */ null, jobKey, serializedArgs(args), created, null, null));
+		long executionDuration = 1000L;
+		Date completed = new Date();
+		getStore().recordJobResult(jobId, SUCCESS, null, executionDuration, completed);
+
+		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, SUCCESS, /* exception */ null, jobKey, serializedArgs(args), created, executionDuration, completed));
 
 		assertTraverseSingle(null, job);
 		assertTraverseNone(CREATED);
@@ -109,7 +115,7 @@ public abstract class AbstractJobStoreTest {
 
 	@Test
 	public void test070_traverseByRootAndResult() {
-		getStore().recordJobResult(childJobs.get(13), FAILED, new RuntimeException("stub")); // 13 is some magic number between 0 and 30
+		getStore().recordJobResult(childJobs.get(13), FAILED, new RuntimeException("stub"), 100L, new Date()); // 13 is some magic number between 0 and 30
 
 		Observable<JobId> failed = getStore().traverseSubTree(jobId, FAILED)
 			.map(Job::getId);
@@ -143,6 +149,8 @@ public abstract class AbstractJobStoreTest {
 		assertThat(job2.getException().orElse(""), containsString(job1.getException().orElse("")));
 		assertEquals(job1.getResult(), job2.getResult());
 		assertEquals(job1.getCreated(), job2.getCreated());
+		assertEquals(job1.getExecutionDuration(), job2.getExecutionDuration());
+		assertEquals(job1.getCompleted(), job2.getCompleted());
 	}
 
 	private void assertTraverseSingle(Job.Result result, Job expectedJob) {

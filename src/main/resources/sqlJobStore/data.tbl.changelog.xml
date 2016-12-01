@@ -15,6 +15,14 @@
 			<column name="job_key" type="varchar(255)" />
 			<column name="args" type="varchar(4096)" />
 			<column name="created" type="timestamp" />
+
+			<column name="execution_duration" type="bigint">
+				<constraints nullable="true" />
+			</column>
+
+			<column name="completed" type="timestamp">
+				<constraints nullable="true" />
+			</column>
 		</createTable>
 
 		<addPrimaryKey tableName="${tables.data.name}" columnNames="id" />

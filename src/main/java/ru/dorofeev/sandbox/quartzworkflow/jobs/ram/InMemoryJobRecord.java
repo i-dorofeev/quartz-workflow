@@ -1,5 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.jobs.ram;
 
+import java.util.Date;
+
 class InMemoryJobRecord {
 
 	private String jobId;
@@ -10,6 +12,7 @@ class InMemoryJobRecord {
 	private String serializedArgs;
 	private String result;
 	private String exception;
+	private Date created;
 
 	String getJobId() {
 		return jobId;
@@ -73,5 +76,13 @@ class InMemoryJobRecord {
 
 	void setException(String exception) {
 		this.exception = exception;
+	}
+
+	public Date getCreated() {
+		return created;
+	}
+
+	public void setCreated(Date created) {
+		this.created = created;
 	}
 }

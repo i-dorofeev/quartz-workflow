@@ -12,6 +12,7 @@ import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
 import rx.Observable;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,11 +46,11 @@ public abstract class AbstractJobStoreTest {
 	@Test
 	public void test020_addJob() {
 
-		Job newJob = getStore().saveNewJob(/* parentId */ null, "default", EXCLUSIVE, jobKey, args);
+		Job newJob = getStore().saveNewJob(/* parentId */ null, "default", EXCLUSIVE, jobKey, args, new Date());
 
 		jobId = newJob.getId();
 
-		assertJobsEqual(new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, CREATED, /* exception */ null, jobKey, serializedArgs(args)), newJob);
+		assertJobsEqual(new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, CREATED, /* exception */ null, jobKey, serializedArgs(args), null, null, null), newJob);
 
 		assertFindById(newJob.getId(), newJob);
 
@@ -63,7 +64,7 @@ public abstract class AbstractJobStoreTest {
 	public void test030_recordFailed() {
 		getStore().recordJobResult(jobId, FAILED, new RuntimeException("stub exception"));
 
-		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, FAILED, "java.lang.RuntimeException: stub exception", jobKey, serializedArgs(args)));
+		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, FAILED, "java.lang.RuntimeException: stub exception", jobKey, serializedArgs(args), null, null, null));
 
 		assertTraverseSingle(null, job);
 		assertTraverseNone(CREATED);
@@ -75,7 +76,7 @@ public abstract class AbstractJobStoreTest {
 	public void test040_recordSuccess() {
 		getStore().recordJobResult(jobId, SUCCESS, null);
 
-		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, SUCCESS, /* exception */ null, jobKey, serializedArgs(args)));
+		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, SUCCESS, /* exception */ null, jobKey, serializedArgs(args), null, null, null));
 
 		assertTraverseSingle(null, job);
 		assertTraverseNone(CREATED);
@@ -118,7 +119,7 @@ public abstract class AbstractJobStoreTest {
 		if (depth == 0)
 			return Observable.empty();
 
-		Job job = getStore().saveNewJob(root, queueName, executionType, jobKey, args);
+		Job job = getStore().saveNewJob(root, queueName, executionType, jobKey, args, new Date());
 		return merge(
 			just(job.getId()),
 			saveJobHierarchy(job.getId(), depth - 1, queueName, executionType, jobKey, args));

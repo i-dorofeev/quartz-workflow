@@ -5,6 +5,7 @@ import ru.dorofeev.sandbox.quartzworkflow.JobKey;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 
+import java.util.Date;
 import java.util.Optional;
 
 import static java.util.Optional.ofNullable;
@@ -19,8 +20,11 @@ public class Job {
 	private final String exception;
 	private final JobKey jobKey;
 	private final SerializedObject args;
+	private final Date created;
+	private final Long executionDuration;
+	private final Date completed;
 
-	public Job(JobId id, JobId parentId, String queueName, QueueingOptions.ExecutionType executionType, Result result, String exception, JobKey jobKey, SerializedObject args) {
+	public Job(JobId id, JobId parentId, String queueName, QueueingOptions.ExecutionType executionType, Result result, String exception, JobKey jobKey, SerializedObject args, Date created, Long executionDuration, Date completed) {
 		this.id = id;
 		this.parentId = parentId;
 		this.queueName = queueName;
@@ -29,6 +33,9 @@ public class Job {
 		this.exception = exception;
 		this.jobKey = jobKey;
 		this.args = args;
+		this.created = created;
+		this.executionDuration = executionDuration;
+		this.completed = completed;
 	}
 
 	public JobId getId() {
@@ -61,6 +68,18 @@ public class Job {
 
 	public SerializedObject getArgs() {
 		return args;
+	}
+
+	public Date getCreated() {
+		return created;
+	}
+
+	public Long getExecutionDuration() {
+		return executionDuration;
+	}
+
+	public Date getCompleted() {
+		return completed;
 	}
 
 	@Override

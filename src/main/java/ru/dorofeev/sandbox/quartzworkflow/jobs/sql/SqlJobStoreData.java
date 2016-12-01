@@ -2,6 +2,8 @@ package ru.dorofeev.sandbox.quartzworkflow.jobs.sql;
 
 import org.springframework.jdbc.core.RowMapper;
 
+import java.util.Date;
+
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.Columns.*;
 
 class SqlJobStoreData {
@@ -17,6 +19,7 @@ class SqlJobStoreData {
 		static final String CLMN_EXCEPTION = "exception";
 		static final String CLMN_RESULT = "result";
 		static final String CLMN_ARGS = "args";
+		static final String CLMN_CREATED = "created";
 	}
 
 	private String id;
@@ -27,11 +30,12 @@ class SqlJobStoreData {
 	private String exception;
 	private String jobKey;
 	private String args;
+	private Date created;
 
 	private SqlJobStoreData() {
 	}
 
-	SqlJobStoreData(String id, String parentId, String queueName, String executionType, String result, String exception, String jobKey, String args) {
+	SqlJobStoreData(String id, String parentId, String queueName, String executionType, String result, String exception, String jobKey, String args, Date created) {
 		this.id = id;
 		this.parentId = parentId;
 		this.queueName = queueName;
@@ -40,6 +44,7 @@ class SqlJobStoreData {
 		this.exception = exception;
 		this.jobKey = jobKey;
 		this.args = args;
+		this.created = created;
 	}
 
 	@SuppressWarnings("WeakerAccess") // should be public like all the other getters so that BeanPropertySqlParameterSource could work
@@ -107,6 +112,14 @@ class SqlJobStoreData {
 		this.args = args;
 	}
 
+	public Date getCreated() {
+		return created;
+	}
+
+	public void setCreated(Date created) {
+		this.created = created;
+	}
+
 	static RowMapper<SqlJobStoreData> rowMapper() {
 		return (rs, rowNum) -> {
 			SqlJobStoreData data = new SqlJobStoreData();
@@ -119,6 +132,7 @@ class SqlJobStoreData {
 			data.setException(rs.getString(CLMN_EXCEPTION));
 			data.setResult(rs.getString(CLMN_RESULT));
 			data.setArgs(rs.getString(CLMN_ARGS));
+			data.setCreated(rs.getDate(CLMN_CREATED));
 
 			return data;
 		};

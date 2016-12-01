@@ -18,20 +18,24 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
-import ru.dorofeev.sandbox.quartzworkflow.utils.*;
+import ru.dorofeev.sandbox.quartzworkflow.utils.ExceptionUtils;
+import ru.dorofeev.sandbox.quartzworkflow.utils.SqlBuilder;
+import ru.dorofeev.sandbox.quartzworkflow.utils.SqlUtils;
+import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
 import rx.Observable;
 import rx.functions.Func0;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
 import static java.lang.Enum.valueOf;
 import static java.util.Optional.*;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.CREATED;
-import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.*;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.Columns.*;
+import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.TBL_JOB_STORE_DATA;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreHierarchy.*;
 import static ru.dorofeev.sandbox.quartzworkflow.utils.SqlBuilder.*;
 import static rx.Observable.from;
@@ -95,10 +99,10 @@ public class SqlJobStore implements JobStore {
 	}
 
 	@Override
-	public Job saveNewJob(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args) {
+	public Job saveNewJob(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created) {
 
 		return transactionTemplate.execute(status -> {
-			SqlJobStoreData sqlJobStoreData = insertNewJobStoreData(parentId, queueName, executionType, jobKey, args);
+			SqlJobStoreData sqlJobStoreData = insertNewJobStoreData(parentId, queueName, executionType, jobKey, args, created);
 
 			jdbcTemplate.update(
 				insertInto(TBL_JOB_STORE_HIERARCHY)
@@ -118,11 +122,11 @@ public class SqlJobStore implements JobStore {
 		});
 	}
 
-	private SqlJobStoreData insertNewJobStoreData(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args) {
+	private SqlJobStoreData insertNewJobStoreData(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created) {
 		int attempts = 100;
 		while (attempts > 0) {
 			try {
-				SqlJobStoreData sqlJobStoreData = newJobData(parentId, queueName, executionType, jobKey, args);
+				SqlJobStoreData sqlJobStoreData = newJobData(parentId, queueName, executionType, jobKey, args, created);
 				insertJobStoreData.execute(new BeanPropertySqlParameterSource(sqlJobStoreData));
 				return sqlJobStoreData;
 			} catch (DuplicateKeyException e) {
@@ -142,11 +146,12 @@ public class SqlJobStore implements JobStore {
 		String exception = record.getException();
 		JobKey jobKey = new JobKey(record.getJobKey());
 		SerializedObject args = serializedObjectFactory.spawn(record.getArgs());
+		Date created = record.getCreated();
 
-		return new Job(id, parentId, queueName, executionType, result, exception, jobKey, args);
+		return new Job(id, parentId, queueName, executionType, result, exception, jobKey, args, created, null, null);
 	}
 
-	private SqlJobStoreData newJobData(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args) {
+	private SqlJobStoreData newJobData(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created) {
 		SerializedObject serializedArgs = serializedObjectFactory.spawn();
 		args.serializeTo(serializedArgs);
 
@@ -158,7 +163,8 @@ public class SqlJobStore implements JobStore {
 			CREATED.toString(),
 			null,
 			jobKey.toString(),
-			serializedArgs.build());
+			serializedArgs.build(),
+			created);
 	}
 
 	@Override

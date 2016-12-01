@@ -62,7 +62,7 @@ public class InMemoryJobStore implements JobStore {
 	}
 
 	@Override
-	public Job saveNewJob(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args) {
+	public Job saveNewJob(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created) {
 		synchronized (sync) {
 
 			if (parentId != null && !jobTable.containsKey(parentId.toString()))
@@ -82,6 +82,7 @@ public class InMemoryJobStore implements JobStore {
 			job.setJobKey(jobKey.toString());
 			job.setQueueName(queueName);
 			job.setSerializedArgs(serializedArgs.build());
+			job.setCreated(created);
 
 			jobTable.put(jobId, job);
 
@@ -101,8 +102,9 @@ public class InMemoryJobStore implements JobStore {
 		String exception = record.getException();
 		JobKey jobKey = new JobKey(record.getJobKey());
 		SerializedObject args = serializedObjectFactory.spawn(record.getSerializedArgs());
+		Date created = record.getCreated();
 
-		return new Job(id, parentId, queueName, executionType, result, exception, jobKey, args);
+		return new Job(id, parentId, queueName, executionType, result, exception, jobKey, args, created, null, null);
 	}
 
 	private void traverseByRoot(String rootId, Subscriber<? super Job> subscriber) {

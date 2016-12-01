@@ -1,5 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests.jobstore;
 
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
@@ -12,6 +13,7 @@ import ru.dorofeev.sandbox.quartzworkflow.utils.RandomUUIDGenerator;
 import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
 
 import java.util.ArrayDeque;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Queue;
 
@@ -30,6 +32,7 @@ public class SqlJobStoreEnsureUniqueIdsTest {
 		hsql = new HSqlDb();
 	}
 
+	@AfterClass
 	public static void afterClass() {
 		hsql.shutdown();
 	}
@@ -42,12 +45,12 @@ public class SqlJobStoreEnsureUniqueIdsTest {
 		JobStore jobStore = sqlJobStore(hsql.getDataSource(), uuidGenerator).call(jsonSerialization());
 
 		uuidGenerator.pushUuid("00000000-0000-0000-0000-000000000001");
-		Job job1 = jobStore.saveNewJob(null, "default", QueueingOptions.ExecutionType.PARALLEL, new JobKey("jobKey"), new StubArgs("value"));
+		Job job1 = jobStore.saveNewJob(null, "default", QueueingOptions.ExecutionType.PARALLEL, new JobKey("jobKey"), new StubArgs("value"), new Date());
 		assertThat(job1.getId(), is(equalTo(new JobId("00000000-0000-0000-0000-000000000001"))));
 
 		uuidGenerator.pushUuid("00000000-0000-0000-0000-000000000001");
 		uuidGenerator.pushUuid("00000000-0000-0000-0000-000000000002");
-		Job job2 = jobStore.saveNewJob(null, "default", QueueingOptions.ExecutionType.PARALLEL, new JobKey("jobKey"), new StubArgs("value"));
+		Job job2 = jobStore.saveNewJob(null, "default", QueueingOptions.ExecutionType.PARALLEL, new JobKey("jobKey"), new StubArgs("value"), new Date());
 		assertThat(job2.getId(), is(equalTo(new JobId("00000000-0000-0000-0000-000000000002"))));
 	}
 

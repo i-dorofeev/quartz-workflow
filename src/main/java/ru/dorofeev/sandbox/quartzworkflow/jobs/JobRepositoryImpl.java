@@ -4,6 +4,7 @@ import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
+import ru.dorofeev.sandbox.quartzworkflow.utils.Clock;
 import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import rx.Observable;
 import rx.subjects.PublishSubject;
@@ -18,9 +19,11 @@ class JobRepositoryImpl implements JobRepository {
 	private final JobStore store;
 	private final PublishSubject<Event> events = PublishSubject.create();
 	private final ErrorObservable errors = new ErrorObservable();
+	private final Clock clock;
 
-	JobRepositoryImpl(JobStore store) {
+	JobRepositoryImpl(JobStore store, Clock clock) {
 		this.store = store;
+		this.clock = clock;
 	}
 
 	@Override
@@ -66,7 +69,7 @@ class JobRepositoryImpl implements JobRepository {
 		String queueName = queueingOptions != null ? queueingOptions.getQueueName() : "default";
 		QueueingOptions.ExecutionType executionType = queueingOptions != null ? queueingOptions.getExecutionType() : PARALLEL;
 
-		Job job = store.saveNewJob(parentId, queueName, executionType, jobKey, args);
+		Job job = store.saveNewJob(parentId, queueName, executionType, jobKey, args, clock.currentTime());
 		return new JobAddedEvent(job);
 	}
 

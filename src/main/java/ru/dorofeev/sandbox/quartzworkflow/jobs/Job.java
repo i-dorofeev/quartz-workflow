@@ -86,12 +86,16 @@ public class Job {
 	public String toString() {
 		return "Job{" +
 			"id=" + id +
+			", parentId=" + parentId +
 			", queueName='" + queueName + '\'' +
 			", executionType=" + executionType +
 			", result=" + result +
 			", exception='" + exception + '\'' +
 			", jobKey=" + jobKey +
 			", args=" + args +
+			", created=" + created +
+			", executionDuration=" + executionDuration +
+			", completed=" + completed +
 			'}';
 	}
 

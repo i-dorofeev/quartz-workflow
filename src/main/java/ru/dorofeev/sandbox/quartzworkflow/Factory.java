@@ -16,11 +16,11 @@ import rx.functions.Func1;
 
 public class Factory {
 
-	public static Engine spawn(SerializedObjectFactory serializedObjectFactory, Func1<SerializedObjectFactory, JobStore> jobStoreFactory, QueueStore queueStore, ExecutorService executorService) {
+	public static Engine spawn(NodeId nodeId, SerializedObjectFactory serializedObjectFactory, Func1<SerializedObjectFactory, JobStore> jobStoreFactory, QueueStore queueStore, ExecutorService executorService) {
 		Clock clock = new SystemClock();
 		JobStore jobStore = jobStoreFactory.call(serializedObjectFactory);
 		JobRepository jobRepository = JobRepositoryFactory.create(jobStore, clock);
-		QueueManager queueManager = QueueManagerFactory.create(Factory.class.getName(), queueStore);
+		QueueManager queueManager = QueueManagerFactory.create(nodeId, queueStore);
 		return EngineFactory.create(jobRepository, executorService, queueManager);
 	}
 }

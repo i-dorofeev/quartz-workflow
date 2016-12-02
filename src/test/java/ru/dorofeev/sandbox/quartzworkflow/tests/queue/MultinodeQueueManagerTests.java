@@ -3,6 +3,7 @@ package ru.dorofeev.sandbox.quartzworkflow.tests.queue;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManagerFactory;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlServices;
@@ -51,11 +52,11 @@ public class MultinodeQueueManagerTests {
 	public void sanityTest() {
 
 		// configure
-		QueueManager queueManager1 = QueueManagerFactory.create("qm1", hSqlServices.queueStore());
+		QueueManager queueManager1 = QueueManagerFactory.create(new NodeId("qm1"), hSqlServices.queueStore());
 		Observable<QueueManager.Event> qm1Events = queueManager1.bind(qm1Cmds);
 		Observable<String> qm1Errors = queueManager1.getErrors().map(Throwable::getMessage);
 
-		QueueManager queueManager2 = QueueManagerFactory.create("qm2", hSqlServices.queueStore());
+		QueueManager queueManager2 = QueueManagerFactory.create(new NodeId("qm2"), hSqlServices.queueStore());
 		Observable<QueueManager.Event> qm2Events = queueManager2.bind(qm2Cmds);
 		Observable<String> qm2Errors = queueManager2.getErrors().map(Throwable::getMessage);
 

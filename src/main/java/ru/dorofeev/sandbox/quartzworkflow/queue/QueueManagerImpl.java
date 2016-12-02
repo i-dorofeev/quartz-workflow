@@ -1,25 +1,30 @@
 package ru.dorofeev.sandbox.quartzworkflow.queue;
 
+import org.springframework.util.Assert;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import rx.Observable;
 import rx.subjects.PublishSubject;
 
 import java.util.Optional;
 
+import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
+
 class QueueManagerImpl implements QueueManager {
 
 	private final PublishSubject<Event> events = PublishSubject.create();
 	private final ErrorObservable errors = new ErrorObservable();
 
-	private final String name;
 	private final QueueStore queueStore;
+	private final NodeId nodeId;
 
 	private boolean suspended;
 
-	QueueManagerImpl(String name, QueueStore queueStore) {
-		this.name = name;
+	QueueManagerImpl(QueueStore queueStore, NodeId nodeId) {
+		Assert.notNull(nodeId, "nodeId shouldn't be null");
 		this.queueStore = queueStore;
+		this.nodeId = nodeId;
 	}
 
 	@Override
@@ -53,8 +58,10 @@ class QueueManagerImpl implements QueueManager {
 
 	private void enqueue(EnqueueCmd cmd) {
 		try {
-			queueStore.insertQueueItem(cmd.getJobId(), cmd.getQueueName(), cmd.getExecutionType());
-			tryPushNext(cmd.getQueueName());
+			queueStore.insertQueueItem(cmd.getJobId(), cmd.getQueueName(), cmd.getExecutionType(), cmd.getNodeId());
+
+			if (cmd.getNodeId().equals(this.nodeId) || cmd.getNodeId().equals(ANY_NODE))
+				tryPushNext(cmd.getQueueName());
 		} catch (QueueStoreException e) {
 			errors.asObserver().onNext(new QueueManagerException(e.getMessage(), e));
 		}
@@ -64,7 +71,7 @@ class QueueManagerImpl implements QueueManager {
 		if (suspended)
 			return;
 
-		Optional<JobId> nextOpt = queueStore.popNextPendingQueueItem(queueName);
+		Optional<JobId> nextOpt = queueStore.popNextPendingQueueItem(queueName, nodeId);
 		nextOpt
 			.map(JobPoppedEvent::new)
 			.ifPresent(tpe -> {
@@ -86,7 +93,7 @@ class QueueManagerImpl implements QueueManager {
 	@Override
 	public String toString() {
 		return "QueueManagerImpl{" +
-			"name='" + name + '\'' +
+			"nodeId=" + nodeId +
 			'}';
 	}
 }

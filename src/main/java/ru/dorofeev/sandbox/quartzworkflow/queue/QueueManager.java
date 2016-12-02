@@ -1,7 +1,11 @@
 package ru.dorofeev.sandbox.quartzworkflow.queue;
 
+import org.springframework.util.Assert;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import rx.Observable;
+
+import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
 
 public interface QueueManager {
 
@@ -24,15 +28,15 @@ public interface QueueManager {
 	}
 
 	static EnqueueCmd enqueueCmd(JobId jobId) {
-		return new EnqueueCmd(DEFAULT_QUEUE_NAME, DEFAULT_EXECUTION_TYPE, jobId);
+		return new EnqueueCmd(DEFAULT_QUEUE_NAME, DEFAULT_EXECUTION_TYPE, jobId, ANY_NODE);
 	}
 
 	static EnqueueCmd enqueueCmd(QueueingOptions.ExecutionType executionType, JobId jobId) {
-		return new EnqueueCmd(DEFAULT_QUEUE_NAME, executionType, jobId);
+		return new EnqueueCmd(DEFAULT_QUEUE_NAME, executionType, jobId, ANY_NODE);
 	}
 
 	static EnqueueCmd enqueueCmd(String queueName, QueueingOptions.ExecutionType executionType, JobId jobId) {
-		return new EnqueueCmd(queueName, executionType, jobId);
+		return new EnqueueCmd(queueName, executionType, jobId, ANY_NODE);
 	}
 
 	static NotifyCompletedCmd notifyCompletedCmd(JobId jobId) {
@@ -52,13 +56,16 @@ public interface QueueManager {
 		private final String queueName;
 		private final QueueingOptions.ExecutionType executionType;
 		private final JobId jobId;
+		private final NodeId nodeId;
 
-		EnqueueCmd(String queueName, QueueingOptions.ExecutionType executionType, JobId jobId) {
+		EnqueueCmd(String queueName, QueueingOptions.ExecutionType executionType, JobId jobId, NodeId nodeId) {
+			Assert.notNull(nodeId, "nodeId shouldn't be null. Use NodeId.ANY_NODE constant instead.");
+
 			this.queueName = queueName;
 			this.executionType = executionType;
 			this.jobId = jobId;
+			this.nodeId = nodeId;
 		}
-
 
 		String getQueueName() {
 			return queueName;
@@ -70,6 +77,10 @@ public interface QueueManager {
 
 		JobId getJobId() {
 			return jobId;
+		}
+
+		NodeId getNodeId() {
+			return nodeId;
 		}
 	}
 

@@ -2,6 +2,7 @@ package ru.dorofeev.sandbox.quartzworkflow.tests;
 
 import org.junit.*;
 import ru.dorofeev.sandbox.quartzworkflow.Factory;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
@@ -60,6 +61,7 @@ public class SimpleWorkflowTest {
 
 		hSqlServices = new HSqlServices();
 		engine = Factory.spawn(
+			new NodeId("SimpleWorkflowTest"),
 			jsonSerialization(),
 			hSqlServices.jobStoreFactory(),
 			hSqlServices.queueStore(),

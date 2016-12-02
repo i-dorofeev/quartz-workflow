@@ -1,6 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.queue;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 
 import java.util.Optional;
 import java.util.SortedSet;
@@ -63,7 +64,7 @@ class InMemoryQueueStore implements QueueStore {
 	private long ordinalSeq = 0;
 
 	@Override
-	public QueueItem insertQueueItem(JobId jobId, String queueName, QueueingOptions.ExecutionType executionType) throws QueueStoreException {
+	public QueueItem insertQueueItem(JobId jobId, String queueName, QueueingOptions.ExecutionType executionType, NodeId nodeId) throws QueueStoreException {
 		synchronized (sync) {
 			if (queue.stream().filter(qi -> qi.jobId.equals(jobId)).count() > 0)
 				throw new QueueStoreException(jobId + " is already enqueued");
@@ -96,7 +97,7 @@ class InMemoryQueueStore implements QueueStore {
 	}
 
 	@Override
-	public Optional<JobId> popNextPendingQueueItem(String queueName) {
+	public Optional<JobId> popNextPendingQueueItem(String queueName, NodeId nodeId) {
 		synchronized (sync) {
 			Optional<InMemoryQueueItem> nextItemOpt = getNextPending(queueName != null ? queueName::equals : qn -> true);
 

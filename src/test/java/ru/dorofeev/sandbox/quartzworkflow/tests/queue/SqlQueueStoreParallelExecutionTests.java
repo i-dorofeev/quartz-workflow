@@ -47,7 +47,7 @@ public class SqlQueueStoreParallelExecutionTests {
 	public void test050_parallelExecution() {
 
 		range(0, 4)
-			.forEach(i -> queueStore.insertQueueItem(new JobId("job" + i), "default", PARALLEL));
+			.forEach(i -> queueStore.insertQueueItem(new JobId("job" + i), "default", PARALLEL, null));
 
 		SqlQueueStore.PopNextOperation op1 = queueStore.newPopNextOperation();
 		op1.query("default", 5);

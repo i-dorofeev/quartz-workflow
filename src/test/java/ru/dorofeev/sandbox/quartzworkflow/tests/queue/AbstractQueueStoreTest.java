@@ -59,7 +59,7 @@ public abstract class AbstractQueueStoreTest {
 		expectedException.expect(QueueStoreException.class);
 		expectedException.expectMessage(containsString("is already enqueued"));
 
-		queueStore().insertQueueItem(queueTracker.lastAdded().getJobId(), "q9", PARALLEL);
+		queueStore().insertQueueItem(queueTracker.lastAdded().getJobId(), "q9", PARALLEL, null);
 	}
 
 	@Test
@@ -91,7 +91,7 @@ public abstract class AbstractQueueStoreTest {
 	}
 
 	private void insertQueueItem(String queueName, QueueingOptions.ExecutionType executionType) {
-		queueTracker.add(queueStore().insertQueueItem(newJobId(), queueName, executionType));
+		queueTracker.add(queueStore().insertQueueItem(newJobId(), queueName, executionType, null));
 	}
 
 	private JobId newJobId() {
@@ -108,7 +108,7 @@ public abstract class AbstractQueueStoreTest {
 	}
 
 	private void popNext(String queueName, Matcher<Optional<Long>> ordinalMatcher) {
-		Optional<JobId> jobIdOptional = queueStore().popNextPendingQueueItem(queueName);
+		Optional<JobId> jobIdOptional = queueStore().popNextPendingQueueItem(queueName, null);
 		System.out.println(jobIdOptional);
 
 		assertThat(jobIdOptional.map(jobId -> queueTracker.byJobId(jobId).getOrdinal()), ordinalMatcher);

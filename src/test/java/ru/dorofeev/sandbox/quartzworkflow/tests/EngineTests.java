@@ -1,6 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests;
 
 import org.junit.*;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.EventHandler;
@@ -34,6 +35,7 @@ public class EngineTests {
 		hSqlServices = new HSqlServices();
 
 		engine = spawn(
+			new NodeId("EngineTests"),
 			jsonSerialization(),
 			hSqlServices.jobStoreFactory(),
 			hSqlServices.queueStore(),

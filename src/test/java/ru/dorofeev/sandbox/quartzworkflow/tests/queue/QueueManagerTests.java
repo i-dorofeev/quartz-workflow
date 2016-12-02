@@ -4,6 +4,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
 import ru.dorofeev.sandbox.quartzworkflow.queue.sql.SqlQueueStore;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlServices;
@@ -43,7 +44,7 @@ public class QueueManagerTests {
 		SqlQueueStore sqlQueueStore = hSqlServices.queueStore();
 		sqlQueueStore.clear();
 
-		QueueManager queueManager = create("QueueManagerTests", sqlQueueStore);
+		QueueManager queueManager = create(new NodeId("QueueManagerTests"), sqlQueueStore);
 		queueManager.bind(cmdFlow).subscribe(eventSubscriber);
 		queueManager.getErrors().map(Throwable::getMessage).subscribe(errorSubscriber);
 	}

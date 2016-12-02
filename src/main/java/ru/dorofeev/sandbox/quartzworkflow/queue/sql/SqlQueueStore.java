@@ -7,6 +7,7 @@ import org.hibernate.dialect.Dialect;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.util.Assert;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItem;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItemStatus;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueStore;
@@ -71,7 +72,7 @@ public class SqlQueueStore implements QueueStore {
 	}
 
 	@Override
-	public QueueItem insertQueueItem(JobId jobId, String queueName, ExecutionType executionType) throws QueueStoreException {
+	public QueueItem insertQueueItem(JobId jobId, String queueName, ExecutionType executionType, NodeId nodeId) throws QueueStoreException {
 
 		Assert.notNull(jobId, "jobId should be supplied");
 		Assert.notNull(queueName, "queueName should be supplied");
@@ -94,7 +95,7 @@ public class SqlQueueStore implements QueueStore {
 	}
 
 	@Override
-	public Optional<JobId> popNextPendingQueueItem(String queueName) {
+	public Optional<JobId> popNextPendingQueueItem(String queueName, NodeId nodeId) {
 
 		synchronized (localQueue) {
 			JobId nextJobId = localQueue.poll();

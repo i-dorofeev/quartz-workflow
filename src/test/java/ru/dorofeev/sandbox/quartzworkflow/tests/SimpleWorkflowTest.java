@@ -8,6 +8,7 @@ import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlServices;
 import ru.dorofeev.sandbox.quartzworkflow.utils.RealtimeStopwatchFactory;
+import ru.dorofeev.sandbox.quartzworkflow.utils.SystemClock;
 
 import java.util.HashMap;
 import java.util.List;
@@ -62,7 +63,7 @@ public class SimpleWorkflowTest {
 			jsonSerialization(),
 			hSqlServices.jobStoreFactory(),
 			hSqlServices.queueStore(),
-			fixedThreadedExecutorService(10, 1000, new RealtimeStopwatchFactory()));
+			fixedThreadedExecutorService(10, 1000, new RealtimeStopwatchFactory(), new SystemClock()));
 		engine.errors().subscribe(System.out::println);
 
 		model = new Model();

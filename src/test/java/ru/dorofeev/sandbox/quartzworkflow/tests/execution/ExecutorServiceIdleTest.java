@@ -10,6 +10,7 @@ import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestExecutable;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestStorage;
 import ru.dorofeev.sandbox.quartzworkflow.utils.RealtimeStopwatchFactory;
+import ru.dorofeev.sandbox.quartzworkflow.utils.SystemClock;
 import rx.Observable;
 import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
@@ -39,7 +40,7 @@ public class ExecutorServiceIdleTest {
 	@Test
 	public void sanityTest() throws Exception {
 
-		ExecutorService executorService = ExecutorServiceFactory.fixedThreadedExecutorService(10, 10, new RealtimeStopwatchFactory());
+		ExecutorService executorService = ExecutorServiceFactory.fixedThreadedExecutorService(10, 10, new RealtimeStopwatchFactory(), new SystemClock());
 		executorService.start();
 
 		Observable<Event> executorEvents = executorService.bind(cmdFlow)

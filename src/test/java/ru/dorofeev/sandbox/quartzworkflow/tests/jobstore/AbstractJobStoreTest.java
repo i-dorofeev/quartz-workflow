@@ -10,7 +10,6 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
-import ru.dorofeev.sandbox.quartzworkflow.utils.Clock;
 import rx.Observable;
 
 import java.util.Date;
@@ -173,16 +172,6 @@ public abstract class AbstractJobStoreTest {
 		assertJobsEqual(expectedJob, job.get());
 
 		return job.get();
-	}
-
-	private static class ClockStub implements Clock {
-
-		private final Date currentTime = new Date();
-
-		@Override
-		public Date currentTime() {
-			return currentTime;
-		}
 	}
 
 }

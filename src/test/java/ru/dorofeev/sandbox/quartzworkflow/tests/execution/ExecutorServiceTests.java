@@ -4,20 +4,20 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
-import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.Cmd;
-import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.Event;
+import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.*;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory;
+import ru.dorofeev.sandbox.quartzworkflow.tests.utils.StubClock;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestExecutable;
 import ru.dorofeev.sandbox.quartzworkflow.utils.Stopwatch;
 import ru.dorofeev.sandbox.quartzworkflow.utils.StopwatchFactory;
 import rx.observers.TestSubscriber;
 import rx.subjects.PublishSubject;
 
+import java.util.Date;
+
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static ru.dorofeev.sandbox.quartzworkflow.JobId.jobId;
-import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleJobCmd;
-import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.jobFailedEvent;
-import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.jobSuccessfullyCompletedEvent;
+import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.*;
 
 public class ExecutorServiceTests {
 
@@ -26,11 +26,13 @@ public class ExecutorServiceTests {
 
 	private ExecutorService executorService;
 	private StubStopwatchFactory stopwatchFactory;
+	private StubClock clock;
 
 	@Before
 	public void beforeTest() {
 		stopwatchFactory = new StubStopwatchFactory();
-		executorService = ExecutorServiceFactory.fixedThreadedExecutorService(5, 50, stopwatchFactory);
+		clock = new StubClock();
+		executorService = ExecutorServiceFactory.fixedThreadedExecutorService(5, 50, stopwatchFactory, clock);
 
 		cmdFlow = PublishSubject.create();
 		eventTestSubscriber = new TestSubscriber<>();
@@ -53,10 +55,11 @@ public class ExecutorServiceTests {
 		TestExecutable testExecutable = new TestExecutable();
 
 		stopwatchFactory.setExpectedElapsed(1000L);
+		clock.setTime(new Date());
 		cmdFlow.onNext(scheduleJobCmd(jobId("job0"), null, testExecutable));
 
 		eventTestSubscriber.awaitValueCount(1, 500, MILLISECONDS);
-		eventTestSubscriber.assertValuesAndClear(jobSuccessfullyCompletedEvent(jobId("job0"), stopwatchFactory.getExpectedElapsed(), null));
+		eventTestSubscriber.assertValuesAndClear(jobSuccessfullyCompletedEvent(jobId("job0"), stopwatchFactory.getExpectedElapsed(), clock.getTime()));
 		testExecutable.assertInvoked();
 	}
 
@@ -67,10 +70,11 @@ public class ExecutorServiceTests {
 		TestExecutable testRunnable = new TestExecutable().throwsException(exception);
 
 		stopwatchFactory.setExpectedElapsed(2000L);
+		clock.setTime(new Date());
 		cmdFlow.onNext(scheduleJobCmd(jobId("job0"), null, testRunnable));
 
 		eventTestSubscriber.awaitValueCount(1, 500, MILLISECONDS);
-		eventTestSubscriber.assertValuesAndClear(jobFailedEvent(jobId("job0"), exception, stopwatchFactory.getExpectedElapsed(), null));
+		eventTestSubscriber.assertValuesAndClear(jobFailedEvent(jobId("job0"), exception, stopwatchFactory.getExpectedElapsed(), clock.getTime()));
 		testRunnable.assertInvoked();
 	}
 

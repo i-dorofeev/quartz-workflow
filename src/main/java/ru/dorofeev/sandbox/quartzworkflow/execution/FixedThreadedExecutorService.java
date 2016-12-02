@@ -1,5 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.execution;
 
+import ru.dorofeev.sandbox.quartzworkflow.utils.Clock;
 import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import ru.dorofeev.sandbox.quartzworkflow.utils.Stopwatch;
 import ru.dorofeev.sandbox.quartzworkflow.utils.StopwatchFactory;
@@ -8,7 +9,6 @@ import rx.Subscription;
 import rx.schedulers.Schedulers;
 import rx.subjects.PublishSubject;
 
-import java.util.Date;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,12 +23,14 @@ class FixedThreadedExecutorService implements ExecutorService {
 	private final Executor executor;
 	private final IdleMonitor idleMonitor;
 	private final StopwatchFactory stopwatchFactory;
+	private final Clock clock;
 
 	private boolean suspended = true;
 
-	FixedThreadedExecutorService(int nThreads, long idleInterval, StopwatchFactory stopwatchFactory) {
+	FixedThreadedExecutorService(int nThreads, long idleInterval, StopwatchFactory stopwatchFactory, Clock clock) {
 		this.executor = Executors.newFixedThreadPool(nThreads);
 		this.stopwatchFactory = stopwatchFactory;
+		this.clock = clock;
 
 		this.idleMonitor = new IdleMonitor(nThreads, idleInterval);
 		this.idleMonitor.idleEvents().subscribe(events);
@@ -52,9 +54,9 @@ class FixedThreadedExecutorService implements ExecutorService {
 		Stopwatch stopwatch = stopwatchFactory.newStopwatch();
 		try {
 			cmd.getExecutable().execute(cmd.getJobId(), cmd.getArgs());
-			return new JobCompletedEvent(cmd.getJobId(), null, stopwatch.elapsed(), new Date());
+			return new JobCompletedEvent(cmd.getJobId(), null, stopwatch.elapsed(), clock.currentTime());
 		} catch (Throwable e) {
-			return new JobCompletedEvent(cmd.getJobId(), e, stopwatch.elapsed(), new Date());
+			return new JobCompletedEvent(cmd.getJobId(), e, stopwatch.elapsed(), clock.currentTime());
 		}
 	}
 

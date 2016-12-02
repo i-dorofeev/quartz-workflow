@@ -8,6 +8,7 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlServices;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.Utils;
 import ru.dorofeev.sandbox.quartzworkflow.utils.RealtimeStopwatchFactory;
+import ru.dorofeev.sandbox.quartzworkflow.utils.SystemClock;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -36,7 +37,7 @@ public class EngineTests {
 			jsonSerialization(),
 			hSqlServices.jobStoreFactory(),
 			hSqlServices.queueStore(),
-			fixedThreadedExecutorService(10, 1000, new RealtimeStopwatchFactory()));
+			fixedThreadedExecutorService(10, 1000, new RealtimeStopwatchFactory(), new SystemClock()));
 		engine.errors().map(Utils::exceptionToString).subscribe(errors::add);
 
 		engine.start();

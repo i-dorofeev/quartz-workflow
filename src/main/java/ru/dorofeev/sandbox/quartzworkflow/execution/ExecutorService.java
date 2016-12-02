@@ -94,13 +94,18 @@ public interface ExecutorService {
 
 			JobCompletedEvent that = (JobCompletedEvent) o;
 
-			return jobId.equals(that.jobId) && (exception != null ? exception.equals(that.exception) : that.exception == null);
+			if (executionDuration != that.executionDuration) return false;
+			if (jobId != null ? !jobId.equals(that.jobId) : that.jobId != null) return false;
+			if (exception != null ? !exception.equals(that.exception) : that.exception != null) return false;
+			return completed != null ? completed.equals(that.completed) : that.completed == null;
 		}
 
 		@Override
 		public int hashCode() {
-			int result = jobId.hashCode();
+			int result = jobId != null ? jobId.hashCode() : 0;
 			result = 31 * result + (exception != null ? exception.hashCode() : 0);
+			result = 31 * result + (int) (executionDuration ^ (executionDuration >>> 32));
+			result = 31 * result + (completed != null ? completed.hashCode() : 0);
 			return result;
 		}
 
@@ -109,6 +114,8 @@ public interface ExecutorService {
 			return "JobCompletedEvent{" +
 				"jobId=" + jobId +
 				", exception=" + exception +
+				", executionDuration=" + executionDuration +
+				", completed=" + completed +
 				'}';
 		}
 	}

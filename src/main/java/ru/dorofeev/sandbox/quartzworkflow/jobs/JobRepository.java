@@ -6,6 +6,7 @@ import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import rx.Observable;
 
+import java.util.Date;
 import java.util.Optional;
 
 public interface JobRepository {
@@ -86,10 +87,14 @@ public interface JobRepository {
 	class CompleteJobCmd implements Cmd {
 		private final JobId jobId;
 		private final Throwable exception;
+		private final Long executionDuration;
+		private final Date completed;
 
-		CompleteJobCmd(JobId jobId, Throwable exception) {
+		CompleteJobCmd(JobId jobId, Throwable exception, Long executionDuration, Date completed) {
 			this.jobId = jobId;
 			this.exception = exception;
+			this.executionDuration = executionDuration;
+			this.completed = completed;
 		}
 
 		public JobId getJobId() {
@@ -99,10 +104,18 @@ public interface JobRepository {
 		public Throwable getException() {
 			return exception;
 		}
+
+		public Long getExecutionDuration() {
+			return executionDuration;
+		}
+
+		public Date getCompleted() {
+			return completed;
+		}
 	}
 
-	static CompleteJobCmd completeJobCmd(JobId jobId, Throwable ex) {
-		return new CompleteJobCmd(jobId, ex);
+	static CompleteJobCmd completeJobCmd(JobId jobId, Throwable ex, Long executionDuration, Date completed) {
+		return new CompleteJobCmd(jobId, ex, executionDuration, completed);
 	}
 
 	static AddJobCmd addJobCmd(JobId parentId, JobKey jobKey, Serializable args, QueueingOptions queueingOptions) {

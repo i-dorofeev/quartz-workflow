@@ -73,7 +73,7 @@ class EngineImpl implements Engine {
 	}
 
 	private JobRepository.CompleteJobCmd asCompleteJobCmd(ExecutorService.JobCompletedEvent event) {
-		return completeJobCmd(event.getJobId(), event.getException());
+		return completeJobCmd(event.getJobId(), event.getException(), event.getExecutionDuration(), event.getCompleted());
 	}
 
 	private ExecutorService.ScheduleJobCmd asScheduleJobCmd(QueueManager.JobPoppedEvent event) {

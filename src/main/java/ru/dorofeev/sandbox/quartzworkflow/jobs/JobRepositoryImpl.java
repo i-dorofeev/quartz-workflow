@@ -9,7 +9,6 @@ import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import rx.Observable;
 import rx.subjects.PublishSubject;
 
-import java.util.Date;
 import java.util.Optional;
 
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
@@ -41,9 +40,9 @@ class JobRepositoryImpl implements JobRepository {
 		input.ofType(CompleteJobCmd.class)
 			.compose(errors.mapRetry(cmd -> {
 				if (cmd.getException() != null)
-					store.recordJobResult(cmd.getJobId(), Job.Result.FAILED, cmd.getException(), 1L, new Date());
+					store.recordJobResult(cmd.getJobId(), Job.Result.FAILED, cmd.getException(), cmd.getExecutionDuration(), cmd.getCompleted());
 				else
-					store.recordJobResult(cmd.getJobId(), Job.Result.SUCCESS, null, 1L, new Date());
+					store.recordJobResult(cmd.getJobId(), Job.Result.SUCCESS, null, cmd.getExecutionDuration(), cmd.getCompleted());
 
 				return new JobCompletedEvent(cmd.getJobId());
 			}))

@@ -5,7 +5,6 @@ import org.hibernate.StaleStateException;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.exception.ConstraintViolationException;
-import org.springframework.util.Assert;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItem;
@@ -25,6 +24,7 @@ import static java.util.Optional.*;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueItemStatus.PENDING;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
+import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.*;
 import static ru.dorofeev.sandbox.quartzworkflow.utils.SqlUtils.identifiersEqual;
 
 @SuppressWarnings("JpaQlInspection")
@@ -36,8 +36,19 @@ public class SqlQueueStore implements QueueStore {
 	private final int fetchSize;
 
 	public SqlQueueStore(DataSource dataSource, Class<? extends Dialect> dialect, String extraHibernateCfg, int fetchSize) {
+
+		shouldNotBeNull(dataSource, "dataSource should be specified");
+		shouldNotBeNull(dialect, "Hibernate dialect should be specified");
+		mayBeNull(extraHibernateCfg);
+		shouldBe(fetchSize > 0, "fetch size should be greater zero; current: %s", fetchSize);
+
 		this.fetchSize = fetchSize;
 
+		//noinspection deprecation
+		this.sessionFactory = buildSessionFactory(dataSource, dialect, extraHibernateCfg);
+	}
+
+	private static SessionFactory buildSessionFactory(DataSource dataSource, Class<? extends Dialect> dialect, String extraHibernateCfg) {
 		Configuration configuration = new Configuration()
 			.addProperties(buildProperties(dataSource, dialect))
 			.addAnnotatedClass(SqlQueueItem.class)
@@ -47,10 +58,10 @@ public class SqlQueueStore implements QueueStore {
 			configuration.configure(extraHibernateCfg);
 
 		//noinspection deprecation
-		this.sessionFactory = configuration.buildSessionFactory();
+		return configuration.buildSessionFactory();
 	}
 
-	private Properties buildProperties(DataSource ds, Class<? extends Dialect> dialect) {
+	private static Properties buildProperties(DataSource ds, Class<? extends Dialect> dialect) {
 		Properties properties = new Properties();
 		properties.put("hibernate.connection.datasource", ds);
 		properties.put("hibernate.dialect", dialect.getName());
@@ -74,9 +85,10 @@ public class SqlQueueStore implements QueueStore {
 	@Override
 	public QueueItem insertQueueItem(JobId jobId, String queueName, ExecutionType executionType, NodeId nodeId) throws QueueStoreException {
 
-		Assert.notNull(jobId, "jobId should be supplied");
-		Assert.notNull(queueName, "queueName should be supplied");
-		Assert.notNull(executionType, "executionType should be supplied");
+		shouldNotBeNull(jobId, "jobId should be supplied");
+		shouldNotBeNull(queueName, "queueName should be supplied");
+		shouldNotBeNull(executionType, "executionType should be supplied");
+		shouldNotBeNull(nodeId, "nodeId should be specified. Use NodeId.ANY_NODE if it isn't required to run a job on a specific node.");
 
 		try (TransactionScope tx = new TransactionScope(sessionFactory)) {
 
@@ -97,6 +109,8 @@ public class SqlQueueStore implements QueueStore {
 	@Override
 	public Optional<JobId> popNextPendingQueueItem(String queueName, NodeId nodeId) {
 
+		shouldNotBeNull(nodeId, "nodeId should be specified. Use NodeId.ANY_NODE if it isn't required to pop queue items for a specific node");
+
 		synchronized (localQueue) {
 			JobId nextJobId = localQueue.poll();
 			if (nextJobId != null)
@@ -112,6 +126,9 @@ public class SqlQueueStore implements QueueStore {
 
 	@Override
 	public Optional<String> releaseQueueItem(JobId jobId) {
+
+		shouldNotBeNull(jobId, "jobId should be specified");
+
 		try (TransactionScope tx = new TransactionScope(sessionFactory)) {
 
 			//noinspection unchecked

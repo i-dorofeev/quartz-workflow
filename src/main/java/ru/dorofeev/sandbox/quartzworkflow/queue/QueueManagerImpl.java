@@ -10,6 +10,8 @@ import rx.subjects.PublishSubject;
 import java.util.Optional;
 
 import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
+import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.shouldNotBe;
+import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.shouldNotBeNull;
 
 class QueueManagerImpl implements QueueManager {
 
@@ -22,7 +24,10 @@ class QueueManagerImpl implements QueueManager {
 	private boolean suspended;
 
 	QueueManagerImpl(QueueStore queueStore, NodeId nodeId) {
-		Assert.notNull(nodeId, "nodeId shouldn't be null");
+		shouldNotBeNull(queueStore, "queueStore should be specified");
+		shouldNotBeNull(nodeId, "nodeId should be specified");
+		shouldNotBe(nodeId.equals(ANY_NODE), "nodeId shouldn't be ANY_NODE");
+
 		this.queueStore = queueStore;
 		this.nodeId = nodeId;
 	}
@@ -34,6 +39,8 @@ class QueueManagerImpl implements QueueManager {
 
 	@Override
 	public rx.Observable<Event> bind(rx.Observable<Cmd> input) {
+
+		Assert.notNull(input, "input should be specified");
 
 		input.ofType(EnqueueCmd.class)
 			.subscribe(this::enqueue);

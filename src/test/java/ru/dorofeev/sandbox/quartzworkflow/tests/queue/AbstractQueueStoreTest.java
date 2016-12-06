@@ -33,7 +33,8 @@ public abstract class AbstractQueueStoreTest {
 
 	private static final QueueTracker queueTracker = new QueueTracker();
 	private static final UUIDGenerator uuidGenerator = new SimpleUUIDGenerator();
-	private static final NodeId nodeId = new NodeId("testNode");
+	private static final NodeId node1 = new NodeId("node1");
+	private static final NodeId node2 = new NodeId("node2");
 
 	@Rule
 	public final ExpectedException expectedException = ExpectedException.none();
@@ -42,19 +43,21 @@ public abstract class AbstractQueueStoreTest {
 
 	@Test
 	public void test050_initialData() {
-		insertQueueItem("q1", PARALLEL);	// 1
-		insertQueueItem("q1", PARALLEL);	// 2
-		insertQueueItem("q2", PARALLEL);	// 3
-		insertQueueItem("q2", PARALLEL);	// 4
-		insertQueueItem("q1", EXCLUSIVE);	// 5
-		insertQueueItem("q2", EXCLUSIVE);	// 6
+		insertQueueItem("q1", PARALLEL, node1);	// 1L
+		insertQueueItem("q1", PARALLEL, node1);	// 2L
+		insertQueueItem("q1", PARALLEL, ANY_NODE);	// 3L
+		insertQueueItem("q2", PARALLEL, node2);	// 4L 4
+		insertQueueItem("q2", PARALLEL, node2);	// 5L 5
+		insertQueueItem("q2", PARALLEL, ANY_NODE);	// 6L
+		insertQueueItem("q1", EXCLUSIVE, ANY_NODE);	// 7L 7
+		insertQueueItem("q2", EXCLUSIVE, ANY_NODE);	// 8L 8
 
-		insertQueueItem("q3", PARALLEL);	// 7
-		insertQueueItem("q3", PARALLEL);	// 8
-		insertQueueItem("q4", PARALLEL);	// 9
-		insertQueueItem("q4", PARALLEL);	// 10
-		insertQueueItem("q3", EXCLUSIVE);	// 11
-		insertQueueItem("q4", EXCLUSIVE);	// 12
+		insertQueueItem("q3", PARALLEL, node1);	// 9L 9
+		insertQueueItem("q3", PARALLEL, node2);	// 10L 10
+		insertQueueItem("q4", PARALLEL, node1);	// 11L 11
+		insertQueueItem("q4", PARALLEL, node2);	// 12L 12
+		insertQueueItem("q3", EXCLUSIVE, ANY_NODE);	// 13L 13
+		insertQueueItem("q4", EXCLUSIVE, ANY_NODE);	// 14L 14
 	}
 
 	@Test
@@ -68,50 +71,55 @@ public abstract class AbstractQueueStoreTest {
 	@Test
 	public void test070_popParallel() {
 
-		popNext("q1", asList(1L, 2L));
-		popNext("q2", asList(3L, 4L));
+		popNext("q1", node2, singletonList(3L));
+		popNext("q1", node1, asList(1L, 2L));
+
+		popNext("q2", node1, singletonList(6L));
+		popNext("q2", node2, asList(4L, 5L));
 	}
 
 	@Test
 	public void test080_releasePoppedAndPopExclusive() {
-		release(1L, 2L);
-		popNext("q1", singletonList(5L));
+		release(1L, 2L, 3L);
+		popNext("q1", node1 , singletonList(7L));
 
-		release(3L, 4L);
-		popNext("q2", singletonList(6L));
+		release(4L, 5L, 6L);
+		popNext("q2", node2, singletonList(8L));
 	}
 
 	@Test
 	public void test090_popParallelAllQueues() {
-		release(5L, 6L);
-		popNext(null, asList(7L, 8L, 9L, 10L));
+		release(7L, 8L);
+
+		popNext(null, node1, asList(9L, 11L));
+		popNext(null, node2, asList(10L, 12L));
 	}
 
 	@Test
 	public void test100_releasePoppedAndPopExclusive_allQueues() {
-		release(7L, 8L, 9L, 10L);
-		popNext(null, asList(11L, 12L));
+		release(9L, 10L, 11L, 12L);
+		popNext(null, node1, asList(13L, 14L));
 	}
 
-	private void insertQueueItem(String queueName, QueueingOptions.ExecutionType executionType) {
-		queueTracker.add(queueStore().insertQueueItem(newJobId(), queueName, executionType, ANY_NODE));
+	private void insertQueueItem(String queueName, QueueingOptions.ExecutionType executionType, NodeId nodeId) {
+		queueTracker.add(queueStore().insertQueueItem(newJobId(), queueName, executionType, nodeId));
 	}
 
 	private JobId newJobId() {
 		return new JobId(uuidGenerator.newUuid());
 	}
 
-	private void popNext(String queueName, List<Long> expectedItems) {
+	private void popNext(String queueName, NodeId nodeId, List<Long> expectedItems) {
 		System.out.println("Getting next " + expectedItems.size() + " queue items...");
 
 		for (Long expectedItem : expectedItems)
-			popNext(queueName, is(equalTo(of(expectedItem))));
+			popNext(queueName, nodeId, is(equalTo(of(expectedItem))));
 
-		popNext(queueName, is(equalTo(empty())));
+		popNext(queueName, nodeId, is(equalTo(empty())));
 	}
 
-	private void popNext(String queueName, Matcher<Optional<Long>> ordinalMatcher) {
-		Optional<JobId> jobIdOptional = queueStore().popNextPendingQueueItem(queueName, nodeId);
+	private void popNext(String queueName, NodeId node, Matcher<Optional<Long>> ordinalMatcher) {
+		Optional<JobId> jobIdOptional = queueStore().popNextPendingQueueItem(queueName, node);
 		System.out.println(jobIdOptional);
 
 		assertThat(jobIdOptional.map(jobId -> queueTracker.byJobId(jobId).getOrdinal()), ordinalMatcher);

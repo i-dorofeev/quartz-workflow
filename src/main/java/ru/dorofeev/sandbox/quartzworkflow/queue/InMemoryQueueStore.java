@@ -12,6 +12,11 @@ import static java.util.Comparator.comparingLong;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static java.util.Optional.ofNullable;
+import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
+import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.shouldNotBe;
+import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.shouldNotBeNull;
 
 class InMemoryQueueStore implements QueueStore {
 
@@ -21,15 +26,20 @@ class InMemoryQueueStore implements QueueStore {
 		final JobId jobId;
 		final QueueingOptions.ExecutionType executionType;
 		final String queueName;
+		final NodeId nodeId;
 
 		QueueItemStatus status;
 
-		InMemoryQueueItem(long ordinal, JobId jobId, String queueName, QueueingOptions.ExecutionType executionType) {
+		InMemoryQueueItem(long ordinal, JobId jobId, String queueName, QueueingOptions.ExecutionType executionType, NodeId nodeId) {
+
+			shouldNotBeNull(nodeId, "nodeId should be specified");
+
 			this.ordinal = ordinal;
 			this.jobId = jobId;
 			this.queueName = queueName;
 			this.executionType = executionType;
 			this.status = QueueItemStatus.PENDING;
+			this.nodeId = nodeId;
 		}
 
 		@Override
@@ -69,7 +79,7 @@ class InMemoryQueueStore implements QueueStore {
 			if (queue.stream().filter(qi -> qi.jobId.equals(jobId)).count() > 0)
 				throw new QueueStoreException(jobId + " is already enqueued");
 
-			InMemoryQueueItem inMemoryQueueItem = new InMemoryQueueItem(++ordinalSeq, jobId, queueName, executionType);
+			InMemoryQueueItem inMemoryQueueItem = new InMemoryQueueItem(++ordinalSeq, jobId, queueName, executionType, nodeId);
 			queue.add(inMemoryQueueItem);
 			return inMemoryQueueItem;
 		}
@@ -78,7 +88,7 @@ class InMemoryQueueStore implements QueueStore {
 	private boolean anyExclusivePopped(String queueName) {
 		return queue.stream()
 			.filter(qi -> qi.queueName.equals(queueName))
-			.filter(qi -> qi.status == QueueItemStatus.POPPED && qi.executionType == QueueingOptions.ExecutionType.EXCLUSIVE)
+			.filter(qi -> qi.status == QueueItemStatus.POPPED && qi.executionType == EXCLUSIVE)
 			.count() != 0;
 	}
 
@@ -89,24 +99,37 @@ class InMemoryQueueStore implements QueueStore {
 			.count() != 0;
 	}
 
-	private Optional<InMemoryQueueItem> getNextPending(Predicate<String> queueNamePredicate) {
+	private Optional<InMemoryQueueItem> getNextPending(Predicate<String> queueNamePredicate, NodeId nodeId) {
 		return queue.stream()
 			.filter(qi -> queueNamePredicate.test(qi.queueName))
+			.filter(qi -> isEligibleForNode(qi, nodeId))
 			.filter(qi -> qi.status == QueueItemStatus.PENDING)
 			.findFirst();
 	}
 
+	private boolean isEligibleForNode(InMemoryQueueItem queueItem, NodeId nodeId) {
+
+		shouldNotBeNull(nodeId, "nodeId should be specified");
+		shouldNotBe(ANY_NODE.equals(nodeId), "nodeId should not be ANY_NODE");
+
+		return queueItem.nodeId.equals(nodeId) || queueItem.nodeId.equals(ANY_NODE);
+	}
+
 	@Override
 	public Optional<JobId> popNextPendingQueueItem(String queueName, NodeId nodeId) {
+
+		shouldNotBeNull(nodeId, "nodeId should be specified");
+		shouldNotBe(ANY_NODE.equals(nodeId), "nodeId shouldn't be ANY_NODE");
+
 		synchronized (sync) {
-			Optional<InMemoryQueueItem> nextItemOpt = getNextPending(queueName != null ? queueName::equals : qn -> true);
+			Optional<InMemoryQueueItem> nextItemOpt = getNextPending(queueName != null ? queueName::equals : qn -> true, nodeId);
 
 			return nextItemOpt.flatMap(nextItem -> {
-				if (nextItem.executionType == QueueingOptions.ExecutionType.PARALLEL && !anyExclusivePopped(nextItem.queueName)) {
+				if (nextItem.executionType == PARALLEL /*&& isEligibleForNode(nextItem, nodeId)*/ && !anyExclusivePopped(nextItem.queueName)) {
 					nextItem.status = QueueItemStatus.POPPED;
 					return of(nextItem.jobId);
 
-				} else if (nextItem.executionType == QueueingOptions.ExecutionType.EXCLUSIVE && !anyPopped(nextItem.queueName)) {
+				} else if (nextItem.executionType == EXCLUSIVE /*&& isEligibleForNode(nextItem, nodeId)*/ && !anyPopped(nextItem.queueName)) {
 					nextItem.status = QueueItemStatus.POPPED;
 					return of(nextItem.jobId);
 

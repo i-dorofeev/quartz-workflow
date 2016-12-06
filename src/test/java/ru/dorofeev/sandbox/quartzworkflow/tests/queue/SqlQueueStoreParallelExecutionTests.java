@@ -7,6 +7,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.sql.SqlQueueItem;
 import ru.dorofeev.sandbox.quartzworkflow.queue.sql.SqlQueueStore;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlDb;
@@ -25,6 +26,8 @@ public class SqlQueueStoreParallelExecutionTests {
 
 	private static HSqlDb hsql;
 	private static SqlQueueStore queueStore;
+
+	private static final NodeId nodeId = new NodeId("SqlQueueStoreParallelExecutionTests");
 
 
 	@BeforeClass
@@ -51,10 +54,10 @@ public class SqlQueueStoreParallelExecutionTests {
 			.forEach(i -> queueStore.insertQueueItem(new JobId("job" + i), "default", PARALLEL, ANY_NODE));
 
 		SqlQueueStore.PopNextOperation op1 = queueStore.newPopNextOperation();
-		op1.query("default", 5);
+		op1.query("default", nodeId, 5);
 
 		SqlQueueStore.PopNextOperation op2 = queueStore.newPopNextOperation();
-		op2.query("default", 5);
+		op2.query("default", nodeId, 5);
 
 		List<SqlQueueItem> queueItems1 = op1.getQueueItems();
 		List<SqlQueueItem> queueItems2 = op2.getQueueItems();

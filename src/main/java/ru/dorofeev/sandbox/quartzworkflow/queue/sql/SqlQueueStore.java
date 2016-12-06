@@ -25,6 +25,7 @@ import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueItemStatus.PENDING;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.sql.SqlQueueItem.fromNodeId;
 import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.*;
 import static ru.dorofeev.sandbox.quartzworkflow.utils.SqlUtils.identifiersEqual;
 
@@ -69,11 +70,11 @@ public class SqlQueueStore implements QueueStore {
 		return properties;
 	}
 
-	private List<SqlQueueItem> popNext(String queueName, int maxResults) {
+	private List<SqlQueueItem> popNext(String queueName, NodeId nodeId, int maxResults) {
 
 		try (PopNextOperation op = newPopNextOperation()) {
 
-			op.query(queueName, maxResults);
+			op.query(queueName, nodeId, maxResults);
 			return op.getQueueItems();
 		}
 	}
@@ -93,7 +94,7 @@ public class SqlQueueStore implements QueueStore {
 
 		try (TransactionScope tx = new TransactionScope(sessionFactory)) {
 
-			SqlQueueItem queueItem = new SqlQueueItem(jobId.toString(), queueName, executionType, PENDING);
+			SqlQueueItem queueItem = new SqlQueueItem(jobId.toString(), queueName, executionType, PENDING, fromNodeId(nodeId));
 			tx.session.save(queueItem);
 
 			tx.transaction.commit();
@@ -118,7 +119,7 @@ public class SqlQueueStore implements QueueStore {
 			if (nextJobId != null)
 				return of(nextJobId);
 
-			popNext(queueName, fetchSize).stream()
+			popNext(queueName, nodeId, fetchSize).stream()
 				.map(QueueItem::getJobId)
 				.forEach(localQueue::add);
 
@@ -175,8 +176,8 @@ public class SqlQueueStore implements QueueStore {
 			this.tx = new TransactionScope(sessionFactory);
 		}
 
-		public void query(String queueName, int maxResults) {
-			results = popNext(tx, queueName, maxResults)
+		public void query(String queueName, NodeId nodeId, int maxResults) {
+			results = popNext(tx, queueName, nodeId, maxResults)
 				.toList().toBlocking().single();
 		}
 
@@ -194,14 +195,14 @@ public class SqlQueueStore implements QueueStore {
 			}
 		}
 
-		private Observable<SqlQueueItem> popNext(TransactionScope tx, String queueName, int maxResults) {
+		private Observable<SqlQueueItem> popNext(TransactionScope tx, String queueName, NodeId nodeId, int maxResults) {
 
 			HashMap<String, ExecutionType> executionTypesByQueue = fetchCurrentExecutionTypeByQueue(tx, queueName);
 
 			return Observable.<SqlQueueItem>create(subscriber -> {
 				List<SqlQueueItem> nextItems = queueName == null ?
-					fetchNextPendingQueueItems(tx, maxResults) :
-					fetchNextPendingQueueItems(tx, queueName, maxResults);
+					fetchNextPendingQueueItems(tx, nodeId, maxResults) :
+					fetchNextPendingQueueItems(tx, queueName, nodeId, maxResults);
 
 				for (SqlQueueItem qi : nextItems) {
 					if (PARALLEL.equals(qi.getExecutionType()) && executionTypesByQueue.get(qi.getQueueName()) == null) {
@@ -223,24 +224,31 @@ public class SqlQueueStore implements QueueStore {
 			}).doOnNext(qi -> qi.setStatus(QueueItemStatus.POPPED));
 		}
 
-		private List<SqlQueueItem> fetchNextPendingQueueItems(TransactionScope tx, int maxResults) {
+		private List<SqlQueueItem> fetchNextPendingQueueItems(TransactionScope tx, NodeId nodeId, int maxResults) {
 			//noinspection unchecked
 			return tx.session
-				.createQuery("from SqlQueueItem qi where status=:status order by qi.ordinal")
+				.createQuery(
+					"from SqlQueueItem qi " +
+						"where status=:status " +
+							"and (nodeId is null or nodeId=:nodeId)" +
+						"order by qi.ordinal")
 				.setParameter("status", PENDING)
+				.setParameter("nodeId", fromNodeId(nodeId))
 				.setMaxResults(maxResults)
 				.list();
 		}
 
-		private List<SqlQueueItem> fetchNextPendingQueueItems(TransactionScope tx, String queueName, int maxResults) {
+		private List<SqlQueueItem> fetchNextPendingQueueItems(TransactionScope tx, String queueName, NodeId nodeId, int maxResults) {
 			//noinspection unchecked
 			return tx.session
 				.createQuery(
 					"from SqlQueueItem qi " +
 						"where status=:status and ( (:queueName is not null and queueName=:queueName) or (:queueName is null) ) " +
+							"and (nodeId is null or nodeId=:nodeId)" +
 						"order by qi.ordinal")
 				.setParameter("status", PENDING)
 				.setParameter("queueName", queueName)
+				.setParameter("nodeId", fromNodeId(nodeId))
 				.setMaxResults(maxResults)
 				.list();
 		}

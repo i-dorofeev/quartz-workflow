@@ -1,6 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.queue.sql;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItem;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItemStatus;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
@@ -9,7 +10,9 @@ import ru.dorofeev.sandbox.quartzworkflow.utils.entrypoint.Hibernate;
 import javax.persistence.*;
 
 import static javax.persistence.EnumType.STRING;
+import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.sql.SqlQueueItem.UK_QUEUE_JOBID_CONSTRAINT;
+import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.shouldNotBeNull;
 
 @Entity
 @Table(name = "queue",
@@ -37,6 +40,9 @@ public class SqlQueueItem implements QueueItem {
 	@Enumerated(STRING)
 	private QueueItemStatus status;
 
+	@Column(name = "nodeId")
+	private String nodeId;
+
 	@Version
 	private int version;
 
@@ -44,11 +50,12 @@ public class SqlQueueItem implements QueueItem {
 	public SqlQueueItem() {
 	}
 
-	public SqlQueueItem(String jobIdStr, String queueName, ExecutionType executionType, QueueItemStatus status) {
+	public SqlQueueItem(String jobIdStr, String queueName, ExecutionType executionType, QueueItemStatus status, String nodeId) {
 		this.jobIdStr = jobIdStr;
 		this.queueName = queueName;
 		this.executionType = executionType;
 		this.status = status;
+		this.nodeId = nodeId;
 	}
 
 	@Hibernate
@@ -111,6 +118,16 @@ public class SqlQueueItem implements QueueItem {
 	}
 
 	@Hibernate
+	public String getNodeId() {
+		return nodeId;
+	}
+
+	@Hibernate
+	public void setNodeId(String nodeId) {
+		this.nodeId = nodeId;
+	}
+
+	@Hibernate
 	public int getVersion() {
 		return version;
 	}
@@ -123,9 +140,20 @@ public class SqlQueueItem implements QueueItem {
 	@Override
 	public String toString() {
 		return "SqlQueueItem{" +
-			jobIdStr +
-			"/" + executionType +
-			"/" + status +
+			"ordinal=" + ordinal +
+			", jobIdStr='" + jobIdStr + '\'' +
+			", queueName='" + queueName + '\'' +
+			", executionType=" + executionType +
+			", status=" + status +
+			", nodeId='" + nodeId + '\'' +
+			", version=" + version +
 			'}';
+	}
+
+	public static String fromNodeId(NodeId nodeId) {
+
+		shouldNotBeNull(nodeId, "nodeId should be specified");
+
+		return ANY_NODE.equals(nodeId) ? null : nodeId.toString();
 	}
 }

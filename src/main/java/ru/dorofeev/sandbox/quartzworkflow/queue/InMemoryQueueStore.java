@@ -125,11 +125,11 @@ class InMemoryQueueStore implements QueueStore {
 			Optional<InMemoryQueueItem> nextItemOpt = getNextPending(queueName != null ? queueName::equals : qn -> true, nodeId);
 
 			return nextItemOpt.flatMap(nextItem -> {
-				if (nextItem.executionType == PARALLEL /*&& isEligibleForNode(nextItem, nodeId)*/ && !anyExclusivePopped(nextItem.queueName)) {
+				if (nextItem.executionType == PARALLEL && !anyExclusivePopped(nextItem.queueName)) {
 					nextItem.status = QueueItemStatus.POPPED;
 					return of(nextItem.jobId);
 
-				} else if (nextItem.executionType == EXCLUSIVE /*&& isEligibleForNode(nextItem, nodeId)*/ && !anyPopped(nextItem.queueName)) {
+				} else if (nextItem.executionType == EXCLUSIVE && !anyPopped(nextItem.queueName)) {
 					nextItem.status = QueueItemStatus.POPPED;
 					return of(nextItem.jobId);
 

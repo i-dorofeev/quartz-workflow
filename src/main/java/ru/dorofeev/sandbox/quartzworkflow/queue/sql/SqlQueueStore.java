@@ -21,6 +21,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static java.util.Collections.emptyList;
 import static java.util.Optional.*;
+import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueItemStatus.PENDING;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
@@ -109,7 +110,8 @@ public class SqlQueueStore implements QueueStore {
 	@Override
 	public Optional<JobId> popNextPendingQueueItem(String queueName, NodeId nodeId) {
 
-		shouldNotBeNull(nodeId, "nodeId should be specified. Use NodeId.ANY_NODE if it isn't required to pop queue items for a specific node");
+		shouldNotBeNull(nodeId, "nodeId should be specified");
+		shouldNotBe(ANY_NODE.equals(nodeId), "nodeId shouldn't be ANY_NODE");
 
 		synchronized (localQueue) {
 			JobId nextJobId = localQueue.poll();

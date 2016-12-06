@@ -17,6 +17,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.Is.is;
+import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
 import static rx.Observable.range;
 
@@ -47,7 +48,7 @@ public class SqlQueueStoreParallelExecutionTests {
 	public void test050_parallelExecution() {
 
 		range(0, 4)
-			.forEach(i -> queueStore.insertQueueItem(new JobId("job" + i), "default", PARALLEL, null));
+			.forEach(i -> queueStore.insertQueueItem(new JobId("job" + i), "default", PARALLEL, ANY_NODE));
 
 		SqlQueueStore.PopNextOperation op1 = queueStore.newPopNextOperation();
 		op1.query("default", 5);

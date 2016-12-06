@@ -6,6 +6,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItem;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueStore;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreException;
@@ -23,6 +24,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.junit.runners.MethodSorters.NAME_ASCENDING;
+import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
 
@@ -31,6 +33,7 @@ public abstract class AbstractQueueStoreTest {
 
 	private static final QueueTracker queueTracker = new QueueTracker();
 	private static final UUIDGenerator uuidGenerator = new SimpleUUIDGenerator();
+	private static final NodeId nodeId = new NodeId("testNode");
 
 	@Rule
 	public final ExpectedException expectedException = ExpectedException.none();
@@ -59,7 +62,7 @@ public abstract class AbstractQueueStoreTest {
 		expectedException.expect(QueueStoreException.class);
 		expectedException.expectMessage(containsString("is already enqueued"));
 
-		queueStore().insertQueueItem(queueTracker.lastAdded().getJobId(), "q9", PARALLEL, null);
+		queueStore().insertQueueItem(queueTracker.lastAdded().getJobId(), "q9", PARALLEL, ANY_NODE);
 	}
 
 	@Test
@@ -91,7 +94,7 @@ public abstract class AbstractQueueStoreTest {
 	}
 
 	private void insertQueueItem(String queueName, QueueingOptions.ExecutionType executionType) {
-		queueTracker.add(queueStore().insertQueueItem(newJobId(), queueName, executionType, null));
+		queueTracker.add(queueStore().insertQueueItem(newJobId(), queueName, executionType, ANY_NODE));
 	}
 
 	private JobId newJobId() {
@@ -108,7 +111,7 @@ public abstract class AbstractQueueStoreTest {
 	}
 
 	private void popNext(String queueName, Matcher<Optional<Long>> ordinalMatcher) {
-		Optional<JobId> jobIdOptional = queueStore().popNextPendingQueueItem(queueName, null);
+		Optional<JobId> jobIdOptional = queueStore().popNextPendingQueueItem(queueName, nodeId);
 		System.out.println(jobIdOptional);
 
 		assertThat(jobIdOptional.map(jobId -> queueTracker.byJobId(jobId).getOrdinal()), ordinalMatcher);

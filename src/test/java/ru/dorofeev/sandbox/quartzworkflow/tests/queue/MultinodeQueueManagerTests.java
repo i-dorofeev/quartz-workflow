@@ -4,6 +4,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.NodeId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManagerFactory;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.HSqlServices;
@@ -81,7 +82,7 @@ public class MultinodeQueueManagerTests {
 		queueManager2.suspend();
 
 		IntStream.range(0, EVENT_COUNT)
-			.mapToObj(i -> enqueueCmd(EXCLUSIVE, jobId("job" + i)))
+			.mapToObj(i -> enqueueCmd(EXCLUSIVE, jobId("job" + i), NodeSpecification.ANY_NODE))
 			.forEach(cmd -> qm1Cmds.onNext(cmd));
 
 		queueManager1.resume();

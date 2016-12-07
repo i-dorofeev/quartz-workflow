@@ -7,6 +7,7 @@ import org.hibernate.dialect.Dialect;
 import org.hibernate.exception.ConstraintViolationException;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.NodeId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItem;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItemStatus;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueStore;
@@ -21,11 +22,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static java.util.Collections.emptyList;
 import static java.util.Optional.*;
-import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueItemStatus.PENDING;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
-import static ru.dorofeev.sandbox.quartzworkflow.queue.sql.SqlQueueItem.fromNodeId;
 import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.*;
 import static ru.dorofeev.sandbox.quartzworkflow.utils.SqlUtils.identifiersEqual;
 
@@ -85,16 +84,16 @@ public class SqlQueueStore implements QueueStore {
 	}
 
 	@Override
-	public QueueItem insertQueueItem(JobId jobId, String queueName, ExecutionType executionType, NodeId nodeId) throws QueueStoreException {
+	public QueueItem insertQueueItem(JobId jobId, String queueName, ExecutionType executionType, NodeSpecification nodeSpecification) throws QueueStoreException {
 
 		shouldNotBeNull(jobId, "jobId should be supplied");
 		shouldNotBeNull(queueName, "queueName should be supplied");
 		shouldNotBeNull(executionType, "executionType should be supplied");
-		shouldNotBeNull(nodeId, "nodeId should be specified. Use NodeId.ANY_NODE if it isn't required to run a job on a specific node.");
+		shouldNotBeNull(nodeSpecification, "nodeId should be specified. Use NodeId.ANY_NODE if it isn't required to run a job on a specific node.");
 
 		try (TransactionScope tx = new TransactionScope(sessionFactory)) {
 
-			SqlQueueItem queueItem = new SqlQueueItem(jobId.toString(), queueName, executionType, PENDING, fromNodeId(nodeId));
+			SqlQueueItem queueItem = new SqlQueueItem(jobId.toString(), queueName, executionType, PENDING, nodeSpecification.asString());
 			tx.session.save(queueItem);
 
 			tx.transaction.commit();
@@ -112,7 +111,6 @@ public class SqlQueueStore implements QueueStore {
 	public Optional<JobId> popNextPendingQueueItem(String queueName, NodeId nodeId) {
 
 		shouldNotBeNull(nodeId, "nodeId should be specified");
-		shouldNotBe(ANY_NODE.equals(nodeId), "nodeId shouldn't be ANY_NODE");
 
 		synchronized (localQueue) {
 			JobId nextJobId = localQueue.poll();
@@ -230,10 +228,11 @@ public class SqlQueueStore implements QueueStore {
 				.createQuery(
 					"from SqlQueueItem qi " +
 						"where status=:status " +
-							"and (nodeId is null or nodeId=:nodeId)" +
+							"and (nodeSpecification=:anyNode or nodeSpecification=:nodeId)" +
 						"order by qi.ordinal")
 				.setParameter("status", PENDING)
-				.setParameter("nodeId", fromNodeId(nodeId))
+				.setParameter("anyNode", NodeSpecification.ANY_NODE_STRING_SPECIFICATION)
+				.setParameter("nodeId", nodeId.value())
 				.setMaxResults(maxResults)
 				.list();
 		}
@@ -244,11 +243,12 @@ public class SqlQueueStore implements QueueStore {
 				.createQuery(
 					"from SqlQueueItem qi " +
 						"where status=:status and ( (:queueName is not null and queueName=:queueName) or (:queueName is null) ) " +
-							"and (nodeId is null or nodeId=:nodeId)" +
+							"and (nodeSpecification=:anyNode or nodeSpecification=:nodeId)" +
 						"order by qi.ordinal")
 				.setParameter("status", PENDING)
 				.setParameter("queueName", queueName)
-				.setParameter("nodeId", fromNodeId(nodeId))
+				.setParameter("anyNode", NodeSpecification.ANY_NODE_STRING_SPECIFICATION)
+				.setParameter("nodeId", nodeId.value())
 				.setMaxResults(maxResults)
 				.list();
 		}

@@ -2,6 +2,8 @@ package ru.dorofeev.sandbox.quartzworkflow.jobs.ram;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepositoryException;
@@ -11,8 +13,8 @@ import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
 import ru.dorofeev.sandbox.quartzworkflow.utils.RandomUUIDGenerator;
-import rx.*;
 import rx.Observable;
+import rx.Subscriber;
 import rx.functions.Func1;
 
 import java.util.*;
@@ -20,6 +22,7 @@ import java.util.*;
 import static java.lang.Enum.valueOf;
 import static java.util.Optional.ofNullable;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.CREATED;
+import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.shouldNotBeNull;
 
 public class InMemoryJobStore implements JobStore {
 
@@ -64,8 +67,10 @@ public class InMemoryJobStore implements JobStore {
 	}
 
 	@Override
-	public Job saveNewJob(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created) {
+	public Job saveNewJob(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created, NodeSpecification targetNodeSpecification) {
 		synchronized (sync) {
+
+			shouldNotBeNull(targetNodeSpecification, "Target node specification should not be null.");
 
 			if (parentId != null && !jobTable.containsKey(parentId.toString()))
 				throw new JobRepositoryException("Job[id=" + parentId + "] not found");
@@ -85,6 +90,7 @@ public class InMemoryJobStore implements JobStore {
 			job.setQueueName(queueName);
 			job.setSerializedArgs(serializedArgs.build());
 			job.setCreated(created);
+			job.setTargetNodeSpecification(targetNodeSpecification.asString());
 
 			jobTable.put(jobId, job);
 
@@ -105,10 +111,12 @@ public class InMemoryJobStore implements JobStore {
 		JobKey jobKey = new JobKey(record.getJobKey());
 		SerializedObject args = serializedObjectFactory.spawn(record.getSerializedArgs());
 		Date created = record.getCreated();
+		NodeSpecification targetNodeSpecification = NodeSpecification.fromString(record.getTargetNodeSpecification());
 		Long executionDuration = record.getExecutionDuration();
 		Date completed = record.getCompleted();
+		NodeId completedNodeId = NodeId.fromString(record.getCompletedNodeId());
 
-		return new Job(id, parentId, queueName, executionType, result, exception, jobKey, args, created, executionDuration, completed);
+		return new Job(id, parentId, queueName, executionType, result, exception, jobKey, args, created, targetNodeSpecification, executionDuration, completed, completedNodeId);
 	}
 
 	private void traverseByRoot(String rootId, Subscriber<? super Job> subscriber) {

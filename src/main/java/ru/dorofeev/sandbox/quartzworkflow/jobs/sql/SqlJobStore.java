@@ -11,6 +11,8 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepositoryException;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobStore;
@@ -110,10 +112,10 @@ public class SqlJobStore implements JobStore {
 	}
 
 	@Override
-	public Job saveNewJob(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created) {
+	public Job saveNewJob(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created, NodeSpecification targetNodeSpecification) {
 
 		return transactionTemplate.execute(status -> {
-			SqlJobStoreData sqlJobStoreData = insertNewJobStoreData(parentId, queueName, executionType, jobKey, args, created);
+			SqlJobStoreData sqlJobStoreData = insertNewJobStoreData(parentId, queueName, executionType, jobKey, args, created, targetNodeSpecification);
 
 			jdbcTemplate.update(
 				insertInto(TBL_JOB_STORE_HIERARCHY)
@@ -133,11 +135,11 @@ public class SqlJobStore implements JobStore {
 		});
 	}
 
-	private SqlJobStoreData insertNewJobStoreData(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created) {
+	private SqlJobStoreData insertNewJobStoreData(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created, NodeSpecification targetNodeSpecification) {
 		int attempts = 100;
 		while (attempts > 0) {
 			try {
-				SqlJobStoreData sqlJobStoreData = newJobData(parentId, queueName, executionType, jobKey, args, created);
+				SqlJobStoreData sqlJobStoreData = newJobData(parentId, queueName, executionType, jobKey, args, created, targetNodeSpecification);
 				insertJobStoreData.execute(new BeanPropertySqlParameterSource(sqlJobStoreData));
 				return sqlJobStoreData;
 			} catch (DuplicateKeyException e) {
@@ -158,16 +160,18 @@ public class SqlJobStore implements JobStore {
 		JobKey jobKey = new JobKey(record.getJobKey());
 		SerializedObject args = serializedObjectFactory.spawn(record.getArgs());
 		Timestamp created = record.getCreated();
+		NodeSpecification targetNodeSpecification = NodeSpecification.fromString(record.getTargetNodeSpecification());
 		Optional<Long> executionDuration = ofNullable(record.getExecutionDuration());
 		Optional<Timestamp> completed = ofNullable(record.getCompleted());
+		NodeId completedNodeId = NodeId.fromString(record.getCompletedNodeId());
 
 		return new Job(id, parentId, queueName, executionType, result, exception, jobKey, args,
 			new Date(created.getTime()),
-			executionDuration.orElse(null),
-			completed.map(v -> new Date(v.getTime())).orElse(null));
+			targetNodeSpecification, executionDuration.orElse(null),
+			completed.map(v -> new Date(v.getTime())).orElse(null), completedNodeId);
 	}
 
-	private SqlJobStoreData newJobData(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created) {
+	private SqlJobStoreData newJobData(JobId parentId, String queueName, ExecutionType executionType, JobKey jobKey, Serializable args, Date created, NodeSpecification targetNodeSpecification) {
 		SerializedObject serializedArgs = serializedObjectFactory.spawn();
 		args.serializeTo(serializedArgs);
 
@@ -181,8 +185,8 @@ public class SqlJobStore implements JobStore {
 			jobKey.toString(),
 			serializedArgs.build(),
 			new java.sql.Timestamp(created.getTime()),
-			null,
-			null);
+			targetNodeSpecification.asString(), null,
+			null, null);
 	}
 
 	@Override

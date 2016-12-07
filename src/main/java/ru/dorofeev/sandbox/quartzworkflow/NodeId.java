@@ -1,20 +1,26 @@
 package ru.dorofeev.sandbox.quartzworkflow;
 
-import org.springframework.util.Assert;
+import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.shouldNotBeEmpty;
 
 public class NodeId {
 
-	public static final NodeId ANY_NODE = new NodeId();
+	public static NodeId fromString(String nodeId) {
+		if (nodeId == null)
+			return null;
+		else
+			return new NodeId(nodeId);
+	}
 
 	private final String id;
 
 	public NodeId(String id) {
-		Assert.notNull(id, "id mustn't be null. Use ANY_NODE constant instead.");
+		shouldNotBeEmpty(id, "Node id should not be empty or null string.");
+
 		this.id = id;
 	}
 
-	private NodeId() {
-		this.id = null;
+	public String value() {
+		return id;
 	}
 
 	@Override

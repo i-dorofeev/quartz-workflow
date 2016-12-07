@@ -7,6 +7,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.NodeId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItem;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueStore;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreException;
@@ -24,7 +25,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.junit.runners.MethodSorters.NAME_ASCENDING;
-import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
+import static ru.dorofeev.sandbox.quartzworkflow.NodeSpecification.ANY_NODE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.EXCLUSIVE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
 
@@ -43,19 +44,19 @@ public abstract class AbstractQueueStoreTest {
 
 	@Test
 	public void test050_initialData() {
-		insertQueueItem("q1", PARALLEL, node1);	// 1L
-		insertQueueItem("q1", PARALLEL, node1);	// 2L
+		insertQueueItem("q1", PARALLEL, new NodeSpecification(node1));	// 1L
+		insertQueueItem("q1", PARALLEL, new NodeSpecification(node1));	// 2L
 		insertQueueItem("q1", PARALLEL, ANY_NODE);	// 3L
-		insertQueueItem("q2", PARALLEL, node2);	// 4L 4
-		insertQueueItem("q2", PARALLEL, node2);	// 5L 5
+		insertQueueItem("q2", PARALLEL, new NodeSpecification(node2));	// 4L 4
+		insertQueueItem("q2", PARALLEL, new NodeSpecification(node2));	// 5L 5
 		insertQueueItem("q2", PARALLEL, ANY_NODE);	// 6L
 		insertQueueItem("q1", EXCLUSIVE, ANY_NODE);	// 7L 7
 		insertQueueItem("q2", EXCLUSIVE, ANY_NODE);	// 8L 8
 
-		insertQueueItem("q3", PARALLEL, node1);	// 9L 9
-		insertQueueItem("q3", PARALLEL, node2);	// 10L 10
-		insertQueueItem("q4", PARALLEL, node1);	// 11L 11
-		insertQueueItem("q4", PARALLEL, node2);	// 12L 12
+		insertQueueItem("q3", PARALLEL, new NodeSpecification(node1));	// 9L 9
+		insertQueueItem("q3", PARALLEL, new NodeSpecification(node2));	// 10L 10
+		insertQueueItem("q4", PARALLEL, new NodeSpecification(node1));	// 11L 11
+		insertQueueItem("q4", PARALLEL, new NodeSpecification(node2));	// 12L 12
 		insertQueueItem("q3", EXCLUSIVE, ANY_NODE);	// 13L 13
 		insertQueueItem("q4", EXCLUSIVE, ANY_NODE);	// 14L 14
 	}
@@ -101,8 +102,8 @@ public abstract class AbstractQueueStoreTest {
 		popNext(null, node1, asList(13L, 14L));
 	}
 
-	private void insertQueueItem(String queueName, QueueingOptions.ExecutionType executionType, NodeId nodeId) {
-		queueTracker.add(queueStore().insertQueueItem(newJobId(), queueName, executionType, nodeId));
+	private void insertQueueItem(String queueName, QueueingOptions.ExecutionType executionType, NodeSpecification nodeSpecification) {
+		queueTracker.add(queueStore().insertQueueItem(newJobId(), queueName, executionType, nodeSpecification));
 	}
 
 	private JobId newJobId() {

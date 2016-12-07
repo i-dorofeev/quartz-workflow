@@ -3,6 +3,7 @@ package ru.dorofeev.sandbox.quartzworkflow.tests.queue;
 import org.junit.*;
 import ru.dorofeev.sandbox.quartzworkflow.Factory;
 import ru.dorofeev.sandbox.quartzworkflow.NodeId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Engine;
 import ru.dorofeev.sandbox.quartzworkflow.engine.Event;
 import ru.dorofeev.sandbox.quartzworkflow.engine.TypedEventHandler;
@@ -120,7 +121,7 @@ public class QueueTest {
 
 		@Override
 		public QueueingOptions getQueueingOption(Event event) {
-			return new QueueingOptions("qqq", QueueingOptions.ExecutionType.EXCLUSIVE);
+			return new QueueingOptions("qqq", QueueingOptions.ExecutionType.EXCLUSIVE, NodeSpecification.ANY_NODE);
 		}
 	}
 
@@ -152,7 +153,7 @@ public class QueueTest {
 
 		@Override
 		public QueueingOptions getQueueingOption(Event event) {
-			return new QueueingOptions("qqq", QueueingOptions.ExecutionType.PARALLEL);
+			return new QueueingOptions("qqq", QueueingOptions.ExecutionType.PARALLEL, NodeSpecification.ANY_NODE);
 		}
 	}
 

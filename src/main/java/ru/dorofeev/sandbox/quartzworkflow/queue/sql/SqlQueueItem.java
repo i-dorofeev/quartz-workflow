@@ -1,7 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.queue.sql;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
-import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItem;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueItemStatus;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
@@ -10,16 +9,14 @@ import ru.dorofeev.sandbox.quartzworkflow.utils.entrypoint.Hibernate;
 import javax.persistence.*;
 
 import static javax.persistence.EnumType.STRING;
-import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.sql.SqlQueueItem.UK_QUEUE_JOBID_CONSTRAINT;
-import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.shouldNotBeNull;
 
 @Entity
 @Table(name = "queue",
        uniqueConstraints = @UniqueConstraint(columnNames = "jobId", name = UK_QUEUE_JOBID_CONSTRAINT))
 public class SqlQueueItem implements QueueItem {
 
-	public static final String UK_QUEUE_JOBID_CONSTRAINT = "UK_QUEUE_JOBID";
+	static final String UK_QUEUE_JOBID_CONSTRAINT = "UK_QUEUE_JOBID";
 
 	@Id
 	@Column(name = "ordinal", nullable = false)
@@ -40,8 +37,8 @@ public class SqlQueueItem implements QueueItem {
 	@Enumerated(STRING)
 	private QueueItemStatus status;
 
-	@Column(name = "nodeId")
-	private String nodeId;
+	@Column(name = "node_specification", nullable = false)
+	private String nodeSpecification;
 
 	@Version
 	private int version;
@@ -50,12 +47,12 @@ public class SqlQueueItem implements QueueItem {
 	public SqlQueueItem() {
 	}
 
-	public SqlQueueItem(String jobIdStr, String queueName, ExecutionType executionType, QueueItemStatus status, String nodeId) {
+	SqlQueueItem(String jobIdStr, String queueName, ExecutionType executionType, QueueItemStatus status, String nodeSpecification) {
 		this.jobIdStr = jobIdStr;
 		this.queueName = queueName;
 		this.executionType = executionType;
 		this.status = status;
-		this.nodeId = nodeId;
+		this.nodeSpecification = nodeSpecification;
 	}
 
 	@Hibernate
@@ -118,13 +115,13 @@ public class SqlQueueItem implements QueueItem {
 	}
 
 	@Hibernate
-	public String getNodeId() {
-		return nodeId;
+	public String getNodeSpecification() {
+		return nodeSpecification;
 	}
 
 	@Hibernate
-	public void setNodeId(String nodeId) {
-		this.nodeId = nodeId;
+	public void setNodeSpecification(String nodeSpecification) {
+		this.nodeSpecification = nodeSpecification;
 	}
 
 	@Hibernate
@@ -145,15 +142,8 @@ public class SqlQueueItem implements QueueItem {
 			", queueName='" + queueName + '\'' +
 			", executionType=" + executionType +
 			", status=" + status +
-			", nodeId='" + nodeId + '\'' +
+			", nodeSpecification='" + nodeSpecification + '\'' +
 			", version=" + version +
 			'}';
-	}
-
-	public static String fromNodeId(NodeId nodeId) {
-
-		shouldNotBeNull(nodeId, "nodeId should be specified");
-
-		return ANY_NODE.equals(nodeId) ? null : nodeId.toString();
 	}
 }

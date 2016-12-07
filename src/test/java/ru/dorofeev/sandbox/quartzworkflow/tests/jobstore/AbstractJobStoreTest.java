@@ -4,6 +4,7 @@ import org.junit.FixMethodOrder;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobStore;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType;
@@ -48,11 +49,11 @@ public abstract class AbstractJobStoreTest {
 	public void test020_addJob() {
 
 		created = new Date();
-		Job newJob = getStore().saveNewJob(/* parentId */ null, "default", EXCLUSIVE, jobKey, args, created);
+		Job newJob = getStore().saveNewJob(/* parentId */ null, "default", EXCLUSIVE, jobKey, args, created, NodeSpecification.ANY_NODE);
 
 		jobId = newJob.getId();
 
-		assertJobsEqual(new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, CREATED, /* exception */ null, jobKey, serializedArgs(args), created, null, null), newJob);
+		assertJobsEqual(new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, CREATED, /* exception */ null, jobKey, serializedArgs(args), created, NodeSpecification.ANY_NODE, null, null, null), newJob);
 
 		assertFindById(newJob.getId(), newJob);
 
@@ -69,7 +70,7 @@ public abstract class AbstractJobStoreTest {
 		Date completed = new Date();
 		getStore().recordJobResult(jobId, FAILED, new RuntimeException("stub exception"), executionDuration, completed);
 
-		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, FAILED, "java.lang.RuntimeException: stub exception", jobKey, serializedArgs(args), created, executionDuration, completed));
+		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, FAILED, "java.lang.RuntimeException: stub exception", jobKey, serializedArgs(args), created, NodeSpecification.ANY_NODE, executionDuration, completed, null));
 
 		assertTraverseSingle(null, job);
 		assertTraverseNone(CREATED);
@@ -84,7 +85,7 @@ public abstract class AbstractJobStoreTest {
 		Date completed = new Date();
 		getStore().recordJobResult(jobId, SUCCESS, null, executionDuration, completed);
 
-		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, SUCCESS, /* exception */ null, jobKey, serializedArgs(args), created, executionDuration, completed));
+		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, SUCCESS, /* exception */ null, jobKey, serializedArgs(args), created, NodeSpecification.ANY_NODE, executionDuration, completed, null));
 
 		assertTraverseSingle(null, job);
 		assertTraverseNone(CREATED);
@@ -127,7 +128,7 @@ public abstract class AbstractJobStoreTest {
 		if (depth == 0)
 			return Observable.empty();
 
-		Job job = getStore().saveNewJob(root, queueName, executionType, jobKey, args, new Date());
+		Job job = getStore().saveNewJob(root, queueName, executionType, jobKey, args, new Date(), NodeSpecification.ANY_NODE);
 		return merge(
 			just(job.getId()),
 			saveJobHierarchy(job.getId(), depth - 1, queueName, executionType, jobKey, args));

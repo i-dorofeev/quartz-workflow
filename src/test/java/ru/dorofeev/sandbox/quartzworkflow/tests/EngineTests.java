@@ -88,7 +88,7 @@ public class EngineTests {
 
 		@Override
 		public QueueingOptions getQueueingOption(Event event) {
-			return null;
+			return QueueingOptions.DEFAULT;
 		}
 
 		Event getEvent() {

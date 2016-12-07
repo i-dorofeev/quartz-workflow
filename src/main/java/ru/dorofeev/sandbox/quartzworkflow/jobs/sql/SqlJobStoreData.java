@@ -22,8 +22,10 @@ class SqlJobStoreData {
 		static final String CLMN_RESULT = "result";
 		static final String CLMN_ARGS = "args";
 		static final String CLMN_CREATED = "created";
+		static final String CLMN_TARGET_NODE_SPECIFICATION = "target_node_specification";
 		static final String CLMN_EXECUTION_DURATION = "execution_duration";
 		static final String CLMN_COMPLETED = "completed";
+		static final String CLMN_COMPLETED_NODE_ID = "completed_node_id";
 	}
 
 	private String id;
@@ -35,13 +37,15 @@ class SqlJobStoreData {
 	private String jobKey;
 	private String args;
 	private Timestamp created;
+	private String targetNodeSpecification;
 	private Long executionDuration;
 	private Timestamp completed;
+	private String completedNodeId;
 
 	private SqlJobStoreData() {
 	}
 
-	SqlJobStoreData(String id, String parentId, String queueName, String executionType, String result, String exception, String jobKey, String args, Timestamp created, Long executionDuration, Timestamp completed) {
+	SqlJobStoreData(String id, String parentId, String queueName, String executionType, String result, String exception, String jobKey, String args, Timestamp created, String targetNodeSpecification, Long executionDuration, Timestamp completed, String completedNodeId) {
 		this.id = id;
 		this.parentId = parentId;
 		this.queueName = queueName;
@@ -51,8 +55,10 @@ class SqlJobStoreData {
 		this.jobKey = jobKey;
 		this.args = args;
 		this.created = created;
+		this.targetNodeSpecification = targetNodeSpecification;
 		this.executionDuration = executionDuration;
 		this.completed = completed;
+		this.completedNodeId = completedNodeId;
 	}
 
 	@SuppressWarnings("WeakerAccess") // should be public like all the other getters so that BeanPropertySqlParameterSource could work
@@ -128,6 +134,14 @@ class SqlJobStoreData {
 		this.created = created;
 	}
 
+	public String getTargetNodeSpecification() {
+		return targetNodeSpecification;
+	}
+
+	public void setTargetNodeSpecification(String targetNodeSpecification) {
+		this.targetNodeSpecification = targetNodeSpecification;
+	}
+
 	public Long getExecutionDuration() {
 		return executionDuration;
 	}
@@ -144,6 +158,14 @@ class SqlJobStoreData {
 		this.completed = completed;
 	}
 
+	public String getCompletedNodeId() {
+		return completedNodeId;
+	}
+
+	public void setCompletedNodeId(String completedNodeId) {
+		this.completedNodeId = completedNodeId;
+	}
+
 	static RowMapper<SqlJobStoreData> rowMapper() {
 		return (rs, rowNum) -> {
 			SqlJobStoreData data = new SqlJobStoreData();
@@ -157,8 +179,10 @@ class SqlJobStoreData {
 			data.setResult(rs.getString(CLMN_RESULT));
 			data.setArgs(rs.getString(CLMN_ARGS));
 			data.setCreated(rs.getTimestamp(CLMN_CREATED));
+			data.setTargetNodeSpecification(rs.getString(CLMN_TARGET_NODE_SPECIFICATION));
 			data.setExecutionDuration(getNullableLong(rs, CLMN_EXECUTION_DURATION));
 			data.setCompleted(rs.getTimestamp(CLMN_COMPLETED));
+			data.setCompletedNodeId(rs.getString(CLMN_COMPLETED_NODE_ID));
 
 			return data;
 		};

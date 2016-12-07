@@ -2,10 +2,8 @@ package ru.dorofeev.sandbox.quartzworkflow.queue;
 
 import org.springframework.util.Assert;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
-import ru.dorofeev.sandbox.quartzworkflow.NodeId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import rx.Observable;
-
-import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
 
 public interface QueueManager {
 
@@ -27,16 +25,16 @@ public interface QueueManager {
 
 	}
 
-	static EnqueueCmd enqueueCmd(JobId jobId) {
-		return new EnqueueCmd(DEFAULT_QUEUE_NAME, DEFAULT_EXECUTION_TYPE, jobId, ANY_NODE);
+	static EnqueueCmd enqueueCmd(JobId jobId, NodeSpecification nodeSpecification) {
+		return new EnqueueCmd(DEFAULT_QUEUE_NAME, DEFAULT_EXECUTION_TYPE, jobId, nodeSpecification);
 	}
 
-	static EnqueueCmd enqueueCmd(QueueingOptions.ExecutionType executionType, JobId jobId) {
-		return new EnqueueCmd(DEFAULT_QUEUE_NAME, executionType, jobId, ANY_NODE);
+	static EnqueueCmd enqueueCmd(QueueingOptions.ExecutionType executionType, JobId jobId, NodeSpecification nodeSpecification) {
+		return new EnqueueCmd(DEFAULT_QUEUE_NAME, executionType, jobId, nodeSpecification);
 	}
 
-	static EnqueueCmd enqueueCmd(String queueName, QueueingOptions.ExecutionType executionType, JobId jobId) {
-		return new EnqueueCmd(queueName, executionType, jobId, ANY_NODE);
+	static EnqueueCmd enqueueCmd(String queueName, QueueingOptions.ExecutionType executionType, JobId jobId, NodeSpecification nodeSpecification) {
+		return new EnqueueCmd(queueName, executionType, jobId, nodeSpecification);
 	}
 
 	static NotifyCompletedCmd notifyCompletedCmd(JobId jobId) {
@@ -56,15 +54,15 @@ public interface QueueManager {
 		private final String queueName;
 		private final QueueingOptions.ExecutionType executionType;
 		private final JobId jobId;
-		private final NodeId nodeId;
+		private final NodeSpecification nodeSpecification;
 
-		EnqueueCmd(String queueName, QueueingOptions.ExecutionType executionType, JobId jobId, NodeId nodeId) {
-			Assert.notNull(nodeId, "nodeId shouldn't be null. Use NodeId.ANY_NODE constant instead.");
+		EnqueueCmd(String queueName, QueueingOptions.ExecutionType executionType, JobId jobId, NodeSpecification nodeSpecification) {
+			Assert.notNull(nodeSpecification, "nodeSpecification shouldn't be null. Use NodeSpecification.ANY_NODE constant to match any node.");
 
 			this.queueName = queueName;
 			this.executionType = executionType;
 			this.jobId = jobId;
-			this.nodeId = nodeId;
+			this.nodeSpecification = nodeSpecification;
 		}
 
 		String getQueueName() {
@@ -79,8 +77,8 @@ public interface QueueManager {
 			return jobId;
 		}
 
-		NodeId getNodeId() {
-			return nodeId;
+		NodeSpecification getNodeSpecification() {
+			return nodeSpecification;
 		}
 	}
 

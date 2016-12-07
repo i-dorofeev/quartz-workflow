@@ -9,8 +9,6 @@ import rx.subjects.PublishSubject;
 
 import java.util.Optional;
 
-import static ru.dorofeev.sandbox.quartzworkflow.NodeId.ANY_NODE;
-import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.shouldNotBe;
 import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.shouldNotBeNull;
 
 class QueueManagerImpl implements QueueManager {
@@ -26,7 +24,6 @@ class QueueManagerImpl implements QueueManager {
 	QueueManagerImpl(QueueStore queueStore, NodeId nodeId) {
 		shouldNotBeNull(queueStore, "queueStore should be specified");
 		shouldNotBeNull(nodeId, "nodeId should be specified");
-		shouldNotBe(nodeId.equals(ANY_NODE), "nodeId shouldn't be ANY_NODE");
 
 		this.queueStore = queueStore;
 		this.nodeId = nodeId;
@@ -65,9 +62,9 @@ class QueueManagerImpl implements QueueManager {
 
 	private void enqueue(EnqueueCmd cmd) {
 		try {
-			queueStore.insertQueueItem(cmd.getJobId(), cmd.getQueueName(), cmd.getExecutionType(), cmd.getNodeId());
+			queueStore.insertQueueItem(cmd.getJobId(), cmd.getQueueName(), cmd.getExecutionType(), cmd.getNodeSpecification());
 
-			if (cmd.getNodeId().equals(this.nodeId) || cmd.getNodeId().equals(ANY_NODE))
+			if (cmd.getNodeSpecification().matches(this.nodeId))
 				tryPushNext(cmd.getQueueName());
 		} catch (QueueStoreException e) {
 			errors.asObserver().onNext(new QueueManagerException(e.getMessage(), e));

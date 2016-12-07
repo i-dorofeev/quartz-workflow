@@ -13,8 +13,10 @@ class InMemoryJobRecord {
 	private String result;
 	private String exception;
 	private Date created;
+	private String targetNodeSpecification;
 	private Long executionDuration;
 	private Date completed;
+	private String completedNodeId;
 
 	String getJobId() {
 		return jobId;
@@ -88,6 +90,14 @@ class InMemoryJobRecord {
 		this.created = created;
 	}
 
+	String getTargetNodeSpecification() {
+		return targetNodeSpecification;
+	}
+
+	void setTargetNodeSpecification(String targetNodeSpecification) {
+		this.targetNodeSpecification = targetNodeSpecification;
+	}
+
 	public Long getExecutionDuration() {
 		return executionDuration;
 	}
@@ -102,5 +112,13 @@ class InMemoryJobRecord {
 
 	public void setCompleted(Date completed) {
 		this.completed = completed;
+	}
+
+	public String getCompletedNodeId() {
+		return completedNodeId;
+	}
+
+	public void setCompletedNodeId(String completedNodeId) {
+		this.completedNodeId = completedNodeId;
 	}
 }

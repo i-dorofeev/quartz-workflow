@@ -17,6 +17,6 @@ public abstract class TypedEventHandler<T extends Event> implements EventHandler
 
 	@Override
 	public QueueingOptions getQueueingOption(Event event) {
-		return null;
+		return QueueingOptions.DEFAULT;
 	}
 }

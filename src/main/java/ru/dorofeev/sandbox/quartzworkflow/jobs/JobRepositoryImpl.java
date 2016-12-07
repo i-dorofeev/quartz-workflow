@@ -11,7 +11,7 @@ import rx.subjects.PublishSubject;
 
 import java.util.Optional;
 
-import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
+import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.shouldNotBeNull;
 import static rx.schedulers.Schedulers.io;
 
 class JobRepositoryImpl implements JobRepository {
@@ -66,10 +66,9 @@ class JobRepositoryImpl implements JobRepository {
 
 	private JobAddedEvent addJobInternal(JobId parentId, JobKey jobKey, Serializable args, QueueingOptions queueingOptions) {
 
-		String queueName = queueingOptions != null ? queueingOptions.getQueueName() : "default";
-		QueueingOptions.ExecutionType executionType = queueingOptions != null ? queueingOptions.getExecutionType() : PARALLEL;
+		shouldNotBeNull(queueingOptions, "Queueing options should be specified. Use QueueingOptions.DEFAULT constant instead of null.");
 
-		Job job = store.saveNewJob(parentId, queueName, executionType, jobKey, args, clock.currentTime());
+		Job job = store.saveNewJob(parentId, queueingOptions.getQueueName(), queueingOptions.getExecutionType(), jobKey, args, clock.currentTime(), queueingOptions.getTargetNodeSpecification());
 		return new JobAddedEvent(job);
 	}
 

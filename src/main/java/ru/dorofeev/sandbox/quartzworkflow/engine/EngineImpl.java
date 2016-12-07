@@ -6,6 +6,7 @@ import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager;
+import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import rx.Observable;
 import rx.subjects.PublishSubject;
@@ -99,7 +100,7 @@ class EngineImpl implements Engine {
 	}
 
 	private QueueManager.EnqueueCmd asEnqueueCmd(JobRepository.JobAddedEvent event) {
-		return enqueueCmd(event.getJob().getQueueName(), event.getJob().getExecutionType(), event.getJob().getId());
+		return enqueueCmd(event.getJob().getQueueName(), event.getJob().getExecutionType(), event.getJob().getId(), event.getJob().getTargetNodeSpecification());
 	}
 
 	@Override
@@ -129,12 +130,15 @@ class EngineImpl implements Engine {
 	Job submitEvent(JobId parentId, Event event) {
 		return jobRepository.addJob(
 			parentId, SCHEDULE_EVENT_HANDLERS_JOB,
-			new ScheduleEventHandlersJob.Args(event), /* queueingOption */ null);
+			new ScheduleEventHandlersJob.Args(event), QueueingOptions.DEFAULT);
 	}
 
 	@Override
 	public void retryExecution(JobId jobId) {
-		queueManagerCmds.onNext(enqueueCmd(jobId));
+		Optional<Job> jobOptional = jobRepository.findJob(jobId);
+
+		Job job = jobOptional.orElseThrow(() -> new EngineException("Job " + jobId + " not found"));
+		queueManagerCmds.onNext(enqueueCmd(job.getId(), job.getTargetNodeSpecification()));
 	}
 
 	@Override

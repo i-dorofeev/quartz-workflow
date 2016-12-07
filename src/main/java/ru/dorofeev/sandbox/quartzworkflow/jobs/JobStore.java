@@ -2,6 +2,7 @@ package ru.dorofeev.sandbox.quartzworkflow.jobs;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 
@@ -14,7 +15,7 @@ public interface JobStore {
 
 	void recordJobResult(JobId jobId, Job.Result result, Throwable ex, long executionDuration, Date completed);
 
-	Job saveNewJob(JobId parentId, String queueName, QueueingOptions.ExecutionType executionType, JobKey jobKey, Serializable args, Date created);
+	Job saveNewJob(JobId parentId, String queueName, QueueingOptions.ExecutionType executionType, JobKey jobKey, Serializable args, Date created, NodeSpecification targetNodeSpecification);
 
 	rx.Observable<Job> traverseSubTree(JobId rootId, Job.Result result);
 

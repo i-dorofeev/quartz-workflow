@@ -5,6 +5,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobStore;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
@@ -45,12 +46,12 @@ public class SqlJobStoreEnsureUniqueIdsTest {
 		JobStore jobStore = sqlJobStore(hsql.getDataSource(), uuidGenerator).call(jsonSerialization());
 
 		uuidGenerator.pushUuid("00000000-0000-0000-0000-000000000001");
-		Job job1 = jobStore.saveNewJob(null, "default", QueueingOptions.ExecutionType.PARALLEL, new JobKey("jobKey"), new StubArgs("value"), new Date());
+		Job job1 = jobStore.saveNewJob(null, "default", QueueingOptions.ExecutionType.PARALLEL, new JobKey("jobKey"), new StubArgs("value"), new Date(), NodeSpecification.ANY_NODE);
 		assertThat(job1.getId(), is(equalTo(new JobId("00000000-0000-0000-0000-000000000001"))));
 
 		uuidGenerator.pushUuid("00000000-0000-0000-0000-000000000001");
 		uuidGenerator.pushUuid("00000000-0000-0000-0000-000000000002");
-		Job job2 = jobStore.saveNewJob(null, "default", QueueingOptions.ExecutionType.PARALLEL, new JobKey("jobKey"), new StubArgs("value"), new Date());
+		Job job2 = jobStore.saveNewJob(null, "default", QueueingOptions.ExecutionType.PARALLEL, new JobKey("jobKey"), new StubArgs("value"), new Date(), NodeSpecification.ANY_NODE);
 		assertThat(job2.getId(), is(equalTo(new JobId("00000000-0000-0000-0000-000000000002"))));
 	}
 

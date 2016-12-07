@@ -2,6 +2,8 @@ package ru.dorofeev.sandbox.quartzworkflow.jobs;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 
@@ -21,10 +23,12 @@ public class Job {
 	private final JobKey jobKey;
 	private final SerializedObject args;
 	private final Date created;
+	private final NodeSpecification targetNodeSpecification;
 	private final Long executionDuration;
 	private final Date completed;
+	private final NodeId completedNodeId;
 
-	public Job(JobId id, JobId parentId, String queueName, QueueingOptions.ExecutionType executionType, Result result, String exception, JobKey jobKey, SerializedObject args, Date created, Long executionDuration, Date completed) {
+	public Job(JobId id, JobId parentId, String queueName, QueueingOptions.ExecutionType executionType, Result result, String exception, JobKey jobKey, SerializedObject args, Date created, NodeSpecification targetNodeSpecification, Long executionDuration, Date completed, NodeId completedNodeId) {
 		this.id = id;
 		this.parentId = parentId;
 		this.queueName = queueName;
@@ -34,8 +38,10 @@ public class Job {
 		this.jobKey = jobKey;
 		this.args = args;
 		this.created = created;
+		this.targetNodeSpecification = targetNodeSpecification;
 		this.executionDuration = executionDuration;
 		this.completed = completed;
+		this.completedNodeId = completedNodeId;
 	}
 
 	public JobId getId() {
@@ -82,6 +88,14 @@ public class Job {
 		return completed;
 	}
 
+	public NodeSpecification getTargetNodeSpecification() {
+		return targetNodeSpecification;
+	}
+
+	public NodeId getCompletedNodeId() {
+		return completedNodeId;
+	}
+
 	@Override
 	public String toString() {
 		return "Job{" +
@@ -94,8 +108,10 @@ public class Job {
 			", jobKey=" + jobKey +
 			", args=" + args +
 			", created=" + created +
+			", targetNodeSpecification=" + targetNodeSpecification +
 			", executionDuration=" + executionDuration +
 			", completed=" + completed +
+			", completedNodeId=" + completedNodeId +
 			'}';
 	}
 

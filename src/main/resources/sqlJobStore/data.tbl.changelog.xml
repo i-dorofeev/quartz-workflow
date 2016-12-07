@@ -15,6 +15,7 @@
 			<column name="job_key" type="varchar(255)" />
 			<column name="args" type="varchar(4096)" />
 			<column name="created" type="timestamp" />
+			<column name="target_node_specification" type="varchar(255)" />
 
 			<column name="execution_duration" type="bigint">
 				<constraints nullable="true" />
@@ -23,6 +24,8 @@
 			<column name="completed" type="timestamp">
 				<constraints nullable="true" />
 			</column>
+
+			<column name="completed_node_id" type="varchar(255)" />
 		</createTable>
 
 		<addPrimaryKey tableName="${tables.data.name}" columnNames="id" />

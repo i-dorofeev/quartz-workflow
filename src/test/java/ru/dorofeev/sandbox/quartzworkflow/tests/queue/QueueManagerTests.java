@@ -54,7 +54,7 @@ public class QueueManagerTests {
 	@Test
 	public void sanityTest() {
 
-		cmdFlow.onNext(enqueueCmd(jobId("job"), new NodeSpecification(nodeId)));
+		cmdFlow.onNext(enqueueCmd("testQueue", PARALLEL, jobId("job"), new NodeSpecification(nodeId)));
 		errorSubscriber.assertNoValues();
 		eventSubscriber.assertValuesAndClear(jobPoppedEvent(jobId("job")));
 
@@ -66,8 +66,8 @@ public class QueueManagerTests {
 	@Test
 	public void simpleParallelQueueingTest() {
 
-		cmdFlow.onNext(enqueueCmd(PARALLEL, jobId("job1"), new NodeSpecification(nodeId)));
-		cmdFlow.onNext(enqueueCmd(PARALLEL, jobId("job2"), new NodeSpecification(nodeId)));
+		cmdFlow.onNext(enqueueCmd("testQueue", PARALLEL, jobId("job1"), new NodeSpecification(nodeId)));
+		cmdFlow.onNext(enqueueCmd("testQueue", PARALLEL, jobId("job2"), new NodeSpecification(nodeId)));
 
 		errorSubscriber.assertNoValues();
 		eventSubscriber.assertValuesAndClear(jobPoppedEvent(jobId("job1")), jobPoppedEvent(jobId("job2")));
@@ -76,8 +76,8 @@ public class QueueManagerTests {
 	@Test
 	public void simpleSequentialQueueingTest() {
 
-		cmdFlow.onNext(enqueueCmd(EXCLUSIVE, jobId("job1"), new NodeSpecification(nodeId)));
-		cmdFlow.onNext(enqueueCmd(EXCLUSIVE, jobId("job2"), new NodeSpecification(nodeId)));
+		cmdFlow.onNext(enqueueCmd("testQueue", EXCLUSIVE, jobId("job1"), new NodeSpecification(nodeId)));
+		cmdFlow.onNext(enqueueCmd("testQueue", EXCLUSIVE, jobId("job2"), new NodeSpecification(nodeId)));
 
 		errorSubscriber.assertNoValues();
 		eventSubscriber.assertValuesAndClear(jobPoppedEvent(jobId("job1")));
@@ -91,8 +91,8 @@ public class QueueManagerTests {
 	@Test
 	public void cannotEnqueueSameJobTwice() {
 
-		cmdFlow.onNext(enqueueCmd(PARALLEL, jobId("job1"), new NodeSpecification(nodeId)));
-		cmdFlow.onNext(enqueueCmd(PARALLEL, jobId("job1"), new NodeSpecification(nodeId)));
+		cmdFlow.onNext(enqueueCmd("testQueue", PARALLEL, jobId("job1"), new NodeSpecification(nodeId)));
+		cmdFlow.onNext(enqueueCmd("testQueue", PARALLEL, jobId("job1"), new NodeSpecification(nodeId)));
 
 		errorSubscriber.assertValuesAndClear("job1 is already enqueued");
 		eventSubscriber.assertValuesAndClear(jobPoppedEvent(jobId("job1")));

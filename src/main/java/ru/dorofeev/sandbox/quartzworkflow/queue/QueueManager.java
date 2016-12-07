@@ -7,10 +7,6 @@ import rx.Observable;
 
 public interface QueueManager {
 
-	String DEFAULT_QUEUE_NAME = "default";
-
-	QueueingOptions.ExecutionType DEFAULT_EXECUTION_TYPE = QueueingOptions.ExecutionType.PARALLEL;
-
 	Observable<Throwable> getErrors();
 
 	rx.Observable<Event> bind(rx.Observable<Cmd> input);
@@ -23,14 +19,6 @@ public interface QueueManager {
 
 	interface Event {
 
-	}
-
-	static EnqueueCmd enqueueCmd(JobId jobId, NodeSpecification nodeSpecification) {
-		return new EnqueueCmd(DEFAULT_QUEUE_NAME, DEFAULT_EXECUTION_TYPE, jobId, nodeSpecification);
-	}
-
-	static EnqueueCmd enqueueCmd(QueueingOptions.ExecutionType executionType, JobId jobId, NodeSpecification nodeSpecification) {
-		return new EnqueueCmd(DEFAULT_QUEUE_NAME, executionType, jobId, nodeSpecification);
 	}
 
 	static EnqueueCmd enqueueCmd(String queueName, QueueingOptions.ExecutionType executionType, JobId jobId, NodeSpecification nodeSpecification) {

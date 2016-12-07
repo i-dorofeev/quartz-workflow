@@ -82,7 +82,7 @@ public class MultinodeQueueManagerTests {
 		queueManager2.suspend();
 
 		IntStream.range(0, EVENT_COUNT)
-			.mapToObj(i -> enqueueCmd(EXCLUSIVE, jobId("job" + i), NodeSpecification.ANY_NODE))
+			.mapToObj(i -> enqueueCmd("testQueue", EXCLUSIVE, jobId("job" + i), NodeSpecification.ANY_NODE))
 			.forEach(cmd -> qm1Cmds.onNext(cmd));
 
 		queueManager1.resume();

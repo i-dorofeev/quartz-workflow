@@ -138,7 +138,7 @@ class EngineImpl implements Engine {
 		Optional<Job> jobOptional = jobRepository.findJob(jobId);
 
 		Job job = jobOptional.orElseThrow(() -> new EngineException("Job " + jobId + " not found"));
-		queueManagerCmds.onNext(enqueueCmd(job.getId(), job.getTargetNodeSpecification()));
+		queueManagerCmds.onNext(enqueueCmd(job.getQueueName(), job.getExecutionType(), job.getId(), job.getTargetNodeSpecification()));
 	}
 
 	@Override

@@ -12,6 +12,7 @@ import rx.Observable;
 import rx.subjects.PublishSubject;
 
 import java.util.*;
+import java.util.concurrent.Future;
 
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleJobCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository.addJobCmd;
@@ -125,6 +126,11 @@ class EngineImpl implements Engine {
 	@Override
 	public Job submitEvent(Event event) {
 		return submitEvent(/* parentId */ null, event);
+	}
+
+	@Override
+	public Future<Void> submitLocalJob(LocalJob localJob) {
+		throw new UnsupportedOperationException("Not implemented yet");
 	}
 
 	Job submitEvent(JobId parentId, Event event) {

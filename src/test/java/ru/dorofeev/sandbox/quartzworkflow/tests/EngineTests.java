@@ -14,7 +14,9 @@ import ru.dorofeev.sandbox.quartzworkflow.utils.SystemClock;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Future;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -22,18 +24,19 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.collection.IsEmptyCollection.empty;
 import static ru.dorofeev.sandbox.quartzworkflow.Factory.spawn;
+import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.events;
 import static ru.dorofeev.sandbox.quartzworkflow.engine.EventUtils.noEvents;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory.fixedThreadedExecutorService;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.FAILED;
 import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFactory.jsonSerialization;
-import static ru.dorofeev.sandbox.quartzworkflow.tests.utils.Matchers.equalToCurrentTimeWithin;
-import static ru.dorofeev.sandbox.quartzworkflow.tests.utils.Matchers.equalToWithin;
-import static ru.dorofeev.sandbox.quartzworkflow.tests.utils.Matchers.present;
+import static ru.dorofeev.sandbox.quartzworkflow.tests.utils.Matchers.*;
 
 public class EngineTests {
 
 	private static Engine engine;
 	private static HSqlServices hSqlServices;
+	private static MockEventHandler mockEventHandler;
+
 	private static final List<String> errors = new CopyOnWriteArrayList<>();
 	private static final NodeId nodeId = new NodeId("engineTests");
 
@@ -50,6 +53,8 @@ public class EngineTests {
 		engine.errors().map(Utils::exceptionToString).subscribe(errors::add);
 
 		engine.start();
+
+		mockEventHandler = new MockEventHandler();
 	}
 
 	@AfterClass
@@ -70,9 +75,7 @@ public class EngineTests {
 	}
 
 	@Test
-	public void sanityTest() throws Exception {
-
-		MockEventHandler mockEventHandler = new MockEventHandler();
+	public void asyncJobTest() throws Exception {
 
 		engine.registerEventHandlerInstance("http://quartzworkflow.sandbox.dorofeev.ru/eventHandlers/mockEventHandler", mockEventHandler);
 		engine.registerEventHandler(StubEvent.class, "http://quartzworkflow.sandbox.dorofeev.ru/eventHandlers/mockEventHandler");
@@ -92,6 +95,19 @@ public class EngineTests {
 		assertThat(job.getCompletedNodeId(), is(equalTo(nodeId)));
 	}
 
+	@Test
+	public void localJobTest() throws Exception {
+
+		mockEventHandler.reset();
+
+		StubEvent stubEvent = new StubEvent("local");
+
+		Future<Void> localJobFuture = engine.submitLocalJob(() -> events(new StubEvent("local")));
+		localJobFuture.get(1, SECONDS);
+
+		assertThat(mockEventHandler.getEvent(), is(equalTo(stubEvent)));
+	}
+
 	private static class MockEventHandler implements EventHandler {
 
 		private Event event;
@@ -109,6 +125,10 @@ public class EngineTests {
 
 		Event getEvent() {
 			return event;
+		}
+
+		void reset() {
+			event = null;
 		}
 	}
 

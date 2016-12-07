@@ -4,6 +4,7 @@ import org.junit.FixMethodOrder;
 import org.junit.Test;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobStore;
@@ -68,9 +69,10 @@ public abstract class AbstractJobStoreTest {
 
 		long executionDuration = 1000L;
 		Date completed = new Date();
-		getStore().recordJobResult(jobId, FAILED, new RuntimeException("stub exception"), executionDuration, completed);
+		NodeId nodeId = new NodeId("node");
+		getStore().recordJobResult(jobId, FAILED, new RuntimeException("stub exception"), executionDuration, completed, nodeId);
 
-		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, FAILED, "java.lang.RuntimeException: stub exception", jobKey, serializedArgs(args), created, NodeSpecification.ANY_NODE, executionDuration, completed, null));
+		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, FAILED, "java.lang.RuntimeException: stub exception", jobKey, serializedArgs(args), created, NodeSpecification.ANY_NODE, executionDuration, completed, nodeId));
 
 		assertTraverseSingle(null, job);
 		assertTraverseNone(CREATED);
@@ -83,9 +85,10 @@ public abstract class AbstractJobStoreTest {
 
 		long executionDuration = 1000L;
 		Date completed = new Date();
-		getStore().recordJobResult(jobId, SUCCESS, null, executionDuration, completed);
+		NodeId nodeId = new NodeId("node");
+		getStore().recordJobResult(jobId, SUCCESS, null, executionDuration, completed, nodeId);
 
-		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, SUCCESS, /* exception */ null, jobKey, serializedArgs(args), created, NodeSpecification.ANY_NODE, executionDuration, completed, null));
+		Job job = assertFindById(jobId, new Job(jobId, /* parentId */ null, "default", EXCLUSIVE, SUCCESS, /* exception */ null, jobKey, serializedArgs(args), created, NodeSpecification.ANY_NODE, executionDuration, completed, nodeId));
 
 		assertTraverseSingle(null, job);
 		assertTraverseNone(CREATED);
@@ -115,7 +118,7 @@ public abstract class AbstractJobStoreTest {
 
 	@Test
 	public void test070_traverseByRootAndResult() {
-		getStore().recordJobResult(childJobs.get(13), FAILED, new RuntimeException("stub"), 100L, new Date()); // 13 is some magic number between 0 and 30
+		getStore().recordJobResult(childJobs.get(13), FAILED, new RuntimeException("stub"), 100L, new Date(), new NodeId("node")); // 13 is some magic number between 0 and 30
 
 		Observable<JobId> failed = getStore().traverseSubTree(jobId, FAILED)
 			.map(Job::getId);
@@ -149,8 +152,10 @@ public abstract class AbstractJobStoreTest {
 		assertThat(job2.getException().orElse(""), containsString(job1.getException().orElse("")));
 		assertEquals(job1.getResult(), job2.getResult());
 		assertEquals(job1.getCreated(), job2.getCreated());
+		assertEquals(job1.getTargetNodeSpecification(), job2.getTargetNodeSpecification());
 		assertEquals(job1.getExecutionDuration(), job2.getExecutionDuration());
 		assertEquals(job1.getCompleted(), job2.getCompleted());
+		assertEquals(job1.getCompletedNodeId(), job2.getCompletedNodeId());
 	}
 
 	private void assertTraverseSingle(Job.Result result, Job expectedJob) {

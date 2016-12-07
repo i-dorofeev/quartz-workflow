@@ -2,6 +2,7 @@ package ru.dorofeev.sandbox.quartzworkflow.jobs;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.Serializable;
 import rx.Observable;
@@ -89,12 +90,14 @@ public interface JobRepository {
 		private final Throwable exception;
 		private final Long executionDuration;
 		private final Date completed;
+		private NodeId completedNodeId;
 
-		CompleteJobCmd(JobId jobId, Throwable exception, Long executionDuration, Date completed) {
+		CompleteJobCmd(JobId jobId, Throwable exception, Long executionDuration, Date completed, NodeId completedNodeId) {
 			this.jobId = jobId;
 			this.exception = exception;
 			this.executionDuration = executionDuration;
 			this.completed = completed;
+			this.completedNodeId = completedNodeId;
 		}
 
 		public JobId getJobId() {
@@ -112,10 +115,14 @@ public interface JobRepository {
 		public Date getCompleted() {
 			return completed;
 		}
+
+		public NodeId getCompletedNodeId() {
+			return completedNodeId;
+		}
 	}
 
-	static CompleteJobCmd completeJobCmd(JobId jobId, Throwable ex, Long executionDuration, Date completed) {
-		return new CompleteJobCmd(jobId, ex, executionDuration, completed);
+	static CompleteJobCmd completeJobCmd(JobId jobId, Throwable ex, Long executionDuration, Date completed, NodeId completedNodeId) {
+		return new CompleteJobCmd(jobId, ex, executionDuration, completed, completedNodeId);
 	}
 
 	static AddJobCmd addJobCmd(JobId parentId, JobKey jobKey, Serializable args, QueueingOptions queueingOptions) {

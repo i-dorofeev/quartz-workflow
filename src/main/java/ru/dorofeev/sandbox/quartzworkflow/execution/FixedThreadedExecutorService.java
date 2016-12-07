@@ -1,5 +1,6 @@
 package ru.dorofeev.sandbox.quartzworkflow.execution;
 
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.utils.Clock;
 import ru.dorofeev.sandbox.quartzworkflow.utils.ErrorObservable;
 import ru.dorofeev.sandbox.quartzworkflow.utils.Stopwatch;
@@ -24,10 +25,12 @@ class FixedThreadedExecutorService implements ExecutorService {
 	private final IdleMonitor idleMonitor;
 	private final StopwatchFactory stopwatchFactory;
 	private final Clock clock;
+	private final NodeId nodeId;
 
 	private boolean suspended = true;
 
-	FixedThreadedExecutorService(int nThreads, long idleInterval, StopwatchFactory stopwatchFactory, Clock clock) {
+	FixedThreadedExecutorService(NodeId nodeId, int nThreads, long idleInterval, StopwatchFactory stopwatchFactory, Clock clock) {
+		this.nodeId = nodeId;
 		this.executor = Executors.newFixedThreadPool(nThreads);
 		this.stopwatchFactory = stopwatchFactory;
 		this.clock = clock;
@@ -54,9 +57,9 @@ class FixedThreadedExecutorService implements ExecutorService {
 		Stopwatch stopwatch = stopwatchFactory.newStopwatch();
 		try {
 			cmd.getExecutable().execute(cmd.getJobId(), cmd.getArgs());
-			return new JobCompletedEvent(cmd.getJobId(), null, stopwatch.elapsed(), clock.currentTime());
+			return new JobCompletedEvent(cmd.getJobId(), null, stopwatch.elapsed(), clock.currentTime(), nodeId);
 		} catch (Throwable e) {
-			return new JobCompletedEvent(cmd.getJobId(), e, stopwatch.elapsed(), clock.currentTime());
+			return new JobCompletedEvent(cmd.getJobId(), e, stopwatch.elapsed(), clock.currentTime(), nodeId);
 		}
 	}
 

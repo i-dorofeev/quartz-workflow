@@ -1,6 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.execution;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObject;
 import rx.Observable;
 
@@ -12,12 +13,12 @@ public interface ExecutorService {
 		return new ScheduleJobCmd(jobId, args, runnable);
 	}
 
-	static JobCompletedEvent jobSuccessfullyCompletedEvent(JobId jobId, long executionDuration, Date completed) {
-		return new JobCompletedEvent(jobId, null, executionDuration, completed);
+	static JobCompletedEvent jobSuccessfullyCompletedEvent(JobId jobId, long executionDuration, Date completed, NodeId completedNodeId) {
+		return new JobCompletedEvent(jobId, null, executionDuration, completed, completedNodeId);
 	}
 
-	static JobCompletedEvent jobFailedEvent(JobId jobId, Throwable e, long executionDuration, Date completed) {
-		return new JobCompletedEvent(jobId, e, executionDuration, completed);
+	static JobCompletedEvent jobFailedEvent(JobId jobId, Throwable e, long executionDuration, Date completed, NodeId completedNodeId) {
+		return new JobCompletedEvent(jobId, e, executionDuration, completed, completedNodeId);
 	}
 
 	rx.Observable<Event> bind(rx.Observable<Cmd> input);
@@ -63,12 +64,14 @@ public interface ExecutorService {
 		private final Throwable exception;
 		private final long executionDuration;
 		private final Date completed;
+		private final NodeId completedNodeId;
 
-		JobCompletedEvent(JobId jobId, Throwable exception, long executionDuration, Date completed) {
+		JobCompletedEvent(JobId jobId, Throwable exception, long executionDuration, Date completed, NodeId completedNodeId) {
 			this.jobId = jobId;
 			this.exception = exception;
 			this.executionDuration = executionDuration;
 			this.completed = completed;
+			this.completedNodeId = completedNodeId;
 		}
 
 		public JobId getJobId() {
@@ -116,7 +119,12 @@ public interface ExecutorService {
 				", exception=" + exception +
 				", executionDuration=" + executionDuration +
 				", completed=" + completed +
+				", completedNodeId=" + completedNodeId +
 				'}';
+		}
+
+		public NodeId getCompletedNodeId() {
+			return completedNodeId;
 		}
 	}
 

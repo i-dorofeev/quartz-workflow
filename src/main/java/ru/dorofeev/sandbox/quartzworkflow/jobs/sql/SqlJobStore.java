@@ -40,6 +40,7 @@ import static ru.dorofeev.sandbox.quartzworkflow.jobs.Job.Result.CREATED;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.Columns.*;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreData.TBL_JOB_STORE_DATA;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStoreHierarchy.*;
+import static ru.dorofeev.sandbox.quartzworkflow.utils.Contracts.shouldNotBeNull;
 import static ru.dorofeev.sandbox.quartzworkflow.utils.SqlBuilder.*;
 import static rx.Observable.from;
 
@@ -88,12 +89,22 @@ public class SqlJobStore implements JobStore {
 	}
 
 	@Override
-	public void recordJobResult(JobId jobId, Job.Result result, Throwable ex, long executionDuration, Date completed) {
+	public void recordJobResult(JobId jobId, Job.Result result, Throwable ex, long executionDuration, Date completed, NodeId completedNodeId) {
+
+		shouldNotBeNull(result, "result should be specified");
+		shouldNotBeNull(completed, "completed timestamp should be specified");
+		shouldNotBeNull(completedNodeId, "completedNodeId should be specified");
+
 		transactionTemplate.execute(status -> {
 
 			jdbcTemplate.update(
 					update(TBL_JOB_STORE_DATA)
-					.set(sqlEquals(CLMN_RESULT, "?"), sqlEquals(CLMN_EXCEPTION, "?"), sqlEquals(CLMN_EXECUTION_DURATION, "?"), sqlEquals(CLMN_COMPLETED, "?"))
+					.set(
+						sqlEquals(CLMN_RESULT, "?"),
+						sqlEquals(CLMN_EXCEPTION, "?"),
+						sqlEquals(CLMN_EXECUTION_DURATION, "?"),
+						sqlEquals(CLMN_COMPLETED, "?"),
+						sqlEquals(CLMN_COMPLETED_NODE_ID, "?"))
 					.where(sqlEquals(CLMN_ID, "?"))
 				.sql(),
 
@@ -102,6 +113,7 @@ public class SqlJobStore implements JobStore {
 				ExceptionUtils.toString(ex),
 				executionDuration,
 				new Timestamp(completed.getTime()),
+				completedNodeId.value(),
 
 				// where
 				jobId.toString()

@@ -50,14 +50,18 @@ public class InMemoryJobStore implements JobStore {
 	}
 
 	@Override
-	public void recordJobResult(JobId jobId, Result result, Throwable ex, long executionDuration, Date completed) {
+	public void recordJobResult(JobId jobId, Result result, Throwable ex, long executionDuration, Date completed, NodeId completedNodeId) {
 		synchronized (sync) {
+
+			shouldNotBeNull(completedNodeId, "completedNodeId should be specified");
+
 			InMemoryJobRecord job = getById(jobId)
 				.orElseThrow(() -> new JobRepositoryException("Couldn't find job[id=" + jobId + "]"));
 
 			job.setResult(result.toString());
 			job.setExecutionDuration(executionDuration);
 			job.setCompleted(completed);
+			job.setCompletedNodeId(completedNodeId.value());
 
 			if (ex != null)
 				job.setException(ex.toString());

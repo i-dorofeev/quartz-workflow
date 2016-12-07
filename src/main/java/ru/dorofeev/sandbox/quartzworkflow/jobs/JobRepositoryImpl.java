@@ -40,9 +40,9 @@ class JobRepositoryImpl implements JobRepository {
 		input.ofType(CompleteJobCmd.class)
 			.compose(errors.mapRetry(cmd -> {
 				if (cmd.getException() != null)
-					store.recordJobResult(cmd.getJobId(), Job.Result.FAILED, cmd.getException(), cmd.getExecutionDuration(), cmd.getCompleted());
+					store.recordJobResult(cmd.getJobId(), Job.Result.FAILED, cmd.getException(), cmd.getExecutionDuration(), cmd.getCompleted(), cmd.getCompletedNodeId());
 				else
-					store.recordJobResult(cmd.getJobId(), Job.Result.SUCCESS, null, cmd.getExecutionDuration(), cmd.getCompleted());
+					store.recordJobResult(cmd.getJobId(), Job.Result.SUCCESS, null, cmd.getExecutionDuration(), cmd.getCompleted(), cmd.getCompletedNodeId());
 
 				return new JobCompletedEvent(cmd.getJobId());
 			}))

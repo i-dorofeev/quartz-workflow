@@ -28,6 +28,8 @@ public class ExecutorServiceTests {
 	private StubStopwatchFactory stopwatchFactory;
 	private StubClock clock;
 
+	private static final NodeId node = new NodeId("node");
+
 	@Before
 	public void beforeTest() {
 		stopwatchFactory = new StubStopwatchFactory();
@@ -59,7 +61,7 @@ public class ExecutorServiceTests {
 		cmdFlow.onNext(scheduleJobCmd(jobId("job0"), null, testExecutable));
 
 		eventTestSubscriber.awaitValueCount(1, 500, MILLISECONDS);
-		eventTestSubscriber.assertValuesAndClear(jobSuccessfullyCompletedEvent(jobId("job0"), stopwatchFactory.getExpectedElapsed(), clock.getTime()));
+		eventTestSubscriber.assertValuesAndClear(jobSuccessfullyCompletedEvent(jobId("job0"), stopwatchFactory.getExpectedElapsed(), clock.getTime(), node));
 		testExecutable.assertInvoked();
 	}
 
@@ -74,7 +76,7 @@ public class ExecutorServiceTests {
 		cmdFlow.onNext(scheduleJobCmd(jobId("job0"), null, testRunnable));
 
 		eventTestSubscriber.awaitValueCount(1, 500, MILLISECONDS);
-		eventTestSubscriber.assertValuesAndClear(jobFailedEvent(jobId("job0"), exception, stopwatchFactory.getExpectedElapsed(), clock.getTime()));
+		eventTestSubscriber.assertValuesAndClear(jobFailedEvent(jobId("job0"), exception, stopwatchFactory.getExpectedElapsed(), clock.getTime(), node));
 		testRunnable.assertInvoked();
 	}
 

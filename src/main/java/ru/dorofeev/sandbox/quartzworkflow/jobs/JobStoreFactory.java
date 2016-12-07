@@ -5,21 +5,23 @@ import ru.dorofeev.sandbox.quartzworkflow.jobs.sql.SqlJobStore;
 import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
 import ru.dorofeev.sandbox.quartzworkflow.utils.RandomUUIDGenerator;
 import ru.dorofeev.sandbox.quartzworkflow.utils.UUIDGenerator;
-import rx.functions.Func1;
 
 import javax.sql.DataSource;
 
-public class JobStoreFactory {
+@FunctionalInterface
+public interface JobStoreFactory {
 
-	public static Func1<SerializedObjectFactory, JobStore> inMemoryJobStore() {
+	JobStore spawn(SerializedObjectFactory serializedObjectFactory);
+
+	static JobStoreFactory inMemoryJobStore() {
 		return InMemoryJobStore::new;
 	}
 
-	public static Func1<SerializedObjectFactory, JobStore> sqlJobStore(DataSource dataSource) {
+	static JobStoreFactory sqlJobStore(DataSource dataSource) {
 		return sqlJobStore(dataSource, new RandomUUIDGenerator());
 	}
 
-	public static Func1<SerializedObjectFactory, JobStore> sqlJobStore(DataSource dataSource, UUIDGenerator uuidGenerator) {
+	static JobStoreFactory sqlJobStore(DataSource dataSource, UUIDGenerator uuidGenerator) {
 		return soFactory -> {
 			SqlJobStore sqlJobStore = new SqlJobStore(dataSource, uuidGenerator, soFactory);
 			sqlJobStore.initialize();

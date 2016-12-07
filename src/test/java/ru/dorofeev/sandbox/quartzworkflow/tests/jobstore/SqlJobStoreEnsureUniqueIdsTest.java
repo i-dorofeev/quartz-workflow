@@ -43,7 +43,7 @@ public class SqlJobStoreEnsureUniqueIdsTest {
 
 		TestUUIDGenerator uuidGenerator = new TestUUIDGenerator();
 
-		JobStore jobStore = sqlJobStore(hsql.getDataSource(), uuidGenerator).call(jsonSerialization());
+		JobStore jobStore = sqlJobStore(hsql.getDataSource(), uuidGenerator).spawn(jsonSerialization());
 
 		uuidGenerator.pushUuid("00000000-0000-0000-0000-000000000001");
 		Job job1 = jobStore.saveNewJob(null, "default", QueueingOptions.ExecutionType.PARALLEL, new JobKey("jobKey"), new StubArgs("value"), new Date(), NodeSpecification.ANY_NODE);

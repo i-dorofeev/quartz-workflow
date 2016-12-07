@@ -3,9 +3,9 @@ package ru.dorofeev.sandbox.quartzworkflow.tests.execution;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.*;
-import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.StubClock;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestExecutable;
 import ru.dorofeev.sandbox.quartzworkflow.utils.Stopwatch;
@@ -18,6 +18,7 @@ import java.util.Date;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static ru.dorofeev.sandbox.quartzworkflow.JobId.jobId;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.*;
+import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory.fixedThreadedExecutorService;
 
 public class ExecutorServiceTests {
 
@@ -34,7 +35,7 @@ public class ExecutorServiceTests {
 	public void beforeTest() {
 		stopwatchFactory = new StubStopwatchFactory();
 		clock = new StubClock();
-		executorService = ExecutorServiceFactory.fixedThreadedExecutorService(5, 50, stopwatchFactory, clock);
+		executorService = fixedThreadedExecutorService(5, 50, stopwatchFactory, clock).spawn(node);
 
 		cmdFlow = PublishSubject.create();
 		eventTestSubscriber = new TestSubscriber<>();

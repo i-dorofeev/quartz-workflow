@@ -1,11 +1,15 @@
 package ru.dorofeev.sandbox.quartzworkflow.execution;
 
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.utils.Clock;
 import ru.dorofeev.sandbox.quartzworkflow.utils.StopwatchFactory;
 
-public class ExecutorServiceFactory {
+@FunctionalInterface
+public interface ExecutorServiceFactory {
 
-	public static ExecutorService fixedThreadedExecutorService(int nThreads, long idleInterval, StopwatchFactory stopwatchFactory, Clock clock) {
-		return new FixedThreadedExecutorService(nThreads, idleInterval, stopwatchFactory, clock);
+	ExecutorService spawn(NodeId nodeId);
+
+	static ExecutorServiceFactory fixedThreadedExecutorService(int nThreads, long idleInterval, StopwatchFactory stopwatchFactory, Clock clock) {
+		return nodeId -> new FixedThreadedExecutorService(nodeId, nThreads, idleInterval, stopwatchFactory, clock);
 	}
 }

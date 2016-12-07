@@ -1,11 +1,8 @@
 package ru.dorofeev.sandbox.quartzworkflow.tests.utils;
 
 import org.hibernate.dialect.HSQLDialect;
-import ru.dorofeev.sandbox.quartzworkflow.jobs.JobStore;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.JobStoreFactory;
 import ru.dorofeev.sandbox.quartzworkflow.queue.sql.SqlQueueStore;
-import ru.dorofeev.sandbox.quartzworkflow.serialization.SerializedObjectFactory;
-import rx.functions.Func1;
 
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueStoreFactory.sqlQueueStore;
 
@@ -17,7 +14,7 @@ public class HSqlServices {
 		this.HSqlDb = new HSqlDb();
 	}
 
-	public Func1<SerializedObjectFactory, JobStore> jobStoreFactory() {
+	public JobStoreFactory jobStoreFactory() {
 		return JobStoreFactory.sqlJobStore(HSqlDb.getDataSource());
 	}
 

@@ -21,7 +21,7 @@ public class SqlJobStoreTest extends AbstractJobStoreTest {
 
 		serialization = jsonSerialization();
 		HSqlDb = new HSqlDb();
-		jobStore = sqlJobStore(HSqlDb.getDataSource()).call(serialization);
+		jobStore = sqlJobStore(HSqlDb.getDataSource()).spawn(serialization);
 	}
 
 	@AfterClass

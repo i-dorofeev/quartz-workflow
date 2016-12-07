@@ -9,7 +9,7 @@ import static ru.dorofeev.sandbox.quartzworkflow.serialization.SerializationFact
 public class InMemoryJobStoreTest extends AbstractJobStoreTest {
 
 	private static final SerializedObjectFactory serialization = jsonSerialization();
-	private static final JobStore store = inMemoryJobStore().call(serialization);
+	private static final JobStore store = inMemoryJobStore().spawn(serialization);
 
 	@Override
 	protected JobStore getStore() {

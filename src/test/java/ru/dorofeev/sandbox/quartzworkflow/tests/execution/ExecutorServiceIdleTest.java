@@ -2,11 +2,11 @@ package ru.dorofeev.sandbox.quartzworkflow.tests.execution;
 
 import org.junit.Before;
 import org.junit.Test;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.Cmd;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.Event;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.IdleEvent;
-import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestExecutable;
 import ru.dorofeev.sandbox.quartzworkflow.tests.utils.TestStorage;
 import ru.dorofeev.sandbox.quartzworkflow.utils.RealtimeStopwatchFactory;
@@ -18,6 +18,7 @@ import rx.subjects.PublishSubject;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static ru.dorofeev.sandbox.quartzworkflow.JobId.jobId;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleJobCmd;
+import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorServiceFactory.fixedThreadedExecutorService;
 import static rx.Observable.range;
 import static rx.schedulers.Schedulers.io;
 
@@ -40,7 +41,9 @@ public class ExecutorServiceIdleTest {
 	@Test
 	public void sanityTest() throws Exception {
 
-		ExecutorService executorService = ExecutorServiceFactory.fixedThreadedExecutorService(10, 10, new RealtimeStopwatchFactory(), new SystemClock());
+		ExecutorService executorService = fixedThreadedExecutorService(10, 10, new RealtimeStopwatchFactory(), new SystemClock())
+			.spawn(new NodeId("node"));
+
 		executorService.start();
 
 		Observable<Event> executorEvents = executorService.bind(cmdFlow)

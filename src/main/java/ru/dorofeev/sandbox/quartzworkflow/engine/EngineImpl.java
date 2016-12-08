@@ -1,6 +1,7 @@
 package ru.dorofeev.sandbox.quartzworkflow.engine;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
+import ru.dorofeev.sandbox.quartzworkflow.JobKey;
 import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
@@ -12,8 +13,10 @@ import rx.Observable;
 import rx.subjects.PublishSubject;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 
+import static java.util.Optional.ofNullable;
 import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.scheduleJobCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository.addJobCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository.completeJobCmd;
@@ -21,8 +24,14 @@ import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.*;
 
 class EngineImpl implements Engine {
 
-	private final Map<Class<? extends Event>, Set<String>> eventHandlers = new HashMap<>();
-	private final Map<String, EventHandler> eventHandlerInstances = new HashMap<>();
+	private final JobKey SCHEDULE_EVENT_HANDLERS_JOB = new JobKey("SCHEDULE_EVENT_HANDLERS_JOB");
+	private final JobKey EXECUTE_EVENT_HANDLER_JOB = new JobKey("EXECUTE_EVENT_HANDLER_JOB");
+	private final JobKey EXECUTE_LOCAL_JOB_JOB = new JobKey("EXECUTE_LOCAL_JOB_JOB");
+
+	private final Map<Class<? extends Event>, Set<String>> eventHandlers = new ConcurrentHashMap<>();
+	private final Map<String, EventHandler> eventHandlerInstances = new ConcurrentHashMap<>();
+
+	private final LocalJobStore localJobStore = new LocalJobStore();
 
 	private final JobRepository jobRepository;
 	private final ExecutorService executorService;
@@ -91,6 +100,8 @@ class EngineImpl implements Engine {
 			return new ScheduleEventHandlersJob(this);
 		} else if (job.getJobKey().equals(EXECUTE_EVENT_HANDLER_JOB)) {
 			return new ExecuteEventHandlerJob(this);
+		} else if (job.getJobKey().equals(EXECUTE_LOCAL_JOB_JOB)) {
+			return new ExecuteLocalJobJob(this);
 		} else {
 			throw new EngineException("Unknown job key " + job.getJobKey());
 		}
@@ -130,7 +141,13 @@ class EngineImpl implements Engine {
 
 	@Override
 	public Future<Void> submitLocalJob(LocalJob localJob) {
-		throw new UnsupportedOperationException("Not implemented yet");
+		LocalJobExecutionContext localJobExecutionContext = new LocalJobExecutionContext(localJob);
+
+		String localJobId = localJobStore.addJob(localJobExecutionContext);
+		jobRepository.addJob(null, EXECUTE_LOCAL_JOB_JOB,
+			new ExecuteLocalJobJob.Args(localJobId), QueueingOptions.DEFAULT);
+
+		return localJobExecutionContext.getFuture();
 	}
 
 	Job submitEvent(JobId parentId, Event event) {
@@ -178,7 +195,7 @@ class EngineImpl implements Engine {
 
 	Optional<EventHandler> findHandlerByUri(String handlerUri) {
 		EventHandler eventHandler = eventHandlerInstances.get(handlerUri);
-		return Optional.ofNullable(eventHandler);
+		return ofNullable(eventHandler);
 	}
 
 	Set<String> findHandlers(Class<? extends Event> eventType) {
@@ -187,5 +204,9 @@ class EngineImpl implements Engine {
 			return Collections.emptySet();
 		else
 			return Collections.unmodifiableSet(handlers);
+	}
+
+	Optional<LocalJobExecutionContext> getLocalJob(String localJobId) {
+		return localJobStore.getLocalJobExecutionContext(localJobId);
 	}
 }

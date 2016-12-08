@@ -104,6 +104,7 @@ public class EngineTests {
 
 		Future<Void> localJobFuture = engine.submitLocalJob(() -> events(new StubEvent("local")));
 		localJobFuture.get(1, SECONDS);
+		await().until(() -> stubEvent.equals(mockEventHandler.getEvent()));
 
 		assertThat(mockEventHandler.getEvent(), is(equalTo(stubEvent)));
 	}

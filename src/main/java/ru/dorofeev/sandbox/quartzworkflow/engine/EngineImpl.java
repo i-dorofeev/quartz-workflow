@@ -2,6 +2,7 @@ package ru.dorofeev.sandbox.quartzworkflow.engine;
 
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
 import ru.dorofeev.sandbox.quartzworkflow.JobKey;
+import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import ru.dorofeev.sandbox.quartzworkflow.execution.Executable;
 import ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService;
 import ru.dorofeev.sandbox.quartzworkflow.jobs.Job;
@@ -21,6 +22,8 @@ import static ru.dorofeev.sandbox.quartzworkflow.execution.ExecutorService.sched
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository.addJobCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.jobs.JobRepository.completeJobCmd;
 import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueManager.*;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.DEFAULT_QUEUE_NAME;
+import static ru.dorofeev.sandbox.quartzworkflow.queue.QueueingOptions.ExecutionType.PARALLEL;
 
 class EngineImpl implements Engine {
 
@@ -35,6 +38,7 @@ class EngineImpl implements Engine {
 
 	private final JobRepository jobRepository;
 	private final ExecutorService executorService;
+	private final QueueManager queueManager;
 
 	private final ErrorObservable errors = new ErrorObservable();
 
@@ -51,6 +55,7 @@ class EngineImpl implements Engine {
 	EngineImpl(JobRepository jobRepository, ExecutorService executorService, QueueManager queueManager) {
 		this.jobRepository = jobRepository;
 		this.executorService = executorService;
+		this.queueManager = queueManager;
 
 		this.errors.subscribeTo(jobRepository.getErrors());
 		this.errors.subscribeTo(executorService.getErrors());
@@ -144,8 +149,9 @@ class EngineImpl implements Engine {
 		LocalJobExecutionContext localJobExecutionContext = new LocalJobExecutionContext(localJob);
 
 		String localJobId = localJobStore.addJob(localJobExecutionContext);
-		jobRepository.addJob(null, EXECUTE_LOCAL_JOB_JOB,
-			new ExecuteLocalJobJob.Args(localJobId), QueueingOptions.DEFAULT);
+		jobRepository.addJob(null,
+			EXECUTE_LOCAL_JOB_JOB, new ExecuteLocalJobJob.Args(localJobId),
+			new QueueingOptions(DEFAULT_QUEUE_NAME, PARALLEL, new NodeSpecification(queueManager.getNodeId())));
 
 		return localJobExecutionContext.getFuture();
 	}

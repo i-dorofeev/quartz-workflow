@@ -2,10 +2,13 @@ package ru.dorofeev.sandbox.quartzworkflow.queue;
 
 import org.springframework.util.Assert;
 import ru.dorofeev.sandbox.quartzworkflow.JobId;
+import ru.dorofeev.sandbox.quartzworkflow.NodeId;
 import ru.dorofeev.sandbox.quartzworkflow.NodeSpecification;
 import rx.Observable;
 
 public interface QueueManager {
+
+	NodeId getNodeId();
 
 	Observable<Throwable> getErrors();
 

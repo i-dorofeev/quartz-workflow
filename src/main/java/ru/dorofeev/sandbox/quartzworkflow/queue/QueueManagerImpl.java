@@ -30,6 +30,11 @@ class QueueManagerImpl implements QueueManager {
 	}
 
 	@Override
+	public NodeId getNodeId() {
+		return nodeId;
+	}
+
+	@Override
 	public Observable<Throwable> getErrors() {
 		return errors.asObservable();
 	}
